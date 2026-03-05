@@ -1,0 +1,26 @@
+# JetBrains / IntelliJ
+.idea/
+*.iml
+out/
+shelf/
+workspace.xml
+queries/
+dataSources/
+dataSources.local.xml
+httpRequests/
+
+# Java build
+build/
+.gradle/
+target/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env / secrets
+.env
+.env.*
+application-secrets.yml
+/.metadata/

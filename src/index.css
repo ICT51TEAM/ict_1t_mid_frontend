@@ -1,0 +1,59 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-mw-white: var(--bg-card);
+  --color-mw-black: var(--text-primary);
+  --color-mw-gray-50: var(--bg-page);
+  --color-mw-gray-100: var(--border-color);
+  --color-mw-gray-200: #e2e6eb;
+  --color-mw-gray-300: #ccd3db;
+  --color-mw-gray-400: #a3b0c1;
+  --color-mw-gray-500: #7b8b9e;
+  --color-mw-gray-600: #5c6877;
+  --color-mw-gray-700: #424a54;
+  --color-mw-gray-800: #292e35;
+  --color-mw-gray-900: #101215;
+  --color-mw-blue: #0078ff;
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+}
+
+:root {
+  --bg-page: #f9f9fa;
+  --bg-card: #ffffff;
+  --text-primary: #000000;
+  --text-secondary: #424a54;
+  --border-color: #f3f3f3;
+}
+
+.dark {
+  --bg-page: #101215;
+  --bg-card: #1c1f24;
+  --text-primary: #ffffff;
+  --text-secondary: #a3b0c1;
+  --border-color: #292e35;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar Hide */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
