@@ -1,37 +1,23 @@
 /**
- * @file LoginPage.jsx
- * @route /login
+ * ──────────────────────────────────────────────────────
+ * LoginPage.tsx — 로그인 페이지
+ * ──────────────────────────────────────────────────────
  *
- * @description
- * 무신사 앱의 로그인 페이지 컴포넌트.
- * 사용자는 이메일/비밀번호로 일반 로그인하거나, 카카오 OAuth2를 통해 소셜 로그인할 수 있다.
+ * [역할]
+ * 사용자가 이메일+비밀번호 또는 카카오 로그인으로 로그인하는 화면.
  *
- * @주요_동작
- * 1. ProtectedRoute에서 로그인이 필요한 페이지에 비인증 상태로 접근하면,
- *    location.state.requireAuth = true 를 담아 이 페이지로 리다이렉트된다.
- *    → useEffect에서 이 값을 감지해 "로그인이 필요한 서비스입니다." 알림을 1회만 표시한다.
- * 2. handleLogin: 이메일/비밀번호 POST → 토큰+유저 정보를 AuthContext 및 localStorage에 저장.
- * 3. 카카오 버튼: window.location.href를 직접 변경해 백엔드 OAuth2 진입점으로 이동.
- *    (리다이렉트 후 KakaoCallback.jsx가 처리를 이어받음)
- * 4. 로그인 성공 후 location.state.from에 원래 가려던 경로가 있으면 그곳으로, 없으면 '/'로 이동.
+ * [로그인 흐름]
+ * 1) 이메일/비밀번호 입력 → "로그인" 버튼 클릭
+ * 2) authService.login() → 백엔드 /api/auth/login에 POST 요청
+ * 3) 성공 시: AuthContext의 login() 호출 → 토큰+사용자정보 저장 → /feed로 이동
+ * 4) 실패 시: 에러 메시지 표시
  *
- * @state
- * - email {string}         - 이메일 입력 필드 값
- * - password {string}      - 비밀번호 입력 필드 값
- * - isSubmitting {boolean} - 로그인 API 요청 중 여부 (중복 제출 방지용)
- *
- * @ref
- * - hasShownAlert {React.MutableRefObject<boolean>}
- *   - ProtectedRoute 리다이렉트 경고 알림을 단 한 번만 표시하기 위한 플래그.
- *   - StrictMode의 이중 렌더링이나 의존성 변경으로 인해 알림이 여러 번 뜨는 것을 방지.
- *
- * @hooks
- * - useNavigate   : 로그인 성공 후 페이지 이동
- * - useLocation   : location.state(requireAuth, from) 읽기
- * - useAuth       : login() 함수로 전역 인증 상태 갱신
- * - useAlert      : showAlert()로 모달 알림 표시
+ * [상태(state) 관리]
+ *   - email, password: 입력값
+ *   - isLoading: 로딩 중인지 (버튼 비활성화, 스피너 표시)
+ *   - error: 에러 메시지
+ * ──────────────────────────────────────────────────────
  */
-
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { useAlert } from '@/context/AlertContext';
@@ -51,24 +37,20 @@ export default function LoginPage() {
     const location = useLocation();
     const { login: authLogin } = useAuth();
     const { showAlert } = useAlert();
-
-    // hasShownAlert: ProtectedRoute 경고 알림이 여러 번 뜨는 것을 막는 ref
-    // (렌더가 두 번 실행되는 React StrictMode 환경에서도 알림은 1회만 표시됨)
     const hasShownAlert = useRef(false);
 
     // ---------------------------------------------------------
     // [상태 변수]
     // ---------------------------------------------------------
 
-    // email: 사용자가 입력하는 이메일 주소 (controlled input)
-    const [email, setEmail] = useState('');
-
-    // password: 사용자가 입력하는 비밀번호 (controlled input, type=password로 마스킹)
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('');  // 이메일 입력값
+    const [password, setPassword] = useState(''); //패스워드 입력값
 
     // isSubmitting: true이면 로그인 API 요청 중. 버튼 비활성화 및 텍스트 변경에 사용.
     // 중복 클릭으로 API가 여러 번 호출되는 것을 방지한다.
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);  // 로딩중 여부
+    const [error, setError] = useState(''); // 에러메세지
+
 
     // ---------------------------------------------------------
     // [useEffect #1] ProtectedRoute 리다이렉트 감지
@@ -82,6 +64,10 @@ export default function LoginPage() {
         // TODO: location.state?.requireAuth가 true이고 hasShownAlert.current가 false일 때
         //       showAlert('로그인이 필요한 서비스입니다.\n로그인 후 이용해주세요.', '접근 제한') 호출
         //       후 hasShownAlert.current = true 로 설정
+        if (location.state?.requireAuth && !hasShownAlert.current) {
+            showAlert('로그인이 필요한 서비스입니다.\n 로그인 후 이용해주세요', '접근 제한','alert');
+            hasShownAlert.current = true;
+        }
     }, [location.state, showAlert]);
 
     // ---------------------------------------------------------
@@ -111,6 +97,50 @@ export default function LoginPage() {
         // TODO: location.state?.from?.pathname || '/' 로 navigate (replace: true)
         // TODO: 에러 시 error.response?.data?.message 또는 기본 메시지로 showAlert() 호출
         // TODO: finally에서 setIsSubmitting(false) 호출
+        e.preventDefault();  // 폼 기본동작(새로고침) 방지
+        if (isSubmitting) return;// 중복호출 방지
+        console.log("로그인 버튼 시작됨");
+        setIsSubmitting(true); // 로딩 시작
+        setError(''); // 이전 에러 메세지 초기화
+        try {
+            //백엔드에 로그인 요청
+            console.log('로그인 요청 시작!!');
+            const provider = '';
+            const response = await authService.login({
+                email,
+                password,
+            });
+            //백엔드에서 받은 response처리
+            const userData = response.user || response; // 응답데이터 저장
+            const token = response.token; // 응답받은 토큰 저장
+
+            if (token && userData) {
+                authLogin(token, userData); // 토큰&사용자 정보 저장
+                showAlert('방문을 환영합니다.', '로그인 성공', 'success');
+                // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
+                const destination = location.state?.from?.pathname || 'feed';
+                navigate(destination, { replace: true });
+            }
+            else {
+                throw new Error("사용자 정보가 올바르지 않습니다");
+
+            }
+
+        }
+        //에러 처리
+        catch (err) {
+            console.log('상세 에러',err);
+
+            const serverError = err.response?.data;
+            const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
+                || '로그인 처리 중 문제가 발생했습니다.';
+
+            showAlert(errorMsg, '로그인 실패', 'alert');
+        }
+        //로딩 종료
+        finally {
+            setIsSubmitting(false); // 로딩 종료
+        }
     };
 
     // ---------------------------------------------------------
@@ -128,8 +158,8 @@ export default function LoginPage() {
                     슬로건("다양한 패션이 모이는 곳, 무신사")은 연한 회색(#a3b0c1)으로 표시.
                 ─────────────────────────────────────────────────────── */}
                 <div className="mb-10 text-center">
-                    <h1 className="text-4xl font-black tracking-tighter text-black dark:text-[#e5e5e5] mb-2">MUSINSA</h1>
-                    <p className="text-[#a3b0c1] text-[13px] tracking-wide">다양한 패션이 모이는 곳, 무신사</p>
+                    <h1 className="text-4xl font-black tracking-tighter text-black dark:text-[#e5e5e5] mb-2">MYSTORY</h1>
+                    <p className="text-[#a3b0c1] text-[13px] tracking-wide">나만의 스토리를 만들어가는 곳</p>
                 </div>
 
                 {/* ── 로그인 폼 섹션 ─────────────────────────────────────
