@@ -76,7 +76,7 @@ export const authService = {
      * [7] 비밀번호 재설정용 코드 검증
      */
     verifyResetCode: async (email, code) => {
-        const response = await apiClient.post('auth/email/verify-reset-code', { email, code });
+        const response = await apiClient.post('/auth/email/verify-reset-code', { email, code });
         return response.data;
     },
 
@@ -84,7 +84,7 @@ export const authService = {
      * [8] 비밀번호 재설정 완료
      */
     resetPassword: async (email, newPassword) => {
-        const response = await apiClient.post('auth/email/reset-password ', { email, newPassword });
+        const response = await apiClient.post('/auth/reset-password', { email, newPassword });
         return response.data;
     },
 

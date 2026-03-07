@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check, X } from 'lucide-react';
 import { authService } from '@/api/authService';
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
@@ -34,6 +34,21 @@ export default function SignupPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // ─── 비밀번호 규칙 실시간 검증 ──────────────────
+    // 비밀번호 입력값이 바뀔 때마다 이 객체가 다시 계산됨
+    // /[정규식]/.test(문자열): 문자열이 정규식 패턴에 맞는지 true/false 반환
+    const password = formData.password;
+    const passwordRules = {
+        length: password.length >= 8 && password.length <= 20, // 원본 주석에 맞춰 8~20자로 유지
+        // 길이 검사
+        hasLetter: /[a-zA-Z]/.test(password),
+        // 영문 포함 여부
+        hasNumber: /[0-9]/.test(password),
+        // 숫자 포함 여부
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password), // 특수문자 포함 여부
+    }
+
+
     // ---------------------------------------------------------
     // [useEffect #1] 미인증 접근 차단
     // ---------------------------------------------------------
@@ -58,6 +73,16 @@ export default function SignupPage() {
         // 비밀번호 일치 여부 확인
         if (formData.password !== formData.confirmPassword) {
             showAlert('비밀번호가 일치하지 않습니다', '입력 오류', 'alert');
+            return;
+        }
+        // 비밀번호 규칙 전체 충족 확인
+        if (
+            !passwordRules.length ||
+            !passwordRules.hasLetter ||
+            !passwordRules.hasNumber ||
+            !passwordRules.hasSpecial
+        ) {
+            showAlert('비밀번호 규칙을 확인해주세요.', '비밀번호 오류');
             return;
         }
         setIsSubmitting(true); // 로딩 시작(버튼 비활성화)
@@ -202,6 +227,72 @@ export default function SignupPage() {
                                 required
                             />
                         </div>
+
+
+                        {/* ════════════════════════════════════ */}
+                        {/* ── 비밀번호 규칙 실시간 체크 표시 ── */}
+                        {/* 각 규칙을 충족하면 ✓(초록), 미충족이면 ✗(회색) */}
+                        {/* ════════════════════════════════════ */}
+                        <div className="bg-secondary rounded-[16px] p-5 shadow-sm border border-border">
+                            <p className="text-[14px] font-bold text-text-primary mb-3.5">비밀번호 규칙</p>
+                            <div className="space-y-2.5">
+                                {/* 규칙 1: 8~20자 */}
+                                <div className="flex items-center gap-2">
+                                    {/* 조건부 렌더링: 규칙 충족이면 Check 아이콘, 아니면 X 아이콘 */}
+                                    {passwordRules.length ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    {/* 충족 시 진한 텍스트, 미충족 시 연한 텍스트 */}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.length ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        8~20자 이내
+                                    </span>
+                                </div>
+                                {/* 규칙 2: 영문 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasLetter ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasLetter ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        영문 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 3: 숫자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasNumber ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasNumber ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        숫자 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 4: 특수문자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasSpecial ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasSpecial ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        특수문자 포함 (!@#$%^&* 등)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
 
                         {/* 가입하기 버튼: isSubmitting 중에는 비활성화 */}
                         <button

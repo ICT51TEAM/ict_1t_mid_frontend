@@ -37,56 +37,49 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Check, X } from 'lucide-react';
 import { authService } from '@/api/authService';
 import { useAlert } from '@/context/AlertContext';
 
 export default function ResetPasswordPage() {
     // ---------------------------------------------------------
     // [라우터 / 컨텍스트 훅 초기화]
-    // navigate  : 미인증 접근 → /forgot-password, 재설정 성공 → /login
-    // location  : ForgotPasswordPage가 전달한 email 읽기
-    // showAlert : 입력 오류/API 오류/성공 알림 모달 표시
     // ---------------------------------------------------------
     const navigate = useNavigate();
     const location = useLocation();
     const { showAlert } = useAlert();
-
-    // email: ForgotPasswordPage에서 navigate state로 전달된 이메일.
-    // 없으면 빈 문자열('')이 되고, useEffect에서 /forgot-password로 강제 이동.
     const email = location.state?.email || '';
 
     // ---------------------------------------------------------
     // [상태 변수]
-    // formData: 3개 필드를 하나의 객체로 관리하는 controlled state.
-    //   - code: 이메일로 받은 인증번호 입력 (6자리)
-    //   - newPassword: 새로 설정할 비밀번호
-    //   - confirmPassword: 비밀번호 재입력 확인 (handleReset에서 newPassword와 비교)
-    // 각 필드 변경 시: setFormData({ ...formData, 해당필드: 새값 }) 스프레드 패턴 사용
     // ---------------------------------------------------------
+    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         code: '',
         newPassword: '',
         confirmPassword: ''
     });
-
-    // loading: true이면 API 요청 진행 중 → 버튼 disabled + Loader2 스피너 표시
-    const [loading, setLoading] = useState(false);
+    // ─── 비밀번호 규칙 실시간 검증 ──────────────────
+    // 비밀번호 입력값이 바뀔 때마다 이 객체가 다시 계산됨
+    // /[정규식]/.test(문자열): 문자열이 정규식 패턴에 맞는지 true/false 반환
+    const password = formData.newPassword;
+    const passwordRules = {
+        length: password.length >= 8 && password.length <= 20, // 원본 주석에 맞춰 8~20자로 유지
+        // 길이 검사
+        hasLetter: /[a-zA-Z]/.test(password),
+        // 영문 포함 여부
+        hasNumber: /[0-9]/.test(password),
+        // 숫자 포함 여부
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password), // 특수문자 포함 여부
+    }
 
     // ---------------------------------------------------------
     // [useEffect #1] 미인증 접근 차단
-    // 실행 시점: 컴포넌트 마운트 시 및 email, navigate, showAlert 변경 시
-    // 조건: email이 빈 문자열('') → ForgotPasswordPage를 거치지 않은 직접 접근
-    // 동작:
-    //   1. "이메일 정보가 없습니다. 비밀번호 찾기를 다시 시도해주세요." 알림 표시
-    //   2. navigate('/forgot-password', { replace: true })
-    //      (replace: true → 히스토리에 /reset-password가 쌓이지 않아 뒤로가기 방지)
-    // 클린업: 없음
-    // ---------------------------------------------------------
-    // 이메일 없이 직접 접근한 경우 비밀번호 찾기로 이동
     useEffect(() => {
-        // TODO: email이 비어있으면 showAlert('이메일 정보가 없습니다. 비밀번호 찾기를 다시 시도해주세요.', '오류') 호출 후
-        //       navigate('/forgot-password', { replace: true }) 로 강제 이동
+        if (!email) {
+            showAlert('이메일 정보가 없습니다. 메일 인증부터 다시 시도해 주세요', 'alert');
+            navigate('/reset-password', { replace: true });
+        }
     }, [email, navigate, showAlert]);
 
     // ---------------------------------------------------------
@@ -111,17 +104,53 @@ export default function ResetPasswordPage() {
     //   [9] finally: loading = false
     // ---------------------------------------------------------
     const handleReset = async (e) => {
-        // TODO: e.preventDefault() 호출
-        // TODO: loading 중복 방지 체크 (true이면 return)
-        // TODO: formData.newPassword !== formData.confirmPassword 이면
-        //       showAlert('비밀번호가 일치하지 않습니다.', '입력 오류') 후 return
-        // TODO: setLoading(true) 호출
-        // TODO: authService.verifyResetCode(email, formData.code) 호출 (1단계: 코드 검증)
-        // TODO: authService.resetPassword(email, formData.newPassword) 호출 (2단계: 비밀번호 변경)
-        // TODO: 성공 시 showAlert('비밀번호가 성공적으로 재설정되었습니다. 로그인해주세요.', '재설정 완료', 'success') 후 navigate('/login')
-        // TODO: 실패 시 err.response?.data?.message 또는 '인증번호가 올바르지 않거나 만료되었습니다.' 로 showAlert
-        // TODO: finally에서 setLoading(false) 호출
-    };
+        e.preventDefault();
+        if (loading) return;
+
+        // 비밀번호 일치 여부 확인
+        if (formData.newPassword !== formData.confirmPassword) {
+            showAlert('비밀번호가 일치하지 않습니다', '입력 오류', 'alert');
+            return;
+        }
+        // 비밀번호 규칙 전체 충족 확인
+        if (
+            !passwordRules.length ||
+            !passwordRules.hasLetter ||
+            !passwordRules.hasNumber ||
+            !passwordRules.hasSpecial
+        ) {
+            showAlert('비밀번호 규칙을 확인해주세요.', '비밀번호 오류');
+            return;
+        }
+        setLoading(true); //로딩 시작
+
+        //검증 서비스 호출
+        try {
+            console.log("보내는 데이터:", email, formData.code );
+            await authService.verifyResetCode(email, formData.code); // 인증코드 검증
+            await authService.resetPassword(email, formData.newPassword); // 신규 비밀번호 저장
+            //성공시
+            showAlert('비밀번호가 변경되었습니다', '비밀번호 변경', 'success');
+            navigate('/login', { replace: true });
+
+        }
+        // 실패시
+        catch (err) {
+            console.log('상세 에러', err);
+
+            const serverError = err.response?.data;
+            const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
+                || '인증코드가 올바르지 않습니다. 다시 시도해주세요.';
+
+            showAlert(errorMsg, '비밀번호 변경 실패', 'alert');
+            console.log('비밀번호 변경 에러', err);
+        }
+        //로딩 종료
+        finally {
+            setLoading(false); // 로딩 종료
+        }
+    }
+
 
     // ---------------------------------------------------------
     // [JSX 렌더링]
@@ -185,12 +214,14 @@ export default function ResetPasswordPage() {
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[13px] font-bold text-gray-700 dark:text-[#a3b0c1] ml-1">새 비밀번호</label>
                             <input
+                                id="password"
                                 type="password"
                                 placeholder="새로운 비밀번호"
                                 className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-black dark:focus:border-[#e5e5e5] transition-colors"
                                 value={formData.newPassword}
                                 onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                                 required
+
                             />
                         </div>
 
@@ -198,13 +229,79 @@ export default function ResetPasswordPage() {
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[13px] font-bold text-gray-700 dark:text-[#a3b0c1] ml-1">새 비밀번호 확인</label>
                             <input
+                                id="confirm-password"
                                 type="password"
                                 placeholder="다시 한번 입력하세요"
                                 className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-black dark:focus:border-[#e5e5e5] transition-colors"
                                 value={formData.confirmPassword}
                                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                 required
+
                             />
+                        </div>
+
+                        {/* ════════════════════════════════════ */}
+                        {/* ── 비밀번호 규칙 실시간 체크 표시 ── */}
+                        {/* 각 규칙을 충족하면 ✓(초록), 미충족이면 ✗(회색) */}
+                        {/* ════════════════════════════════════ */}
+                        <div className="bg-secondary rounded-[16px] p-5 shadow-sm border border-border">
+                            <p className="text-[14px] font-bold text-text-primary mb-3.5">비밀번호 규칙</p>
+                            <div className="space-y-2.5">
+                                {/* 규칙 1: 8~20자 */}
+                                <div className="flex items-center gap-2">
+                                    {/* 조건부 렌더링: 규칙 충족이면 Check 아이콘, 아니면 X 아이콘 */}
+                                    {passwordRules.length ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    {/* 충족 시 진한 텍스트, 미충족 시 연한 텍스트 */}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.length ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        8~20자 이내
+                                    </span>
+                                </div>
+                                {/* 규칙 2: 영문 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasLetter ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasLetter ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        영문 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 3: 숫자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasNumber ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasNumber ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        숫자 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 4: 특수문자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasSpecial ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasSpecial ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        특수문자 포함 (!@#$%^&* 등)
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         {/* 제출 버튼: 로딩 중이면 스피너, 아니면 "비밀번호 재설정 완료" 텍스트 */}
@@ -220,4 +317,4 @@ export default function ResetPasswordPage() {
             </div>
         </ResponsiveLayout>
     );
-}
+};

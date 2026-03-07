@@ -75,40 +75,35 @@ import React, { useState } from 'react';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { Landmark, Search, Calendar, ExternalLink, Loader2, Info, TrendingUp, Cpu } from 'lucide-react';
 import { fssService } from '@/api/fssService';
+import { useAlert } from '@/context/AlertContext';
 
 export default function FssPage() {
 
     /**
      * @state loading
-     * fetchData API 호출 진행 중 여부.
-     * true 이면:
-     *   - FETCH INSIGHTS 버튼이 disabled 상태 (중복 클릭 방지)
-     *   - 버튼 아이콘이 Loader2 스피너로 전환
-     *   - Content 영역에 대형 Loader2 + "Scanning Financial Data..." 표시
-     * API 완료(성공/실패 모두) 후 false 로 전환됨 (finally)
      */
     const [loading, setLoading] = useState(false);
 
     /**
      * @state isSearched
-     * 사용자가 FETCH INSIGHTS 버튼을 최소 1회 눌렀는지 여부.
-     * false: Content 영역에 "Awaiting Query" 초기 안내 화면 표시
-     * true : loading 또는 data 에 따라 스피너/목록/빈 상태 표시
-     * fetchData 호출 시 즉시 true 로 전환됨
      */
     const [isSearched, setIsSearched] = useState(false);
 
     /**
      * @state data
-     * FSS API 파싱 결과 배열.
-     * 비어 있으면 "No Signals Found" 표시.
-     * 각 항목 구조 (FSS API 필드명이 버전마다 다를 수 있어 fallback 처리):
-     *   { contentId|idx|fcnNo: id,
-     *     subject|title|name: 공시 제목,
-     *     regDate|reg_date|createdAt: 등록일,
-     *     originUrl|origin_url|link: 원문 링크 }
      */
     const [data, setData] = useState([]);
+
+    /**
+     * @state startDate
+     */
+    const [startDate, setStartDate] = useState(initialStartDate);
+
+    /**
+     * @state endDate
+     */
+    const [endDate, setEndDate] = useState(today);
+    const { showAlert } = useAlert();
 
     // 오늘 날짜 계산 (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
@@ -116,22 +111,6 @@ export default function FssPage() {
     const aMonthAgo = new Date();
     aMonthAgo.setMonth(aMonthAgo.getMonth() - 1);
     const initialStartDate = aMonthAgo.toISOString().split('T')[0];
-
-    /**
-     * @state startDate
-     * 검색 기간의 시작일. date input 과 연결됨.
-     * 초기값: 오늘로부터 1달 전 (YYYY-MM-DD)
-     * fetchData 호출 시 API 에 전달됨
-     */
-    const [startDate, setStartDate] = useState(initialStartDate);
-
-    /**
-     * @state endDate
-     * 검색 기간의 종료일. date input 과 연결됨.
-     * 초기값: 오늘 (YYYY-MM-DD)
-     * fetchData 호출 시 API 에 전달됨
-     */
-    const [endDate, setEndDate] = useState(today);
 
     /**
      * @function fetchData
@@ -162,24 +141,49 @@ export default function FssPage() {
         //       [6] 에러 시 setData([])
         //       [7] finally에서 setLoading(false)
         //1. 상태 초기화
-            setLoading(true); 
-            setIsSearched(true);
+        setLoading(true);
+        setIsSearched(true);
 
-        //2. 날짜 형식 변환
-                const formmatedStartDate = startDate.replace(/-/g,'');
-                const formmatedEndtDate = endDate.replace(/-/g,'');
-        //3. API 호출
-                const result = await fssService.fetchFssData(startDate,endDate);
-        //4. 응답 확인 및 파싱
-                const root = result.reponse != null ? result: null;
-        //5. 결과 코드 확인
-                const isSuccess = root.resultCode.include(1 || '000' ||  'SUCCESS');
-        //6. 성공시 처리
-
+        try {
+            //2. 날짜 형식 변환
+            const formmatedStartDate = startDate.replace(/-/g, '');
+            const formmatedEndtDate = endDate.replace(/-/g, '');
+            //3. API 호출
+            const result = await fssService.fetchFssData(formmatedStartDate, formmatedEndtDate);
+            //4. 응답 확인 및 파싱
+            const root = (result && result.reponse) ? result.reponse : result;
+            //5. 결과 코드 확인
+            const successCode = [1, '000', 'SUCCESS']
+            const isSuccess = root && (!root.resultCode || successCode.includes(root.resultCode));
+            //6. 성공시 처리
+            if (isSuccess && (root.result || Array.isArray(result))) {
+                const list = root.result ?? (Array.isArray(result) ? result : []);
+                setData(list);
+            }
+            else {
+                if (root?.errorMsg) {
+                    console.log('FSS API error', root.errorMsg);
+                }
+                setData([]);
+            }
+        }
         // 7. 에러 처리
+        catch (err) {
+            console.log('상세 에러', err);
+            setData([]);
+
+            const serverError = err.response?.data;
+            const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
+                || '데이터 조회 중 문제가 발생했습니다.';
+
+            showAlert(errorMsg, '데이터 조회 실패', 'alert');
+        }
 
         //8. 로딩 종료
+        finally {
+            setLoading(false); // 로딩 종료
 
+        }
     };
 
     return (
@@ -321,10 +325,10 @@ export default function FssPage() {
                                 {/* 각 공시 항목 카드 */}
                                 {data.map((item, index) => {
                                     // 필드명 fallback 처리 (FSS API 버전마다 키 이름 다름)
-                                    const id    = item.contentId || item.idx || item.fcnNo || index;
+                                    const id = item.contentId || item.idx || item.fcnNo || index;
                                     const title = item.subject || item.title || item.name || '공시 내용이 없습니다.';
-                                    const date  = item.regDate || item.reg_date || item.createdAt || '날짜 미상';
-                                    const url   = item.originUrl || item.origin_url || item.link || 'https://www.fss.or.kr';
+                                    const date = item.regDate || item.reg_date || item.createdAt || '날짜 미상';
+                                    const url = item.originUrl || item.origin_url || item.link || 'https://www.fss.or.kr';
 
                                     return (
                                         <div
