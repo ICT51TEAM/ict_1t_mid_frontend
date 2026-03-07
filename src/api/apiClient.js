@@ -22,20 +22,6 @@ import axios from 'axios';
  * - 웹 브라우저 (Vite): http://localhost:8080/api
  * - 안드로이드 에뮬레이터: http://10.0.2.2:8080/api
  */
-/**
- * 현재 실행 환경에 맞는 API Base URL을 반환하는 함수
- *
- * @returns {string} 결정된 Base URL 문자열
- *   - 로컬 브라우저 개발 환경: '/api'  (Vite 프록시 경유)
- *   - Android 에뮬레이터/실 기기 : VITE_API_URL 또는 'http://10.0.2.2:8080/api'
- *
- * 동작 방식:
- *   1. window.location.hostname을 읽어 현재 호스트명을 확인한다.
- *   2. 'localhost' 또는 '127.0.0.1' 이면 상대 경로 '/api'를 반환한다.
- *      → vite.config.js의 proxy 설정으로 /api/* 가 실제 백엔드로 포워딩됨
- *   3. 그 외(Capacitor WebView, APK 실행 등)에는 절대 URL을 반환한다.
- *      → .env 파일의 VITE_API_URL이 있으면 그 값을, 없으면 기본값 사용
- */
 const getBaseUrl = () => {
   const { hostname, port, href } = window.location;
 
@@ -59,13 +45,6 @@ const getBaseUrl = () => {
  * 모든 API 서비스 파일이 이 인스턴스를 임포트하여 HTTP 통신에 사용한다.
  * axios.create()로 기본 설정을 고정시킨 독립 인스턴스이므로,
  * 전역 axios 설정을 변경하지 않고 프로젝트 전용 설정을 유지할 수 있다.
- *
- * 설정 항목:
- *   @property {string}  baseURL         - 요청 URL의 공통 앞부분 (환경별 동적 결정)
- *   @property {boolean} withCredentials - 크로스 오리진 요청에도 쿠키 포함 여부 (true)
- *   @property {number}  timeout         - 최대 응답 대기 시간 (ms). 초과 시 AxiosError
- *   @property {object}  headers         - 기본 요청 헤더. Content-Type은 JSON으로 고정
- *                                         (multipart 요청 시 개별 호출에서 오버라이드)
  */
 const apiClient = axios.create({
   baseURL: getBaseUrl(),
@@ -80,13 +59,6 @@ const apiClient = axios.create({
 // 요청 인터셉터: localStorage 토큰을 Authorization 헤더에 자동 주입
 // ─────────────────────────────────────────────────────────
 // apiClient를 통한 모든 HTTP 요청이 전송되기 직전에 이 함수가 실행된다.
-// 처리 흐름:
-//   1. localStorage.getItem('authToken') 으로 JWT 문자열을 읽는다.
-//   2. 토큰이 존재하면 config.headers.Authorization에 'Bearer <token>' 형태로 추가한다.
-//   3. 수정된(또는 원본) config 객체를 반환하면 Axios가 실제 요청을 보낸다.
-//   4. 인터셉터 자체에서 에러가 나면 Promise.reject(error)로 전파한다.
-// 주의: 로그인/회원가입처럼 토큰이 없어도 되는 요청에서는 토큰이 없으므로
-//       Authorization 헤더가 추가되지 않아 정상적으로 동작한다.
 apiClient.interceptors.request.use(
   (config) => {
     // localStorage에서 JWT 액세스 토큰을 읽어온다

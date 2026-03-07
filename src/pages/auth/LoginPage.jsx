@@ -28,10 +28,6 @@ import { useEffect, useRef, useState } from 'react';
 export default function LoginPage() {
     // ---------------------------------------------------------
     // [라우터 / 컨텍스트 훅 초기화]
-    // navigate : 로그인 성공 시 목적지 페이지로 이동
-    // location : state를 통해 ProtectedRoute에서 넘어온 정보 확인
-    // authLogin: AuthContext의 login 함수 – token과 user 객체를 전역 상태에 등록
-    // showAlert: AlertContext의 모달 알림 함수
     // ---------------------------------------------------------
     const navigate = useNavigate();
     const location = useLocation();
@@ -45,10 +41,7 @@ export default function LoginPage() {
 
     const [email, setEmail] = useState('');  // 이메일 입력값
     const [password, setPassword] = useState(''); //패스워드 입력값
-
-    // isSubmitting: true이면 로그인 API 요청 중. 버튼 비활성화 및 텍스트 변경에 사용.
-    // 중복 클릭으로 API가 여러 번 호출되는 것을 방지한다.
-    const [isSubmitting, setIsSubmitting] = useState(false);  // 로딩중 여부
+    const [isSubmitting, setIsSubmitting] = useState(false);  // 로딩중 여부,여러 번 호출되는 것을 방지
     const [error, setError] = useState(''); // 에러메세지
 
 
@@ -61,9 +54,6 @@ export default function LoginPage() {
     // 클린업: 없음 (이 useEffect는 부수효과(알림 표시)만 수행하며, 구독/타이머 없음)
     // ---------------------------------------------------------
     useEffect(() => {
-        // TODO: location.state?.requireAuth가 true이고 hasShownAlert.current가 false일 때
-        //       showAlert('로그인이 필요한 서비스입니다.\n로그인 후 이용해주세요.', '접근 제한') 호출
-        //       후 hasShownAlert.current = true 로 설정
         if (location.state?.requireAuth && !hasShownAlert.current) {
             showAlert('로그인이 필요한 서비스입니다.\n 로그인 후 이용해주세요', '접근 제한','alert');
             hasShownAlert.current = true;
@@ -74,29 +64,8 @@ export default function LoginPage() {
     // [handleLogin] 이메일/비밀번호 로그인 처리 함수
     //
     // @param {React.FormEvent} e - form onSubmit 이벤트 (e.preventDefault로 페이지 새로고침 방지)
-    //
-    // 동작 순서:
-    //   [1] 이미 요청 중이면 (isSubmitting === true) 즉시 종료해 중복 호출 방지
-    //   [2] isSubmitting = true 로 버튼 비활성화
-    //   [3] authService.login({ email, password }) 호출
-    //       → API: POST /api/auth/login
-    //       → 성공 시 백엔드가 { token: '...JWT...', user: { id, ... } } 반환
-    //   [4] 응답에 token과 user가 모두 있으면:
-    //       - authLogin(token, user): AuthContext에 토큰/유저 등록 (localStorage도 내부에서 저장)
-    //       - "로그인되었습니다." 성공 알림 표시
-    //       - location.state.from.pathname(원래 가려던 경로) 또는 '/'로 navigate
-    //   [5] token/user가 없거나 예외 발생 시: 오류 알림 표시
-    //   [6] finally: isSubmitting = false 로 버튼 재활성화
     // ---------------------------------------------------------
     const handleLogin = async (e) => {
-        // TODO: e.preventDefault() 호출
-        // TODO: isSubmitting 중복 방지 체크 (true이면 return)
-        // TODO: setIsSubmitting(true) 호출
-        // TODO: authService.login({ email, password }) 호출 → response의 token, user 확인
-        // TODO: authLogin(token, user) 로 전역 상태 저장 후 showAlert 성공 알림
-        // TODO: location.state?.from?.pathname || '/' 로 navigate (replace: true)
-        // TODO: 에러 시 error.response?.data?.message 또는 기본 메시지로 showAlert() 호출
-        // TODO: finally에서 setIsSubmitting(false) 호출
         e.preventDefault();  // 폼 기본동작(새로고침) 방지
         if (isSubmitting) return;// 중복호출 방지
         console.log("로그인 버튼 시작됨");
