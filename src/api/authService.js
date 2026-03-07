@@ -25,8 +25,8 @@ export const authService = {
      * [1] 일반 이메일/비밀번호 로그인
      **/
     login: async (credentials) => {
-        const respose = await apiClient.post('/auth/login', credentials);
-        return respose.data;
+        const response = await apiClient.post('/auth/login', credentials);
+        return response.data;
     },
 
     /**
@@ -98,6 +98,14 @@ export const authService = {
         finally {
             localStorage.removeItem('authToken');
         }
+        return response.data;
+    },
+
+    /**
+     * [10] 회원 중복 체크(이메일 중복 체크)
+     */
+    checkEmailDuplicates: async (email) => {
+        const response = await apiClient.get(`/auth/email/check?email=${encodeURIComponent(email)}`);
         return response.data;
     }
 };

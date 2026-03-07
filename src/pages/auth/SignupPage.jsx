@@ -1,36 +1,6 @@
 /**
  * @file SignupPage.jsx
  * @route /signup
- *
- * @description
- * 무신사 앱의 회원가입 최종 정보 입력 페이지.
- * 이 페이지는 반드시 /verify-email (EmailVerificationPage) 에서 이메일 인증을 완료한 뒤
- * navigate('/signup', { state: { verifiedEmail: '...' } }) 를 통해 진입해야 한다.
- *
- * @사전조건
- * - location.state.verifiedEmail 이 존재해야 한다.
- * - 직접 URL로 접근하거나 verifiedEmail 이 없으면, useEffect가 즉시
- *   /verify-email로 replace 리다이렉트하여 이 페이지를 볼 수 없도록 막는다.
- *
- * @회원가입_흐름
- * [EmailVerificationPage] → 이메일 인증 성공
- *   → navigate('/signup', { state: { verifiedEmail } })
- *   → [SignupPage] 이메일(읽기 전용) + 사용자 이름 + 비밀번호 + 비밀번호 확인 입력
- *   → handleSignup → POST /api/auth/signup
- *   → 성공 시 /login으로 이동 ("가입 완료 후 로그인하세요")
- *
- * @state
- * - formData {object}          - 폼 전체 데이터를 하나의 객체로 관리
- *   - email {string}           - 이메일 인증 페이지에서 받아온 이메일 (읽기 전용, 수정 불가)
- *   - password {string}        - 사용자가 설정할 비밀번호
- *   - confirmPassword {string} - 비밀번호 확인 (handleSignup에서 password와 일치 여부 검증)
- *   - username {string}        - 활동할 닉네임(사용자 이름)
- * - isSubmitting {boolean}     - 가입 API 요청 중 여부 (중복 제출 방지)
- *
- * @hooks
- * - useNavigate  : 페이지 이동 (가입 성공 → /login, 미인증 접근 → /verify-email)
- * - useLocation  : location.state.verifiedEmail 읽기
- * - useAlert     : 알림 모달 표시
  */
 
 import React, { useState, useEffect } from 'react';
@@ -38,32 +8,23 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft } from 'lucide-react';
 import { authService } from '@/api/authService';
+import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 
 export default function SignupPage() {
     // ---------------------------------------------------------
     // [라우터 / 컨텍스트 훅 초기화]
-    // navigate  : 가입 성공 → /login, 미인증 접근 → /verify-email replace
-    // location  : EmailVerificationPage가 전달한 verifiedEmail 읽기
-    // showAlert : 모달 알림 (입력 오류, 가입 성공, 가입 실패)
     // ---------------------------------------------------------
     const navigate = useNavigate();
     const location = useLocation();
     const { showAlert } = useAlert();
+    const { login: authLogin } = useAuth();
 
-    // verifiedEmail: EmailVerificationPage에서 navigate state로 전달된 이미 인증된 이메일.
-    // 없으면 빈 문자열('')로 초기화되고, 이후 useEffect에서 /verify-email로 튕겨낸다.
-    // 이메일 인증 페이지에서 넘어온 이메일 정보 획득
-    const verifiedEmail = location.state?.verifiedEmail || '';
+    const verifiedEmail = location.state?.verifiedEmail || ''; //이미 인증된 이메일 정보 저장
+    const [error, setError] = useState('');
 
     // ---------------------------------------------------------
     // [상태 변수]
-    // formData: 폼 전체를 하나의 객체로 관리하는 controlled state.
-    //   - email: verifiedEmail로 초기화, readOnly input에 표시됨 (사용자가 수정 불가)
-    //   - password: 빈 문자열로 시작, 비밀번호 입력 필드와 바인딩
-    //   - confirmPassword: 빈 문자열로 시작, 비밀번호 확인 필드와 바인딩
-    //   - username: 빈 문자열로 시작, 닉네임 입력 필드와 바인딩
-    // 각 필드 변경 시: setFormData({ ...formData, 해당필드: 새값 }) 스프레드 패턴 사용
     // ---------------------------------------------------------
     const [formData, setFormData] = useState({
         email: verifiedEmail,
@@ -71,55 +32,75 @@ export default function SignupPage() {
         confirmPassword: '',
         username: ''
     });
-
-    // isSubmitting: true이면 API 요청 진행 중 → 가입 버튼 disabled + "가입 중..." 텍스트 표시
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // ---------------------------------------------------------
     // [useEffect #1] 미인증 접근 차단
-    // 실행 시점: 컴포넌트 마운트 시 및 verifiedEmail, navigate, showAlert 변경 시
-    // 조건: verifiedEmail이 빈 문자열('')이면 → 이메일 인증이 완료되지 않은 상태
-    // 동작:
-    //   1. "이메일 인증이 먼저 필요합니다." 알림 표시
-    //   2. navigate('/verify-email', { replace: true })로 강제 이동
-    //      (replace: true → 브라우저 히스토리에 /signup이 쌓이지 않아 뒤로가기해도 다시 못 들어옴)
-    // 클린업: 없음
     // ---------------------------------------------------------
     // 인증된 이메일이 없으면 인증 페이지로 튕겨내기
     useEffect(() => {
-        // TODO: verifiedEmail이 비어있으면 showAlert('이메일 인증이 먼저 필요합니다.', '접근 제한') 호출 후
-        //       navigate('/verify-email', { replace: true }) 로 강제 이동
+        console.log("현재 location.state:", location.state);
+        console.log("전달받은 이메일:", verifiedEmail);
+        // verifiedEmail 체크
+        if (!location.state || !verifiedEmail) {
+            showAlert('이메일 인증을 먼저 진행해 주세요', '접근 제한', 'alert'); // 사용자 안내
+            navigate('/verify-email', { replace: true }); // 인증 페이지로 강제 이동
+            return;
+        }
     }, [verifiedEmail, navigate, showAlert]);
 
     // ---------------------------------------------------------
     // [handleSignup] 회원가입 API 호출 핸들러
-    //
-    // @param {React.FormEvent} e - form onSubmit 이벤트
-    //
-    // 동작 순서:
-    //   [1] e.preventDefault(): 기본 form submit(페이지 새로고침) 차단
-    //   [2] isSubmitting 중복 제출 방지 체크
-    //   [3] formData.password !== formData.confirmPassword 이면
-    //       "비밀번호가 일치하지 않습니다." 알림 표시하고 함수 종료 (API 호출 안 함)
-    //   [4] isSubmitting = true
-    //   [5] authService.signup({ email, password, username }) 호출
-    //       → API: POST /api/auth/signup
-    //       → 요청 바디: { email: formData.email, password: formData.password, username: formData.username }
-    //       → confirmPassword는 프론트엔드에서만 검증하고, 백엔드로는 전송하지 않음
-    //   [6] 성공: "회원가입이 완료되었습니다. 로그인해주세요." 알림 → /login으로 이동
-    //   [7] 실패: 백엔드 메시지 또는 기본 오류 메시지 알림
-    //   [8] finally: isSubmitting = false
     // ---------------------------------------------------------
     const handleSignup = async (e) => {
-        // TODO: e.preventDefault() 호출
-        // TODO: isSubmitting 중복 방지 체크 (true이면 return)
-        // TODO: formData.password !== formData.confirmPassword 이면
-        //       showAlert('비밀번호가 일치하지 않습니다.', '입력 오류') 후 return
-        // TODO: setIsSubmitting(true) 호출
-        // TODO: authService.signup({ email: formData.email, password: formData.password, username: formData.username }) 호출
-        // TODO: 성공 시 showAlert('회원가입이 완료되었습니다. 로그인해주세요.', '가입 성공', 'success') 후 navigate('/login')
-        // TODO: 실패 시 error.response?.data?.message 또는 '회원가입 중 오류가 발생했습니다.' 로 showAlert
-        // TODO: finally에서 setIsSubmitting(false) 호출
+        e.preventDefault(); // 새로고침 방지
+        if (isSubmitting) return; // 이중 클릭 방지
+        // 비밀번호 일치 여부 확인
+        if (formData.password !== formData.confirmPassword) {
+            showAlert('비밀번호가 일치하지 않습니다', '입력 오류', 'alert');
+            return;
+        }
+        setIsSubmitting(true); // 로딩 시작(버튼 비활성화)
+        console.log('회원가입 페이지 시작');
+        setError(''); // 이전 에러 메세지 초기화
+        // 일치한 경우 
+        try {
+            //회원 가입 api 호출
+            await authService.signup({
+                email: formData.email,
+                password: formData.password,
+                username: formData.username
+            });
+            //가입 성공시 바로 로그인
+            const loginResponse = await authService.login({
+                email: formData.email,
+                password: formData.password
+            });
+
+            const token = loginResponse.token; // 응답받은 토큰 저장
+            const userData = loginResponse.user || loginResponse; // 응답데이터 저장
+
+            if (token && userData) {
+                authLogin(token, userData); // 토큰&사용자 정보 저장
+                showAlert('회원 가입을 환영합니다.', '회원 가입 성공', 'success');
+                navigate('/', { replace: true }); // 피드 페이지로 이동
+            }
+        }
+        catch (err) {
+            console.log('상세 에러', err);
+
+            const serverError = err.response?.data;
+            const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
+                || '회원 가입 중 문제가 발생했습니다.';
+
+            showAlert(errorMsg, '회원 가입 실패', 'alert');
+            console.log('회원 가입 에러', err);
+        }
+        //로딩 종료
+        finally {
+            setIsSubmitting(false); // 로딩 종료
+        }
+
     };
 
     // ---------------------------------------------------------

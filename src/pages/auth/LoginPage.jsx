@@ -14,7 +14,7 @@
  *
  * [상태(state) 관리]
  *   - email, password: 입력값
- *   - isLoading: 로딩 중인지 (버튼 비활성화, 스피너 표시)
+ *   - isLoading: 로딩 중인지 (버튼 비활성화, 스피너 표시)a
  *   - error: 에러 메시지
  * ──────────────────────────────────────────────────────
  */
@@ -47,27 +47,28 @@ export default function LoginPage() {
 
     // ---------------------------------------------------------
     // [useEffect #1] ProtectedRoute 리다이렉트 감지
-    // 실행 시점: location.state 또는 showAlert가 바뀔 때
-    // 조건: location.state.requireAuth === true 이고 아직 알림을 표시한 적 없을 때
-    // 동작: "로그인이 필요한 서비스입니다." 모달 알림을 표시하고,
-    //        hasShownAlert.current를 true로 바꿔 이후 재실행 시 알림이 중복되지 않도록 한다.
-    // 클린업: 없음 (이 useEffect는 부수효과(알림 표시)만 수행하며, 구독/타이머 없음)
     // ---------------------------------------------------------
     useEffect(() => {
         if (location.state?.requireAuth && !hasShownAlert.current) {
-            showAlert('로그인이 필요한 서비스입니다.\n 로그인 후 이용해주세요', '접근 제한','alert');
+            showAlert('로그인이 필요한 서비스입니다.\n 로그인 후 이용해주세요', '접근 제한', 'alert');
             hasShownAlert.current = true;
         }
-    }, [location.state, showAlert]);
+    }, [location.state]);
 
     // ---------------------------------------------------------
     // [handleLogin] 이메일/비밀번호 로그인 처리 함수
-    //
-    // @param {React.FormEvent} e - form onSubmit 이벤트 (e.preventDefault로 페이지 새로고침 방지)
     // ---------------------------------------------------------
     const handleLogin = async (e) => {
         e.preventDefault();  // 폼 기본동작(새로고침) 방지
         if (isSubmitting) return;// 중복호출 방지
+
+        //입력 메일 형식 검증
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showAlert('올바른 이메일 형식을 입력해주세요.', '입력 오류', 'alert');
+            return;
+        }
+
         console.log("로그인 버튼 시작됨");
         setIsSubmitting(true); // 로딩 시작
         setError(''); // 이전 에러 메세지 초기화
@@ -98,7 +99,7 @@ export default function LoginPage() {
         }
         //에러 처리
         catch (err) {
-            console.log('상세 에러',err);
+            console.log('상세 에러', err);
 
             const serverError = err.response?.data;
             const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
