@@ -131,5 +131,13 @@ export const fssService = {
         //     }
         //   })
         //   return response.data
+        const response = await apiClient.get('/fss/list', {
+            params: {
+                startDate: startDate.replace(/-/g, ''),
+                endDate: endDate.replace(/-/g, ''),
+                apiType: 'json'
+            }
+        });
+        return response.data;
     }
 };
