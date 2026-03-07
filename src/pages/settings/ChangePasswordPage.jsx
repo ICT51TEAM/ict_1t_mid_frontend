@@ -81,6 +81,7 @@ export default function ChangePasswordPage() {
      *   4. 성공 시: alert('비밀번호가 변경되었습니다.') → navigate('/settings')
      *   5. 에러 처리: try-catch 없음 (API 에러 시 콘솔에 미처리 예외로 표시됨)
      */
+    const { user } = useAuth();  // 실제 어떻게 쓰이는지에 따라 다름............ 아래 user.email도
     const handleSubmit = async (e) => {
         // TODO: [1] e.preventDefault() 호출
         // TODO: [2] 클라이언트 측 유효성 검사:
@@ -90,6 +91,14 @@ export default function ChangePasswordPage() {
         //           주의: 첫 번째 인수 이메일이 'user@example.com'으로 하드코딩되어 있음
         // TODO: [4] 성공 시 alert('비밀번호가 변경되었습니다.') → navigate('/settings')
         // 힌트: try-catch 없이 구현 (API 에러 시 콘솔에 미처리 예외로 표시됨)
+        e.preventDefault(); //submit 이벤트의 기본 동작(페이지 새로고침) 방지
+        if (formData.newPassword !== formData.confirmPassword) {
+            showAlert('비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        await userService.changePassword(user.email, formData.currentPassword, formData.newPassword);
+        showSuccess('비밀번호가 변경되었습니다.');
+        navigate('/settings');
     };
 
     // -------------------------------------------------------------------------
