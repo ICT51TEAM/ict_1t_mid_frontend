@@ -142,6 +142,20 @@ export default function FriendsPage() {
         // 힌트: Promise.all([...]) 또는 순차 await로 두 API를 호출하고
         //       각 결과를 setFriends(), setPending()에 저장하세요.
         //       에러 발생 시 console.error로 출력합니다.
+         // friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
+        const fetchFriendsData = async () => {
+            try {
+                const [friendsData, pendingData] = await Promise.all([
+                    friendService.listFriends(),
+                    friendService.listPendingRequests()
+                ]);
+                setFriends(friendsData || []);
+                setPending(pendingData || []);
+            } catch (error) {
+                console.error('글벗 목록 로딩 실패:', error);
+            }
+        };
+        fetchFriendsData();
     }, []);
 
     /**
@@ -170,6 +184,25 @@ export default function FriendsPage() {
         //       friendService.searchUsers() 호출 후 setSearchResults()에 저장,
         //       비어있으면 setSearchResults([])로 초기화하세요.
         //       cleanup 함수에서 clearTimeout()을 호출해 타이머를 취소하세요.
+        // 300ms 디바운스 적용 후 friendService.searchUsers(searchQuery) 호출
+        const trimmed = searchQuery.trim();
+        if (!trimmed) {
+            setSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const results = await friendService.searchUsers(trimmed);
+                setSearchResults(results || []);
+            } catch (error) {
+                console.error('검색 실패:', error);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer); // cleanup
     }, [searchQuery]);
 
     /**
@@ -191,6 +224,22 @@ export default function FriendsPage() {
         // TODO: [2] 확인 시 friendService.removeFriend(friendshipId) 호출
         // TODO: [3] 성공 시 setFriends()로 해당 friendshipId 항목을 배열에서 제거
         // TODO: [4] showAlert으로 성공/실패 알림 표시
+          // [1] showConfirm으로 다이얼로그 띄우기
+        showConfirm('정말로 이 글벗을 삭제하시겠습니까?', async () => {
+            try {
+                // [2] 확인 시 friendService.removeFriend(friendshipId) 호출
+                await friendService.removeFriend(friendshipId);
+                
+                // [3] 성공 시 setFriends()로 해당 항목 제거
+                setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
+                
+                // [4] showAlert 알림
+                showAlert('success', '글벗이 삭제되었습니다.');
+            } catch (error) {
+                console.error('삭제 오류:', error);
+                showAlert('error', '삭제에 실패했습니다.');
+            }
+        });
     };
 
     /**
@@ -215,6 +264,26 @@ export default function FriendsPage() {
         // TODO: [3] setFriends()로 friends 배열 끝에 acceptedUser 추가 (낙관적 UI 업데이트)
         // TODO: [4] setPending()으로 해당 항목을 pending 배열에서 제거
         // TODO: [5] showAlert으로 성공 알림 표시
+         try {
+            // [1] friendService.acceptRequest 호출
+            await friendService.acceptRequest(friendshipId);
+            
+            // [2] pending 에서 사용자 찾기
+            const acceptedUser = pending.find(req => req.friendshipId === friendshipId);
+            
+            if (acceptedUser) {
+                // [3] setFriends로 배열에 추가
+                setFriends(prev => [...prev, acceptedUser]);
+            }
+            // [4] setPending 으로 목록에서 제거
+            setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
+            
+            // [5] 성공 알림 표시
+            showAlert('success', `${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`);
+        } catch (error) {
+            console.error('요청 수락 오류:', error);
+            showAlert('error', '요청 승인 중 오류가 발생했습니다.');
+        }
     };
 
     /**
@@ -233,6 +302,15 @@ export default function FriendsPage() {
         // TODO: [1] friendService.rejectRequest(friendshipId) 호출
         // TODO: [2] 성공 시 setPending()으로 해당 항목을 목록에서 제거
         // 힌트: 실패 시 console.error만 출력합니다 (사용자 알림 없음)
+         try {
+            // [1] friendService.rejectRequest 호출
+            await friendService.rejectRequest(friendshipId);
+            
+            // [2] 성공 시 setPending 으로 목록에서 즉시 제거
+            setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
+        } catch (error) {
+            console.error('요청 거절 중 오류 발생:', error);
+        }
     };
 
     return (
@@ -322,8 +400,8 @@ export default function FriendsPage() {
                 ────────────────────────────────────────────────────── */}
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
-                        { id: 'LIST',    label: 'ALL FRIENDS', count: friends.length },
-                        { id: 'PENDING', label: 'REQUESTS',    count: pending.length }
+                        { id: 'LIST', label: 'ALL FRIENDS', count: friends.length },
+                        { id: 'PENDING', label: 'REQUESTS', count: pending.length }
                     ].map(tab => (
                         <button
                             key={tab.id}
