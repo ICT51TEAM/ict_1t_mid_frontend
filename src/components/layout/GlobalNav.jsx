@@ -67,7 +67,6 @@ import { Search } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 // 인증 상태 및 로그아웃 함수 접근
 import { useAuth } from '@/context/AuthContext';
-import { useAlert } from '@/context/AlertContext';
 
 /**
  * @component GlobalNav
@@ -87,15 +86,14 @@ export default function GlobalNav() {
     // isAuthenticated: 로그인 여부 boolean
     // logout: 로컬스토리지 초기화 + user 상태 null 처리
     const { isAuthenticated, logout } = useAuth();
-    const { showAlert } = useAlert();
 
     // ── 상수: 좌측 내비게이션 링크 목록 ─────────────────────────────────────
     // 순서대로 렌더링됨. path는 활성 여부 판별과 <Link to> 속성에 모두 사용.
     const leftItems = [
-        { name: 'HOME', path: '/' },       // 메인 피드 페이지
-        { name: 'CREATE', path: '/create' },  // 게시물 작성 페이지
+        { name: 'HOME',    path: '/' },       // 메인 피드 페이지
+        { name: 'CREATE',  path: '/create' },  // 게시물 작성 페이지
         { name: 'FRIENDS', path: '/friends' }, // 친구 목록 페이지
-        { name: 'BADGES', path: '/badges' },  // 배지 목록 페이지
+        { name: 'BADGES',  path: '/badges' },  // 배지 목록 페이지
         { name: 'FINANCE', path: '/finance' }, // 금융 정보 페이지
     ];
 
@@ -110,7 +108,6 @@ export default function GlobalNav() {
         // AuthContext의 logout: localStorage 토큰·유저 정보 삭제 + user 상태 null
         logout();
         // 로그아웃 후 로그인 페이지로 리다이렉트
-        showAlert('로그아웃되었습니다.', '로그아웃', 'success');
         navigate('/login');
     };
 

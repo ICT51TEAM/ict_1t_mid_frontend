@@ -1,27 +1,64 @@
 /**
- * ──────────────────────────────────────────────────────
- * apiClient.ts — 백엔드 서버와 통신하는 HTTP 클라이언트 설정 (최종 통합본)
- * ──────────────────────────────────────────────────────
- * * [역할]
- * 모든 API 호출의 기본 주소(baseURL)를 접속 환경(Web/App)에 따라 자동으로 전환하고,
- * 인증 토큰 첨부 및 세션 유지 설정을 공통으로 처리합니다.
+ * @file apiClient.js dkasjdlaksjdlaskdj         -----------------------------
+ * @description Axios 기반 HTTP 클라이언트 설정 파일
  *
- * [Axios란?]
- * JavaScript에서 HTTP 요청(GET, POST, PUT, DELETE)을 쉽게 보낼 수 있게 해주는 라이브러리.
- * fetch()의 더 편리한 버전이라고 생각하면 된다.
+ * ─────────────────────────────────────────────────────────
+ * 이 파일의 역할:
+ *   모든 API 서비스 파일(authService, postService 등)이 공통으로
+ *   임포트해서 사용하는 Axios 인스턴스(apiClient)를 생성하고
+ *   내보낸다(export default).
  *
- * [인터셉터(Interceptor)란?]
- * 모든 요청/응답에 자동으로 끼워넣는 "중간 처리"이다.
- * 예: 모든 요청에 자동으로 로그인 토큰을 붙이는 것.
- * ──────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────
+ * [Base URL 결정 규칙]
+ *   1. 웹 브라우저 개발 환경 (hostname === 'localhost' 또는 '127.0.0.1'):
+ *      → baseURL = '/api'
+ *      → Vite 개발 서버의 프록시(/api → http://localhost:8080/api)를 경유
+ *      → 이렇게 하면 브라우저의 CORS(동일 출처 정책)를 우회할 수 있음
+ *   2. 안드로이드 에뮬레이터 / 실 기기 (Capacitor):
+ *      → baseURL = VITE_API_URL 환경 변수 값, 없으면 'http://10.0.2.2:8080/api'
+ *      → 10.0.2.2 는 Android 에뮬레이터에서 Host PC의 localhost를 가리키는 특수 IP
+ *
+ * ─────────────────────────────────────────────────────────
+ * [Axios 인스턴스 공통 설정]
+ *   - baseURL  : 위 규칙에 따라 동적으로 결정
+ *   - withCredentials: true  → 쿠키(세션 쿠키 등)를 요청에 포함
+ *   - timeout  : 10000 ms (10초) — 응답 없으면 AxiosError 발생
+ *   - headers  : Content-Type: application/json (기본)
+ *
+ * ─────────────────────────────────────────────────────────
+ * [요청(Request) 인터셉터]
+ *   모든 HTTP 요청이 전송되기 직전에 실행된다.
+ *   localStorage에 'authToken' 키로 저장된 JWT 문자열이 있으면
+ *   요청 헤더에 "Authorization: Bearer <token>" 을 자동으로 추가한다.
+ *   → 개별 API 호출 시 매번 토큰을 직접 주입할 필요 없음
+ *
+ * ─────────────────────────────────────────────────────────
+ * [응답(Response) 인터셉터]
+ *   성공 응답(2xx): 그대로 통과시킨다.
+ *   에러 응답 처리:
+ *     - HTTP 401 Unauthorized가 반환됐을 때:
+ *       1. 응답 body의 code 필드를 확인한다.
+ *          code === 'TOKEN_EXPIRED' → 만료 안내 alert 표시
+ *       2. localStorage에서 'authToken'을 제거한다(로그아웃 처리).
+ *       3. 현재 페이지 경로가 '/login'이 아닌 경우에만
+ *          window.location.href = '/login' 으로 강제 리다이렉트한다.
+ *          (로그인 페이지에서 또 리다이렉트하는 무한 루프 방지)
+ *     - 그 외 에러: Promise.reject(error) 로 호출한 측에 전파
+ *
+ * ─────────────────────────────────────────────────────────
+ * [사용 예시 (다른 서비스 파일에서)]
+ *   import apiClient from './apiClient';
+ *   const response = await apiClient.get('/users/me');
+ *
+ * ─────────────────────────────────────────────────────────
+ * [의존성]
+ *   - axios (npm 패키지)
+ *   - window.location (브라우저 전역 객체)
+ *   - localStorage (브라우저 전역 스토리지)
+ *   - import.meta.env.VITE_API_URL (Vite 환경 변수, .env 파일에 정의)
  */
 import axios from 'axios';
 
-/**
- * [환경 감지 및 Base URL 결정 함수]
- * - 웹 브라우저 (Vite): http://localhost:8080/api
- * - 안드로이드 에뮬레이터: http://10.0.2.2:8080/api
- */
 /**
  * 현재 실행 환경에 맞는 API Base URL을 반환하는 함수
  *
@@ -37,19 +74,14 @@ import axios from 'axios';
  *      → .env 파일의 VITE_API_URL이 있으면 그 값을, 없으면 기본값 사용
  */
 const getBaseUrl = () => {
-  const { hostname, port, href } = window.location;
+  const { hostname } = window.location;
 
   // 브라우저 개발 환경 (localhost) → Vite 프록시 사용 (CORS 우회)
-  if (hostname === 'localhost' && port === '5173') {
-    console.log('[Environment]: Web Browser (localhost:5173)');
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return '/api';
   }
+
   // Android 에뮬레이터 (Capacitor) 또는 실 기기
-  if (hostname === '127.0.0.1') {
-    console.log('[Environment]: android App');
-    return 'http://10.0.2.2:8080/api';
-  }
-  // 기타 상황
   return import.meta.env.VITE_API_URL || 'http://10.0.2.2:8080/api';
 };
 
@@ -131,7 +163,6 @@ apiClient.interceptors.response.use(
 
       // 토큰이 만료된 경우에는 사용자에게 친절한 안내 메시지를 표시한다
       if (errorCode === 'TOKEN_EXPIRED') {
-        console.warn('⚠️ 인증이 만료되어 토큰을 삭제합니다. 사유:', errorCode);
         alert(errorMessage || '로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
       }
 
@@ -145,7 +176,6 @@ apiClient.interceptors.response.use(
       }
     }
     // 모든 에러를 호출부로 전파하여 개별 try-catch에서 처리할 수 있게 한다
-    console.error('❌ [API Error]:', error.message);
     return Promise.reject(error);
   }
 );

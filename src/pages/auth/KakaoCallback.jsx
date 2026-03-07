@@ -67,7 +67,13 @@ export default function KakaoCallback() {
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
-    const hasProcessed = useRef(false); //React StrictMode의 이중 실행을 방지하는 ref.
+
+    // hasProcessed: React StrictMode의 이중 실행을 방지하는 ref.
+    // useEffect가 두 번 실행되더라도 실제 처리는 한 번만 이루어지도록 보호한다.
+    // useState 대신 ref를 사용하는 이유: ref 변경은 렌더를 유발하지 않으므로
+    // 불필요한 리렌더링 없이 플래그만 변경할 수 있다.
+    const hasProcessed = useRef(false);
+
     const { showAlert } = useAlert();
 
     // ---------------------------------------------------------
@@ -122,45 +128,6 @@ export default function KakaoCallback() {
         //             navigate('/', { replace: true })
         //           catch 시: navigate('/login?error=true', { replace: true })
         // TODO: [4] token이 없으면: console.error 후 navigate('/login', { replace: true })
-        if (hasProcessed.current) return;
-        hasProcessed.current = true;
-
-        const params = new URLSearchParams(location.search);
-        const token = params.get('token');
-        const isNewUser = params.get('isNewUser') === 'true';
-
-        console.log("검출된 토큰:", token); // 콘솔에 토큰이 찍히는지 확인
-        console.log("신규 유저 여부:", isNewUser);
-
-        // 토큰이 있는 경우
-        if (token) {
-            try {
-                // 로그인 정보 저장
-                console.log("토큰 획득 성공!");
-                login(token, username);
-
-                //신규 유저 여부 판단
-                if (isNewUser) {
-                    showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
-                    navigate('/profile', { replace: true }); // 프로필 설정 페이지
-                }
-                else {
-                    showAlert('카카오로 로그인이되었습니다.', '로그인 성공', 'success');
-                    const destination = location.state?.from?.pathname || 'feed';
-                    navigate(destination, { replace: true });
-                }
-            }
-            catch (err) {
-                console.error('처리 중 오류:', err);
-                navigate('/login?error=true', { replace: true });
-            }
-            return;
-        }
-        // 토큰이 없는 경우    
-        console.error("토큰이 없어 로그인 페이지로 리다이렉트합니다.");
-        navigate('/login', { replace: true });
-
-
     }, [location.search, navigate, login, showAlert]);
 
     // ---------------------------------------------------------

@@ -93,7 +93,6 @@ export function AlertProvider({ children }) {
      */
     const closeAlert = () => {
         // TODO: setAlert(prev => ({...prev, isOpen: false, onConfirm: null})) 호출
-        setAlert(prev => ({ ...prev, isOpen: false, onConfirm: null }));
     };
 
     // ── 함수: showAlert ───────────────────────────────────────────────────────
@@ -112,7 +111,6 @@ export function AlertProvider({ children }) {
      */
     const showAlert = (message, title = '알림', type = 'alert') => {
         // TODO: setAlert({ isOpen:true, message, title: title||'알림', type: type||'info', onConfirm: null }) 호출
-        setAlert({ isOpen: true, message, title: title || '알림', type: type || 'info', onConfirm: null });
     };
 
     // ── 함수: showConfirm ─────────────────────────────────────────────────────

@@ -50,7 +50,6 @@ import { createContext, useContext, useState, useEffect } from 'react';
 // 아래 useAuth 훅에서 명확한 에러를 던질 수 있다.
 const AuthContext = createContext(undefined);
 
-
 // ─── AuthProvider 컴포넌트 ─────────────────────────────────────────────────────
 /**
  * @component AuthProvider
@@ -91,9 +90,6 @@ export const AuthProvider = ({ children }) => {
    */
   const login = (token, userData) => {
     // TODO: localStorage에 'authToken'(token), 'user'(JSON.stringify(userData)) 저장 후 setUser(userData) 호출
-    localStorage.setItem('authToken', token); // 로컬스토리지에 토큰 저장
-    setUser(userData); // userdate 갱신
-    localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
   };
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
@@ -105,9 +101,6 @@ export const AuthProvider = ({ children }) => {
    */
   const logout = () => {
     // TODO: localStorage에서 'authToken', 'user' 제거 후 setUser(null) 호출
-    localStorage.removeItem('authToken'); //토큰삭제
-    localStorage.removeItem('user'); //사용자 정보 삭제
-    setUser(null); // state를 null로 변환
   };
 
   // ── 함수: updateUser ──────────────────────────────────────────────────────
@@ -124,13 +117,6 @@ export const AuthProvider = ({ children }) => {
    */
   const updateUser = (data) => {
     // TODO: setUser(prev => ({...prev, ...data})) 로 사용자 정보 부분 업데이트
-    setUser((prev) => {
-      if (!prev) return null;
-      const updateUser = { ...prev, ...data };
-      //변경된 정보를 localStorage에도 저장하여 새로고침 유지
-      localStorage.setItem('user', JSON.stringify(updateUser));
-      return updateUser;
-    });
   };
 
   // ── 함수: checkAuth ───────────────────────────────────────────────────────
@@ -148,19 +134,6 @@ export const AuthProvider = ({ children }) => {
    */
   const checkAuth = async () => {
     // TODO: localStorage에서 'authToken'과 'user'를 읽어 파싱 후 setUser() 호출, 완료 후 setIsLoading(false)
-    const token = localStorage.getItem('authToken'); // 저장된 토큰 불러오기
-    const storageUser = localStorage.getItem('userData'); // 저장된 사용자 정보 불러오기
-    if (token && storageUser) {
-      // 로그인 상태 복원
-      try {
-        setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
-      }
-      catch (e) {
-        console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
-        logout();
-        isLoading = false;
-      }
-    }
   };
 
   // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────
@@ -168,8 +141,7 @@ export const AuthProvider = ({ children }) => {
   // [하는 일]   checkAuth()를 호출해 localStorage에서 이전 세션의 인증 정보를 복원
   // [정리(cleanup)] 없음. 단순 1회성 초기화 작업이므로 정리 함수 불필요.
   useEffect(() => {
-    // checkAuth() 호출
-    checkAuth();
+    // TODO: checkAuth() 호출
   }, []); // 빈 배열: 마운트 1회만 실행, 의존성 없음
 
   // ─── JSX: Context Provider 렌더링 ─────────────────────────────────────────

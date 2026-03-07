@@ -1,17 +1,72 @@
 /**
- * ──────────────────────────────────────────────────────
- * authService.ts — 인증(로그인/회원가입/로그아웃) API 호출 서비스
- * ──────────────────────────────────────────────────────
+ * @file authService.js
+ * @description 사용자 인증(Authentication) 관련 모든 API 호출을 담당하는 서비스 파일
  *
- * [역할]
- * 프론트엔드에서 백엔드의 인증 API(/auth/...)를 호출하는 함수들을 모아놓은 파일.
+ * ─────────────────────────────────────────────────────────
+ * 이 파일의 역할:
+ *   회원가입, 로그인, 로그아웃, 이메일 인증, 비밀번호 재설정 등
+ *   사용자 신원 확인과 관련된 모든 백엔드 API 요청을 처리한다.
+ *   각 함수는 apiClient(axios 인스턴스)를 통해 백엔드 Spring Boot 서버와 통신한다.
  *
- * [사용 흐름]
- * LoginPage에서 → authService.login() 호출 → 백엔드 /api/auth/login에 POST 요청
- * → 응답으로 토큰 + 사용자 정보 받음 → AuthContext에 저장 → 로그인 완료
- * ──────────────────────────────────────────────────────
- * */
-
+ * ─────────────────────────────────────────────────────────
+ * [호출되는 백엔드 엔드포인트 목록]
+ *   POST /api/auth/login                   → 일반 이메일/비밀번호 로그인
+ *   POST /api/auth/signup                  → 신규 회원가입
+ *   POST /api/auth/kakao/login             → 카카오 소셜 로그인
+ *   POST /api/auth/email/send-code         → 이메일 인증 코드 발송
+ *   POST /api/auth/email/verify-code       → 이메일 인증 코드 검증
+ *   POST /api/auth/email/send-reset-code   → 비밀번호 재설정용 이메일 코드 발송
+ *   POST /api/auth/email/verify-reset-code → 비밀번호 재설정용 코드 검증
+ *   POST /api/auth/reset-password          → 새 비밀번호로 재설정
+ *   POST /api/auth/logout                  → 서버 측 세션/토큰 무효화
+ *
+ * ─────────────────────────────────────────────────────────
+ * [요청/응답 데이터 형태]
+ *   login:
+ *     요청: { email: string, password: string }
+ *     응답: { token: string, userId: number, username: string, ... }
+ *           → 응답의 token을 localStorage에 'authToken' 키로 저장해야 함
+ *              (저장은 이 서비스가 아닌 호출하는 컴포넌트/컨텍스트에서 처리)
+ *
+ *   signup:
+ *     요청: { email: string, password: string, username: string }
+ *     응답: 성공 메시지 또는 생성된 사용자 정보
+ *
+ *   kakaoLogin:
+ *     요청: { kakaoCode: string } (카카오 OAuth 인가 코드)
+ *     응답: login과 동일한 형태 (JWT 토큰 포함)
+ *
+ *   sendEmailCode / sendResetEmailCode:
+ *     요청: { email: string }
+ *     응답: 성공 메시지 문자열 또는 { message: string }
+ *
+ *   verifyEmailCode / verifyResetCode:
+ *     요청: { email: string, code: string }
+ *     응답: 검증 성공 메시지 또는 boolean
+ *
+ *   resetPassword:
+ *     요청: { email: string, newPassword: string }
+ *     응답: 성공 메시지
+ *
+ *   logout:
+ *     요청: 없음 (Authorization 헤더의 JWT로 식별)
+ *     응답: 없음 (finally 블록에서 localStorage 토큰 제거 처리)
+ *
+ * ─────────────────────────────────────────────────────────
+ * [특이 사항]
+ *   - logout()은 try-finally 패턴을 사용한다.
+ *     서버 요청이 실패하더라도(네트워크 오류 등) finally 블록에서
+ *     반드시 localStorage의 authToken을 제거하여 클라이언트 로그아웃을 보장한다.
+ *   - 에러 처리: 기본적으로 에러를 catch하지 않고 호출부로 전파한다.
+ *     따라서 이 서비스를 사용하는 컴포넌트가 try-catch로 에러를 처리해야 한다.
+ *
+ * ─────────────────────────────────────────────────────────
+ * [관련 파일]
+ *   - src/api/apiClient.js          : axios 인스턴스 (JWT 자동 주입, 401 처리)
+ *   - src/context/AuthContext.jsx   : 이 서비스를 호출하고 토큰/유저 상태 관리
+ *   - src/pages/auth/LoginPage.jsx  : login() 호출
+ *   - src/pages/auth/SignupPage.jsx : signup(), sendEmailCode(), verifyEmailCode() 호출
+ */
 import apiClient from './apiClient';
 
 /**
@@ -30,12 +85,23 @@ export const authService = {
      *
      * 사용자가 입력한 이메일과 비밀번호를 백엔드에 전송하여
      * 인증에 성공하면 JWT 액세스 토큰을 받아온다.
-     **/
+     *
+     * @param {Object} credentials           - 로그인 자격 증명 객체
+     * @param {string} credentials.email     - 사용자 이메일 주소
+     * @param {string} credentials.password  - 사용자 비밀번호 (평문, HTTPS로 전송)
+     *
+     * @returns {Promise<Object>} 백엔드 응답 data
+     *   예: { token: "eyJhbGci...", userId: 42, username: "홍길동", email: "hong@email.com" }
+     *   → 호출한 컨텍스트에서 token을 localStorage.setItem('authToken', token) 으로 저장
+     *
+     * HTTP: POST /api/auth/login
+     * 요청 body: { email: string, password: string }
+     * 성공: 200 OK + 응답 body
+     * 실패: 401 (비밀번호 틀림), 404 (이메일 없음) 등 → Promise.reject(error)
+     */
     login: async (credentials) => {
         // TODO: POST /auth/login 을 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.post('/auth/login', credentials) → response.data
-        const respose = await apiClient.post('/auth/login', credentials);
-        return respose.data;
     },
 
     /**
@@ -43,12 +109,23 @@ export const authService = {
      *
      * 새로운 사용자 계정을 생성한다. 이미 사용 중인 이메일이면 에러가 발생한다.
      * 회원가입 후 이메일 인증이 필요한 경우 sendEmailCode()를 별도로 호출해야 한다.
+     *
+     * @param {Object} userData              - 회원가입 정보 객체
+     * @param {string} userData.email        - 가입할 이메일 주소 (아이디로 사용)
+     * @param {string} userData.password     - 설정할 비밀번호
+     * @param {string} userData.username     - 표시될 사용자 이름(닉네임)
+     *
+     * @returns {Promise<Object>} 백엔드 응답 data
+     *   예: { message: "회원가입 성공" } 또는 생성된 유저 정보
+     *
+     * HTTP: POST /api/auth/signup
+     * 요청 body: { email: string, password: string, username: string }
+     * 성공: 201 Created 또는 200 OK
+     * 실패: 409 Conflict (이메일 중복), 400 Bad Request (유효성 검사 실패)
      */
     signup: async (userData) => {
         // TODO: POST /auth/signup 을 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.post('/auth/signup', userData) → response.data
-        const response = await apiClient.post('/auth/signup', userData);
-        return response.data;
     },
 
     /**
@@ -71,14 +148,10 @@ export const authService = {
      * 성공: 200 OK + JWT 토큰 응답
      * 실패: 400 (유효하지 않은 code), 500 (카카오 서버 오류)
      */
-    /*
     kakaoLogin: async (kakaoCode) => {
         // TODO: POST /auth/kakao/login 을 호출하고 response.data를 반환하세요.
         // 힌트: body는 { kakaoCode } 객체로 전달 → apiClient.post('/auth/kakao/login', { kakaoCode }) → response.data
-        const response = await apiClient.post('/auth/kakao/login',kakaoCode);
-        return response.data;
-
-    },*/
+    },
 
     /**
      * [4] 이메일 인증 코드 발송
@@ -101,8 +174,6 @@ export const authService = {
     sendEmailCode: async (email) => {
         // TODO: POST /auth/email/send-code 를 호출하고 response.data를 반환하세요.
         // 힌트: body는 { email } 객체로 전달 → apiClient.post('/auth/email/send-code', { email }) → response.data
-        const response = await apiClient.post('/auth/email/send-code', { email });
-        return response.data;
     },
 
     /**
@@ -126,8 +197,6 @@ export const authService = {
     verifyEmailCode: async (email, code) => {
         // TODO: POST /auth/email/verify-code 를 호출하고 response.data를 반환하세요.
         // 힌트: body는 { email, code } 객체로 전달 → apiClient.post('/auth/email/verify-code', { email, code }) → response.data
-        const response = await apiClient.post('/auth/email/verify-code', { email, code });
-        return response.data;
     },
 
     /**
@@ -150,8 +219,6 @@ export const authService = {
     sendResetEmailCode: async (email) => {
         // TODO: POST /auth/email/send-reset-code 를 호출하고 response.data를 반환하세요.
         // 힌트: body는 { email } 객체로 전달 → apiClient.post('/auth/email/send-reset-code', { email }) → response.data
-        const response = await apiClient.post('/auth/email/send-reset-code', { email });
-        return response.data;
     },
 
     /**
@@ -175,8 +242,6 @@ export const authService = {
     verifyResetCode: async (email, code) => {
         // TODO: POST /auth/email/verify-reset-code 를 호출하고 response.data를 반환하세요.
         // 힌트: body는 { email, code } 객체로 전달 → apiClient.post('/auth/email/verify-reset-code', { email, code }) → response.data
-        const response = await apiClient.post('auth/email/verify-reset-code', { email, code });
-        return response.data;
     },
 
     /**
@@ -200,8 +265,6 @@ export const authService = {
     resetPassword: async (email, newPassword) => {
         // TODO: POST /auth/reset-password 를 호출하고 response.data를 반환하세요.
         // 힌트: body는 { email, newPassword } 객체로 전달 → apiClient.post('/auth/reset-password', { email, newPassword }) → response.data
-        const response = await apiClient.post('auth/email/reset-password ', { email, newPassword });
-        return response.data;
     },
 
     /**
@@ -228,12 +291,5 @@ export const authService = {
         // TODO: try { POST /auth/logout 호출 } finally { localStorage.removeItem('authToken') }
         // 힌트: try 블록에서 apiClient.post('/auth/logout') 호출,
         //       finally 블록에서 반드시 localStorage.removeItem('authToken') 실행
-        try {
-            await apiClient.post('/auth/logout');
-        }
-        finally {
-            localStorage.removeItem('authToken');
-        }
-        return response.data;
     }
 };
