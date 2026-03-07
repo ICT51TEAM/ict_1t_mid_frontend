@@ -11,8 +11,8 @@
  * @layout
  * ┌─────────────────────────────────────────┐
  * │  [Hero Section]                         │
- * │    TrendingUp 아이콘                    │
- * │    "FINANCIAL SNAP" 제목               │
+ * │    TrendingUp 아이콘                     │
+ * │    "FINANCIAL SNAP" 제목                │
  * │    "Stay ahead of the market trend"    │
  * ├─────────────────────────────────────────┤
  * │  [Search Panel] (검정 배경 카드)        │
@@ -161,6 +161,25 @@ export default function FssPage() {
         //       [5] 성공 시 root.result 배열을 setData()에 저장
         //       [6] 에러 시 setData([])
         //       [7] finally에서 setLoading(false)
+        //1. 상태 초기화
+            setLoading(true); 
+            setIsSearched(true);
+
+        //2. 날짜 형식 변환
+                const formmatedStartDate = startDate.replace(/-/g,'');
+                const formmatedEndtDate = endDate.replace(/-/g,'');
+        //3. API 호출
+                const result = await fssService.fetchFssData(startDate,endDate);
+        //4. 응답 확인 및 파싱
+                const root = result.reponse != null ? result: null;
+        //5. 결과 코드 확인
+                const isSuccess = root.resultCode.include(1 || '000' ||  'SUCCESS');
+        //6. 성공시 처리
+
+        // 7. 에러 처리
+
+        //8. 로딩 종료
+
     };
 
     return (
