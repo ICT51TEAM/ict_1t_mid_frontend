@@ -1,54 +1,8 @@
 /**
  * @file AlertContext.jsx
  * @description 앱 전역 커스텀 알림(Alert) 및 확인(Confirm) 모달을 관리하는 React Context 모듈.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [역할 및 아키텍처에서의 위치]
- *   - 브라우저 기본 alert()·confirm() 대화상자를 대체하는 커스텀 모달 시스템.
- *   - main.jsx에서 <AlertProvider>로 감싸져 앱 전역에서 사용 가능.
- *   - Provider 순서: AuthProvider > AlertProvider > BrowserRouter > App
- *   - 모달 UI를 Provider 내부에서 직접 렌더링하므로, 호출 컴포넌트가 별도로
- *     모달 JSX를 포함할 필요 없이 함수만 호출하면 된다.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [State 변수: alert 객체]
- *   alert: {
- *     isOpen   : boolean        — 모달 표시 여부. true이면 오버레이+모달이 렌더링됨.
- *     title    : string         — 모달 상단에 표시되는 제목 텍스트.
- *     message  : string         — 모달 본문 메시지. 줄바꿈(\n) 지원.
- *     type     : 'alert'        — 빨간 아이콘 (AlertCircle). 경고·오류용.
- *              | 'success'      — 초록 아이콘 (CheckCircle2). 성공 알림용.
- *              | 'info'         — 파란 아이콘 (Info). 일반 안내·확인 요청용.
- *     onConfirm: function|null  — null이면 단순 알림(버튼 1개),
- *                                 함수이면 확인/취소 2버튼 Confirm 모달.
- *   }
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [제공하는 Context 값 (value shape)]
- *   {
- *     showAlert   : function — 단순 알림 모달 표시 (확인 버튼 1개)
- *     showConfirm : function — 확인/취소 2버튼 모달 표시
- *     closeAlert  : function — 모달 강제 닫기
- *   }
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [모달 UI 구조]
- *   fixed 전체화면 오버레이 (z-index: 9999)
- *   └─ 반투명 블러 배경 (클릭 시 닫힘)
- *   └─ 흰색 카드 패널 (최대 너비 320px, 둥근 모서리)
- *       ├─ 아이콘 영역 (type에 따라 색상 변경)
- *       ├─ 제목 텍스트
- *       ├─ 메시지 텍스트
- *       └─ 버튼 영역
- *           ├─ [취소] 버튼 (onConfirm이 있을 때만 표시)
- *           └─ [확인] 버튼 (항상 표시)
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [Export]
- *   - AlertProvider : 알림 상태와 모달 UI를 제공하는 Context Provider 컴포넌트
- *   - useAlert      : AlertContext에 접근하기 위한 커스텀 훅
  */
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 // lucide-react에서 모달 타입별 아이콘 임포트:
 //   AlertCircle  → 'alert' 타입 (빨간색 경고)
 //   CheckCircle2 → 'success' 타입 (초록색 성공)
@@ -56,18 +10,9 @@ import React, { createContext, useContext, useState } from 'react';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
 // ─── Context 생성 ──────────────────────────────────────────────────────────────
-// AlertContext: 알림 기능을 담는 React Context 객체.
-// 초기값 없이 생성. Provider 없이 사용하면 useAlert()에서 에러를 던짐.
-const AlertContext = createContext();
+const AlertContext = createContext(); // AlertContext: 알림 기능을 담는 React Context 객체.
 
 // ─── AlertProvider 컴포넌트 ───────────────────────────────────────────────────
-/**
- * @component AlertProvider
- * @description 전역 알림/확인 모달 상태를 관리하고, 실제 모달 UI를 렌더링한다.
- *              하위 컴포넌트는 useAlert() 훅을 통해 showAlert/showConfirm을 호출하면 됨.
- *
- * @param {React.ReactNode} children - Provider가 감쌀 자식 컴포넌트 트리
- */
 export function AlertProvider({ children }) {
     // ── State: 모달의 전체 상태를 하나의 객체로 관리 ─────────────────────────
     // 단일 객체로 관리해 여러 setState 호출 없이 원자적으로 모달 상태를 전환할 수 있음.
@@ -80,71 +25,21 @@ export function AlertProvider({ children }) {
     });
 
     // ── 함수: closeAlert ──────────────────────────────────────────────────────
-    /**
-     * @function closeAlert
-     * @description 모달을 닫는다. isOpen만 false로 변경하고 나머지 필드는 유지.
-     *              (다음 showAlert/showConfirm 호출 전까지 이전 내용이 남아있어도
-     *               isOpen=false이면 렌더링되지 않으므로 문제없음)
-     *
-     * 호출 시점:
-     *   - 배경(오버레이) 클릭
-     *   - [취소] 버튼 클릭
-     *   - [확인] 버튼 클릭 (handleConfirm 내부에서 호출)
-     */
     const closeAlert = () => {
-        // TODO: setAlert(prev => ({...prev, isOpen: false, onConfirm: null})) 호출
+        setAlert(prev => ({ ...prev, isOpen: false, onConfirm: null }));
     };
 
     // ── 함수: showAlert ───────────────────────────────────────────────────────
-    /**
-     * @function showAlert
-     * @description 단순 알림 모달을 표시한다. [확인] 버튼 1개만 렌더링됨.
-     *              브라우저 기본 alert()의 커스텀 대체재.
-     *
-     * @param {string} message        - 모달에 표시할 메시지 내용 (필수)
-     * @param {string} [title='알림'] - 모달 제목 (기본값: '알림')
-     * @param {string} [type='alert'] - 아이콘 타입: 'alert'(빨강) | 'success'(초록) | 'info'(파랑)
-     *
-     * @example
-     *   showAlert('저장에 실패했습니다.', '오류', 'alert');
-     *   showAlert('성공적으로 저장되었습니다.', '완료', 'success');
-     */
-    const showAlert = (message, title = '알림', type = 'alert') => {
-        // TODO: setAlert({ isOpen:true, message, title: title||'알림', type: type||'info', onConfirm: null }) 호출
-    };
+    const showAlert = useCallback((message, title = '알림', type = 'alert') => {
+        setAlert({ isOpen: true, message, title: title || '알림', type: type || 'info', onConfirm: null });
+    }, []);
 
     // ── 함수: showConfirm ─────────────────────────────────────────────────────
-    /**
-     * @function showConfirm
-     * @description 확인/취소 2버튼 모달을 표시한다.
-     *              브라우저 기본 confirm()의 커스텀 대체재.
-     *              사용자가 [확인]을 누르면 onConfirm 콜백이 실행됨.
-     *
-     * @param {string}   message          - 모달에 표시할 질문/메시지
-     * @param {function} onConfirm        - [확인] 버튼 클릭 시 실행할 콜백 함수
-     * @param {string}   [title='확인']   - 모달 제목 (기본값: '확인')
-     *
-     * 주의: type은 항상 'info'(파란 아이콘)로 고정됨 (확인 요청은 정보 성격)
-     *
-     * @example
-     *   showConfirm('게시물을 삭제하시겠습니까?', () => deletePost(postId), '삭제 확인');
-     */
-    const showConfirm = (message, onConfirm, title = '확인') => {
-        // TODO: setAlert({ isOpen:true, message, title: title||'확인', type:'info', onConfirm }) 호출
+    const showConfirm = (message, onConfirm, title = '확인', type = 'info') => {
+        setAlert({ isOpen: true, message, title: title || '확인', type: type || 'info', onConfirm });
     };
 
     // ── 함수: handleConfirm ───────────────────────────────────────────────────
-    /**
-     * @function handleConfirm
-     * @description [확인] 버튼 클릭 시 실행되는 내부 핸들러.
-     *              onConfirm 콜백이 있으면 먼저 실행하고, 항상 모달을 닫는다.
-     *
-     * 동작 순서:
-     *   1. alert.onConfirm이 존재하면 실행 (showConfirm으로 열린 경우)
-     *   2. closeAlert()로 모달 닫기
-     *
-     * 주의: 이 함수는 AlertContext의 value에는 포함되지 않고 내부적으로만 사용됨.
-     */
     const handleConfirm = () => {
         // onConfirm 콜백이 있으면 실행 (사용자가 확인에 동의한 경우)
         if (alert.onConfirm) {
