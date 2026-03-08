@@ -138,6 +138,22 @@ export default function EditProfilePage() {
             // TODO: [4] 실패 시 authUser 기반으로 fallbackUser 구성하여 setUser(), setFormData() 설정
             //           fallbackUser.profileImage: authUser?.profileImageUrl 또는 기본 picsum 이미지
             // 힌트: finally 블록에서 setIsLoading(false) 호출
+            setIsLoading(true);
+            try {
+                const data = await userService.getMyProfile();
+                setUser(data);
+                setFormData({ username: data.username, visibility: data.visibility });
+            } catch (error) {
+                console.warn(error);
+                const fallbackUser = {
+                    ...authUser,
+                    profileImage: authUser?.profileImageUrl || 'https://picsum.photos/200'
+                };
+                setUser(fallbackUser);
+                setFormData({ username: fallbackUser.username, visibility: fallbackUser.visibility });
+            } finally {
+                setIsLoading(false);
+            }
         };
         loadUser();
     }, [authUser]);
