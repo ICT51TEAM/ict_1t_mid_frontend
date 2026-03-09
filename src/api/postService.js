@@ -122,6 +122,8 @@ export const postService = {
      */
     getPosts: async (params) => {
         // TODO: GET /albums/feed 를 호출하고 response.data를 반환하세요.
+        const response = await apiClient.get('/albums/feed', { params });
+        return response.data;
         // 힌트: params 객체가 URL 쿼리 파라미터로 자동 변환됩니다.
         //       apiClient.get('/albums/feed', { params }) → response.data
     },
@@ -158,6 +160,8 @@ export const postService = {
     // [2] 스냅(앨범) 상세 조회 → GET /api/albums/{id}
     getPost: async (id) => {
         // TODO: GET /albums/{id} 를 호출하고 response.data를 반환하세요.
+        const response = await apiClient.get(`/albums/${id}`);
+        return response.data;
         // 힌트: apiClient.get(`/albums/${id}`) → response.data
     },
 
@@ -185,7 +189,9 @@ export const postService = {
     // [3] 스냅 생성 — CreatePhotoAlbumPage에서는 photoService + albumService 직접 사용
     //     이 메서드는 호환성 유지용으로 남겨둠
     createPost: async (postData) => {
-        // TODO: POST /albums 를 호출하고 response.data를 반환하세요.
+        // TODO: POST /albums 를 호출하고 response.data를 반환하세요
+        const response = await apiClient.post('/albums', postData);
+        return response.data;
         // 힌트: apiClient.post('/albums', postData) → response.data
     },
 
@@ -209,6 +215,8 @@ export const postService = {
     updatePost: async (_id, _postData) => {
         // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
         // 힌트: throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.')
+        const response = await apiClient.put(`/albums/${id}`, postData);
+        return response.data;
     },
 
     /**
@@ -229,6 +237,8 @@ export const postService = {
     deletePost: async (_id) => {
         // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
         // 힌트: throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.')
+        const response = await apiClient.delete(`/albums/${id}`);
+        return response.data;
     },
 
     /**
@@ -249,6 +259,7 @@ export const postService = {
     // [6] 좋아요 토글 — 백엔드 미구현
     toggleLike: async (_id) => {
         // TODO: 미구현 상태를 개발자에게 알리되 에러는 throw하지 마세요.
+        console.warn('toggleLike: 백엔드 미구현 기능입니다.');
         // 힌트: console.warn('toggleLike: 백엔드 미구현 기능입니다.') 출력 후 그냥 반환
     },
 };

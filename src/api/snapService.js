@@ -147,16 +147,44 @@ import apiClient from './apiClient';
 export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) => {
     // TODO: 클라이언트 사이드 페이징을 포함한 피드 목록 조회를 구현하세요.
     // 힌트:
+    
     //   try {
     //     1. GET /albums/feed 호출: type='photo', friendsOnly=(filter==='following'), tag=(tag||undefined)
+    try {
+        const response = await apiClient.get('/albums/feed', {
+            params: {
+                type: 'photo',
+                // filter가 'following'이면 친구 앨범만, 그 외에는 전체 공개 조회
+                friendsOnly: filter === 'following',
+                // tag가 빈 문자열이면 undefined로 설정하여 쿼리 파라미터 자체를 생략
+                // (undefined 값은 Axios가 쿼리 파라미터에서 자동으로 제외함)
+                tag: tag || undefined,
+            }
+        });
     //     2. const items = response.data || []
+    const items = response.data || [];
+    
     //     3. pageSize = 20, start = (pageParam - 1) * pageSize
+    const pageSize = 20;
+    const start = (pageParam - 1) * pageSize;
     //     4. const sliced = items.slice(start, start + pageSize)
+    
+    const sliced = items.slice(start, start + pageSize);
     //     5. return { data: sliced, nextPage: pageParam + 1, hasNextPage: start + pageSize < items.length }
-    //   } catch(error) {
-    //     console.warn('스냅 피드 로드 실패:', error)
-    //     return { data: [], nextPage: undefined, hasNextPage: false }
-    //   }
+   return {
+            data: sliced,
+            // 다음 번 useInfiniteQuery 호출 시 pageParam으로 전달될 값
+            nextPage: pageParam + 1,
+            // 현재 페이지 끝 인덱스(start + pageSize)가 전체 길이보다 작으면 다음 페이지 있음
+            hasNextPage: start + pageSize < items.length,
+        };
+    } catch (error) {
+     // 피드 로드 실패 시 앱을 중단시키지 않고 빈 결과를 반환한다
+     // React Query가 hasNextPage=false를 보고 무한 스크롤을 종료한다
+     console.warn('스냅 피드 로드 실패:', error);
+     return { data: [], nextPage: undefined, hasNextPage: false };
+    }
+    
 };
 
 /**
@@ -198,5 +226,7 @@ export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) =>
 // AlbumDetailResponse: { albumId, userId, username, title, bodyText, recordDate, layoutType, photos, tags }
 export const fetchSnapDetail = async (id) => {
     // TODO: GET /albums/{id} 를 호출하고 response.data를 반환하세요.
+    const response = await apiClient.get(`/albums/${id}`);
     // 힌트: apiClient.get(`/albums/${id}`) → response.data
+    return response.data;
 };
