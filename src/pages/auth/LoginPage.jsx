@@ -81,18 +81,22 @@ export default function LoginPage() {
                 password,
             });
             //백엔드에서 받은 response처리
-            const userData = response.user || response; // 응답데이터 저장
-            const token = response.token; // 응답받은 토큰 저장
+            const result = response.data || response;
+            console.log("서버 응답 실제 데이터:", response);
 
-            if (token && userData) {
-                authLogin(token, userData); // 토큰&사용자 정보 저장
+            const { accessToken, refreshToken, user } = result;
+            console.log("추출된 토큰 타입 확인:", typeof accessToken);
+
+            if (accessToken && user) {
+                authLogin(accessToken, refreshToken, user); // accessToken&사용자 정보 저장
+                //localStorage.setItem('refreshToken', refreshToken); //refreshToken 저장
                 showAlert('방문을 환영합니다.', '로그인 성공', 'success');
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
                 const destination = location.state?.from?.pathname || 'feed';
                 navigate(destination, { replace: true });
             }
             else {
-                throw new Error("사용자 정보가 올바르지 않습니다");
+                throw new Error("서버로부터 토큰을 받지 못했습니다.");
 
             }
 

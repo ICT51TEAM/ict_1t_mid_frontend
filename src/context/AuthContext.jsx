@@ -89,9 +89,10 @@ export const AuthProvider = ({ children }) => {
    *   localStorage['authToken'] = token (문자열)
    *   localStorage['user']      = JSON.stringify(userData) (직렬화된 객체)
    */
-  const login = (token, userData) => {
+  const login = (accessToken, refreshToken, userData) => {
     // TODO: localStorage에 'authToken'(token), 'user'(JSON.stringify(userData)) 저장 후 setUser(userData) 호출
-    localStorage.setItem('authToken', token); // 로컬스토리지에 토큰 저장
+    localStorage.setItem('accessToken', accessToken); // 로컬스토리지에 accessToken 저장
+    localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
     setUser(userData); // userdate 갱신
     localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
   };
