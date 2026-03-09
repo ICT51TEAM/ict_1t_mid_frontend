@@ -97,4 +97,9 @@ export const getImageUrl = (url) => {
   // TODO: url이 falsy면 null 반환
   // TODO: 'http', '/', 'data:' 로 시작하면 url 그대로 반환
   // TODO: 그 외 상대경로는 '/' + url 로 절대경로 변환 후 반환
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return url;
+  if (url.startsWith('data:')) return url;
+  return '/' + url;
 };

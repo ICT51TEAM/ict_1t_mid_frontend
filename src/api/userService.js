@@ -145,13 +145,17 @@ export const userService = {
      * 실패: 401 Unauthorized → apiClient 인터셉터가 로그인 페이지로 리다이렉트
      */
     getMyProfile: async () => {
+        // TODO: GET /users/me 를 호출하고, totalBadges 기반 레벨을 계산하여 반환하세요.
+        // 힌트: try { apiClient.get('/users/me') → data 추출 → calculatedLevel = Math.floor((data.totalBadges||0)/5)+1
+        //        → return { ...data, level: data.level || calculatedLevel } }
+        //       catch(error) { console.error(...); throw error; }
         try {
             const response = await apiClient.get('/users/me');
             const data = response.data;
-            const calculatedLevel = Math.floor((data.totalBadges || 0) / 5) + 1;
-            return { ...data, level: data.level || calculatedLevel };
+            const calculatedLevel = Math.floor((data.totalBadges || 0) / 5) + 1; // ?. 쓸수없다. undefined를 채우고자 하는게 아니니까
+            return { ...data, level: calculatedLevel }; // 언제나 계산
         } catch (error) {
-            console.error('Failed to get user profile', error);
+            console.error('Error fetching my profile:', error);
             throw error;
         }
     },
@@ -184,10 +188,12 @@ export const userService = {
      * 성공: 200 OK
      * 실패: 404 Not Found (사용자 없음), 403 Forbidden (PRIVATE 계정)
      */
+
     getUserProfile: async (userId) => {
         const response = await apiClient.get(`/users/${userId}`);
         return response.data;
     },
+
 
     /**
      * [3] 내 프로필 수정
@@ -242,10 +248,11 @@ export const userService = {
      * 실패: 400 (파일 없음), 413 (파일 크기 초과), 415 (지원 안 하는 형식)
      */
     uploadProfileImage: async (formData) => {
-        const response = await apiClient.post('/users/me/profile-image', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return response.data;
+        // TODO: POST /users/me/profile-image 를 호출하고 response.data를 반환하세요.
+        // 힌트: Content-Type을 'multipart/form-data'로 오버라이드해야 합니다.
+        //       apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } }) → response.data
+        const response = await apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        return response.data; //파일 업로드는 application/json(기본값)이 아니라 multipart/form-data
     },
 
     /**
