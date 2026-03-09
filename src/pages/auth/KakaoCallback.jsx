@@ -137,7 +137,7 @@ export default function KakaoCallback() {
             try {
                 // 로그인 정보 저장
                 console.log("토큰 획득 성공!");
-                login(token, username);
+                login(token);
 
                 //신규 유저 여부 판단
                 if (isNewUser) {

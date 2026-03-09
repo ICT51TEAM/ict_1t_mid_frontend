@@ -75,63 +75,43 @@ import React, { useState } from 'react';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { Landmark, Search, Calendar, ExternalLink, Loader2, Info, TrendingUp, Cpu } from 'lucide-react';
 import { fssService } from '@/api/fssService';
+import { useAlert } from '@/context/AlertContext';
 
 export default function FssPage() {
 
     /**
      * @state loading
-     * fetchData API 호출 진행 중 여부.
-     * true 이면:
-     *   - FETCH INSIGHTS 버튼이 disabled 상태 (중복 클릭 방지)
-     *   - 버튼 아이콘이 Loader2 스피너로 전환
-     *   - Content 영역에 대형 Loader2 + "Scanning Financial Data..." 표시
-     * API 완료(성공/실패 모두) 후 false 로 전환됨 (finally)
      */
     const [loading, setLoading] = useState(false);
 
     /**
      * @state isSearched
-     * 사용자가 FETCH INSIGHTS 버튼을 최소 1회 눌렀는지 여부.
-     * false: Content 영역에 "Awaiting Query" 초기 안내 화면 표시
-     * true : loading 또는 data 에 따라 스피너/목록/빈 상태 표시
-     * fetchData 호출 시 즉시 true 로 전환됨
      */
     const [isSearched, setIsSearched] = useState(false);
 
     /**
      * @state data
-     * FSS API 파싱 결과 배열.
-     * 비어 있으면 "No Signals Found" 표시.
-     * 각 항목 구조 (FSS API 필드명이 버전마다 다를 수 있어 fallback 처리):
-     *   { contentId|idx|fcnNo: id,
-     *     subject|title|name: 공시 제목,
-     *     regDate|reg_date|createdAt: 등록일,
-     *     originUrl|origin_url|link: 원문 링크 }
      */
     const [data, setData] = useState([]);
 
+    /**
+     * @state startDate
+     */
     // 오늘 날짜 계산 (YYYY-MM-DD)
     const today = new Date().toISOString().split('T')[0];
     // 한 달 전 날짜 계산 (초기 시작일)
     const aMonthAgo = new Date();
     aMonthAgo.setMonth(aMonthAgo.getMonth() - 1);
     const initialStartDate = aMonthAgo.toISOString().split('T')[0];
-
-    /**
-     * @state startDate
-     * 검색 기간의 시작일. date input 과 연결됨.
-     * 초기값: 오늘로부터 1달 전 (YYYY-MM-DD)
-     * fetchData 호출 시 API 에 전달됨
-     */
     const [startDate, setStartDate] = useState(initialStartDate);
 
     /**
      * @state endDate
-     * 검색 기간의 종료일. date input 과 연결됨.
-     * 초기값: 오늘 (YYYY-MM-DD)
-     * fetchData 호출 시 API 에 전달됨
      */
     const [endDate, setEndDate] = useState(today);
+    const { showAlert } = useAlert();
+
+
 
     /**
      * @function fetchData
@@ -162,24 +142,52 @@ export default function FssPage() {
         //       [6] 에러 시 setData([])
         //       [7] finally에서 setLoading(false)
         //1. 상태 초기화
-            setLoading(true); 
-            setIsSearched(true);
+        setLoading(true);
+        setIsSearched(true);
 
-        //2. 날짜 형식 변환
-                const formmatedStartDate = startDate.replace(/-/g,'');
-                const formmatedEndtDate = endDate.replace(/-/g,'');
-        //3. API 호출
-                const result = await fssService.fetchFssData(startDate,endDate);
-        //4. 응답 확인 및 파싱
-                const root = result.reponse != null ? result: null;
-        //5. 결과 코드 확인
-                const isSuccess = root.resultCode.include(1 || '000' ||  'SUCCESS');
-        //6. 성공시 처리
-
+        try {
+            //2. 날짜 형식 변환
+            const formmatedStartDate = startDate.replace(/-/g, '');
+            const formmatedEndDate = endDate.replace(/-/g, '');
+            //3. API 호출
+            const result = await fssService.fetchFssData(formmatedStartDate, formmatedEndDate);
+            console.log("1. 서버 원본 응답:", result);
+            //4. 응답 확인 및 파싱
+            const root = (result && result.reponse) ? result.reponse : result;
+            console.log("2. 파싱된 root 데이터:", root);
+            //5. 결과 코드 확인
+            const successCode = ['1', '000', 'SUCCESS']
+            const isSuccess = root && (!root.resultCode || successCode.includes(root.resultCode));
+            //6. 성공시 처리
+            if (isSuccess && (root.result || Array.isArray(result))) {
+                const list = result?.reponse?.result || result?.result || (Array.isArray(result) ? result : []);
+                console.log("3. 최종 저장될 list:", list);
+                setData(list);
+            }
+            else {
+                if (root?.errorMsg) {
+                    console.log('FSS API error', root.errorMsg);
+                }
+                setData([]);
+            }
+        }
         // 7. 에러 처리
+        catch (err) {
+            console.log('상세 에러', err);
+            setData([]);
+
+            const serverError = err.response?.data;
+            const errorMsg = (typeof serverError === 'string' ? serverError : serverError?.message)
+                || '데이터 조회 중 문제가 발생했습니다.';
+
+            showAlert(errorMsg, '데이터 조회 실패', 'alert');
+        }
 
         //8. 로딩 종료
+        finally {
+            setLoading(false); // 로딩 종료
 
+        }
     };
 
     return (
@@ -197,8 +205,8 @@ export default function FssPage() {
                     <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-xl transform rotate-3 hover:rotate-0 transition-all">
                         <TrendingUp size={32} />
                     </div>
-                    <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">FINANCIAL SNAP</h2>
-                    <p className="text-[14px] text-[#a3b0c1] font-bold tracking-widest uppercase">Stay ahead of the market trend</p>
+                    <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">금융감독원 뉴스레터</h2>
+                    <p className="text-[14px] text-[#a3b0c1] font-bold tracking-widest uppercase">새로운 소식을 뉴스레터로 확인하세요</p>
                 </div>
 
                 <div className="p-4">
@@ -226,7 +234,7 @@ export default function FssPage() {
                             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                                 <Landmark size={18} />
                             </div>
-                            <h2 className="text-[18px] font-black italic tracking-widest uppercase">Select Timeline</h2>
+                            <h2 className="text-[18px] font-black italic tracking-widest uppercase">검색 기간 설정</h2>
                         </div>
 
                         <div className="flex flex-col gap-4 relative z-10">
@@ -234,7 +242,7 @@ export default function FssPage() {
                             <div className="flex gap-4 items-center">
                                 {/* 시작일 입력 (startDate 상태 연결) */}
                                 <div className="flex-1">
-                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">From</p>
+                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">시작 날짜</p>
                                     <input
                                         type="date"
                                         className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all"
@@ -246,7 +254,7 @@ export default function FssPage() {
                                 <div className="text-gray-600 mt-5 font-bold">~</div>
                                 {/* 종료일 입력 (endDate 상태 연결) */}
                                 <div className="flex-1">
-                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">To</p>
+                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">마지막 날짜</p>
                                     <input
                                         type="date"
                                         className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all"
@@ -264,7 +272,7 @@ export default function FssPage() {
                                 className="w-full h-14 bg-white dark:bg-[#292e35] text-black dark:text-[#e5e5e5] font-black italic tracking-[2px] text-[15px] rounded-xl mt-4 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                             >
                                 {loading ? <Loader2 className="animate-spin" size={20} /> : <Search size={22} />}
-                                FETCH INSIGHTS
+                                데이터 검색
                             </button>
                         </div>
                     </div>
@@ -299,32 +307,32 @@ export default function FssPage() {
                                     <Search size={28} />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-[14px] font-black italic tracking-widest uppercase">Awaiting Query</p>
-                                    <p className="text-[11px] font-bold text-[#ccd3db] uppercase mt-1">Select dates to begin discovery</p>
+                                    <p className="text-[14px] font-black italic tracking-widest uppercase">조회 대기중</p>
+                                    <p className="text-[11px] font-bold text-[#ccd3db] uppercase mt-1">조회 시작 날짜를 선택하세요</p>
                                 </div>
                             </div>
                         ) : loading ? (
                             /* [2] 로딩 중 */
                             <div className="py-24 flex flex-col items-center text-black dark:text-[#e5e5e5] gap-4">
                                 <Loader2 size={40} className="animate-spin text-black dark:text-[#e5e5e5]" />
-                                <p className="text-[13px] font-black italic tracking-widest uppercase animate-pulse">Scanning Financial Data...</p>
+                                <p className="text-[13px] font-black italic tracking-widest uppercase animate-pulse">데이터 조회중...</p>
                             </div>
                         ) : data.length > 0 ? (
                             /* [3] 결과 목록 */
                             <div className="flex flex-col divide-y divide-[#f3f3f3]">
                                 {/* 결과 헤더: "Market Feed" + 건수 */}
                                 <div className="pb-4 flex items-center justify-between border-b-2 border-black">
-                                    <span className="text-[12px] font-black italic tracking-widest uppercase">Market Feed</span>
+                                    <span className="text-[12px] font-black italic tracking-widest uppercase">뉴스레터</span>
                                     <span className="text-[10px] font-bold text-[#ccd3db] uppercase tracking-[1px]">{data.length} UPDATES</span>
                                 </div>
 
                                 {/* 각 공시 항목 카드 */}
                                 {data.map((item, index) => {
                                     // 필드명 fallback 처리 (FSS API 버전마다 키 이름 다름)
-                                    const id    = item.contentId || item.idx || item.fcnNo || index;
+                                    const id = item.contentId || item.idx || item.fcnNo || index;
                                     const title = item.subject || item.title || item.name || '공시 내용이 없습니다.';
-                                    const date  = item.regDate || item.reg_date || item.createdAt || '날짜 미상';
-                                    const url   = item.originUrl || item.origin_url || item.link || 'https://www.fss.or.kr';
+                                    const date = item.regDate || item.reg_date || item.createdAt || '날짜 미상';
+                                    const url = item.originUrl || item.origin_url || item.link || 'https://www.fss.or.kr';
 
                                     return (
                                         <div
@@ -334,7 +342,7 @@ export default function FssPage() {
                                         >
                                             {/* 항목 상단: REPORT 태그 + 날짜 */}
                                             <div className="flex items-center gap-3">
-                                                <div className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black italic tracking-tighter uppercase rounded">REPORT</div>
+                                                <div className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black italic tracking-tighter uppercase rounded">NEWSLETTER</div>
                                                 <div className="flex items-center gap-1.5 text-[#ccd3db]">
                                                     <Calendar size={12} />
                                                     <span className="text-[11px] font-bold tracking-widest uppercase">{date}</span>
@@ -354,7 +362,7 @@ export default function FssPage() {
                                             {/* 출처 표시 */}
                                             <div className="flex items-center gap-2 mt-1">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                                <span className="text-[11px] font-bold text-[#a3b0c1] uppercase">Authenticated Source: FSS.GO.KR</span>
+                                                <span className="text-[11px] font-bold text-[#a3b0c1] uppercase">데이터 제공: FSS.GO.KR</span>
                                             </div>
                                         </div>
                                     );

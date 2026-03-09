@@ -90,6 +90,7 @@ export default function LoginPage() {
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
                 const destination = location.state?.from?.pathname || 'feed';
                 navigate(destination, { replace: true });
+                console.log('로그인 처리 성공!!');
             }
             else {
                 throw new Error("사용자 정보가 올바르지 않습니다");
@@ -220,7 +221,7 @@ export default function LoginPage() {
                       font-black + italic 스타일로 강조.
                 ─────────────────────────────────────────────────────── */}
                 <div className="flex items-center gap-5 mt-10 text-[12px] font-bold text-[#a3b0c1] uppercase tracking-wider">
-                    <Link to="/forgot-password" title="비밀번호 찾기" className="hover:text-black dark:hover:text-[#e5e5e5] transition-colors">비밀번호 찾기</Link>
+                    <Link to="/forgot-password" title="비밀번호 찾기(재설정)" className="hover:text-black dark:hover:text-[#e5e5e5] transition-colors">비밀번호 찾기(재설정)</Link>
                     <div className="w-[1px] h-3 bg-[#e5e5e5] dark:bg-[#292e35]"></div>
                     <Link to="/verify-email" title="회원가입" className="hover:text-black dark:hover:text-[#e5e5e5] text-black dark:text-[#e5e5e5] font-black italic">회원가입</Link>
                 </div>
