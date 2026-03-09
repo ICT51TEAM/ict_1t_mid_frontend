@@ -98,6 +98,17 @@ export default function NotificationSettingsPage() {
             // TODO: [4] catch 블록에서 기본값으로 폴백:
             //           setSettings({ friendRequest: true, friendAccept: true, badge: true, system: true })
             // 힌트: 이 패턴은 백엔드 미구현 시에도 페이지가 정상 작동하도록 방어적 코딩한 것입니다.
+            try {
+                if(typeof notificationService.getSettings === 'function'){
+                    const settings = await notificationService.getSettings();
+                    setSettings(settings);
+                }else{
+                    throw new Error('getSettings not implemented');
+                }
+            }catch(e){
+                console.warn('getSettings failed',e);
+                setSettings({friendRequest:true,friendAccept:true,badge:true,system:true});
+            }
         };
         load();
     }, []);
@@ -133,6 +144,15 @@ export default function NotificationSettingsPage() {
         //           await notificationService.updateSettings(newSettings) 호출
         // TODO: [4] catch 블록에서 console.warn만 출력 (UI 롤백 없음)
         // 힌트: 낙관적 업데이트는 먼저 UI를 변경하고 나중에 서버에 저장하는 패턴입니다.
+        newSettings = {...settings,[key]:!settings[key]};
+        setSettings(newSettings);
+        try{
+            if(typeof notificationService.updateSettings === 'function'){
+                await notificationService.updateSettings(newSettings);
+            }
+        }catch(e){
+            console.warn('updateSettings failed',e);
+        }
     };
 
     // -------------------------------------------------------------------------

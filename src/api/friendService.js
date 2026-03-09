@@ -130,8 +130,8 @@ export const friendService = {
      * 성공: 200 OK
      */
     listFriends: async () => {
-        // TODO: GET /friends 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.get('/friends') → response.data
+        const response = await apiClient.get('/friends');
+        return response.data;
     },
 
     /**
@@ -158,8 +158,8 @@ export const friendService = {
      * 성공: 200 OK
      */
     listPendingRequests: async () => {
-        // TODO: GET /friends/pending 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.get('/friends/pending') → response.data
+        const response = await apiClient.get('/friends/pending');
+        return response.data;
     },
 
     /**
@@ -184,8 +184,8 @@ export const friendService = {
      *   - 400 Bad Request: 자기 자신에게 요청 시
      */
     sendRequest: async (targetUserId) => {
-        // TODO: POST /friends/request 를 호출하고 response.data를 반환하세요.
-        // 힌트: body는 { targetUserId } 객체로 전달 → apiClient.post('/friends/request', { targetUserId }) → response.data
+        const response = await apiClient.post('/friends/request', { targetUserId });
+        return response.data;
     },
 
     /**
@@ -210,8 +210,8 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendshipId 요청 없음
      */
     acceptRequest: async (friendshipId) => {
-        // TODO: POST /friends/{friendshipId}/accept 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.post(`/friends/${friendshipId}/accept`) → response.data
+        const response = await apiClient.post(`/friends/${friendshipId}/accept`);
+        return response.data;
     },
 
     /**
@@ -235,8 +235,8 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendshipId 요청 없음
      */
     rejectRequest: async (friendshipId) => {
-        // TODO: POST /friends/{friendshipId}/reject 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.post(`/friends/${friendshipId}/reject`) → response.data
+        const response = await apiClient.post(`/friends/${friendshipId}/reject`);
+        return response.data;
     },
 
     /**
@@ -262,8 +262,8 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendId와 친구 관계 없음
      */
     removeFriend: async (friendId) => {
-        // TODO: DELETE /friends/{friendId} 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.delete(`/friends/${friendId}`) → response.data
+        const response = await apiClient.delete(`/friends/${friendId}`);
+        return response.data;
     },
 
     /**
@@ -295,8 +295,7 @@ export const friendService = {
      * 실패: 400 Bad Request (query 파라미터 없음)
      */
     searchUsers: async (query) => {
-        // TODO: GET /friends/search 를 호출하고 response.data를 반환하세요.
-        // 힌트: query를 URL 쿼리 파라미터 'q'로 전달합니다.
-        //       apiClient.get('/friends/search', { params: { q: query } }) → response.data
+        const response = await apiClient.get('/friends/search', { params: { q: query } });
+        return response.data;
     }
 };

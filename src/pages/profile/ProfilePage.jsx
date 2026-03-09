@@ -40,11 +40,13 @@ import { useAuth } from '@/context/AuthContext';
 import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
 
 export default function ProfilePage() {
+    console.log('ProfilePage 렌더링됨'); // 컴포넌트 진입 확인
     const navigate = useNavigate();
+    const { user: authUser } = useAuth();
+    console.log('authUser:', authUser); // authUser 상태 확인
 
     // AuthContext에서 현재 로그인된 사용자 정보를 가져온다.
     // authUser는 로그인 직후 메모리에 이미 올라와 있으므로 즉시 사용 가능.
-    const { user: authUser } = useAuth();
 
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
@@ -128,12 +130,14 @@ export default function ProfilePage() {
      * 의존성 배열: [authUser?.id] - 사용자 ID가 바뀔 때만 재실행
      */
     useEffect(() => {
+        console.log('useEffect 실행, authUser?.id:', authUser?.id);
         if (!authUser?.id) {
             setPostsLoading(false);
             return;
         }
 
         const loadData = async () => {
+            console.log('loadData 시작, authUser:', authUser); // 이거 추가
             // TODO: [1] setPostsLoading(true) 호출
             // TODO: [2] Promise.allSettled([
             //             userService.getMyProfile(),
@@ -146,9 +150,45 @@ export default function ProfilePage() {
             // TODO: [5] friendsResult.status === 'fulfilled'이면
             //             배열 길이를 setFriendCount()에 저장
             // 힌트: finally 블록에서 setPostsLoading(false) 호출
+            setPostsLoading(true); //로딩 시작
+            const withTimeout = (promise, name) =>
+                Promise.race([ // API랑 타이머 중 먼저 끝나는 쪽 채택 (타임아웃 구현용)
+                    promise,
+                    new Promise((_, reject) => //성공 값을 안쓰겠다는 의미
+                        setTimeout(() => reject(new Error(`${name} timeout`)), 8000) //8초 제한
+                    )
+                ])
+            try{
+                const [profileResult, postsResult, friendsResult] = await Promise.allSettled([ //결과다 받아 끝날때까지 기다릴테니까
+                withTimeout(userService.getMyProfile(), 'profile'), //내거 가져오는 API 일까? 아니면 수정필요
+                withTimeout(postService.getPosts({ type: 'photo' }), 'posts'), //전체 가져오는 API 일까? 아니면 수정필요
+                withTimeout(friendService.listFriends(), 'friends') //내거 가져오는 API 일까? 아니면 수정필요
+                ]);
+
+                // 각각 결과 로그
+                console.log('[Profile]', profileResult.status, profileResult.status === 'rejected' ? profileResult.reason : profileResult.value);
+                console.log('[Posts]', postsResult.status, postsResult.status === 'rejected' ? postsResult.reason : postsResult.value);
+                console.log('[Friends]', friendsResult.status, friendsResult.status === 'rejected' ? friendsResult.reason : friendsResult.value);
+
+                if (profileResult.status === 'fulfilled') { //성공시fulfilled 실패시rejected
+                    setUser(profileResult.value);
+                }
+                if (postsResult.status === 'fulfilled') {
+                    setPosts(postsResult.value.filter(post => post.authorId === authUser.id));
+                }
+                if (friendsResult.status === 'fulfilled') {
+                    setFriendCount(friendsResult.value.length);
+                }
+            }catch(error){
+                console.error('Error loading profile data:', error);
+            }finally{
+                setPostsLoading(false);
+            }
+            
+            
         };
-        loadData();
-    }, [authUser?.id]);
+        loadData(); //useEffect 에서 정의후 실행
+    }, [authUser?.id]); //처음마운트시, authUser.id가 생길때, 다른계정으로 바뀔때 실행
 
     // -------------------------------------------------------------------------
     // [조기 반환: 로딩 상태]

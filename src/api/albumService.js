@@ -115,6 +115,9 @@ export const albumService = {
   // payload: { userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }
   createAlbum: async (payload) => {
     // TODO: POST /albums 를 호출하고 data를 반환하세요.
+    const response = await apiClient.post('/albums', payload);
+    const data=response.data;
+    return data;
     // 힌트: const { data } = await apiClient.post('/albums', payload); return data;
   },
 
@@ -150,6 +153,8 @@ export const albumService = {
    */
   getAlbumDetail: async (albumId) => {
     // TODO: GET /albums/{albumId} 를 호출하고 data를 반환하세요.
+    const response = await apiClient.get(`/albums/${albumId}`)
+    return response.data;
     // 힌트: const { data } = await apiClient.get(`/albums/${albumId}`); return data;
   },
 };

@@ -100,6 +100,12 @@ export default function NotificationsPage() {
         // TODO: [2] 성공 시 setNotifications(data)
         // TODO: [3] 실패 시 console.error(error) (notifications는 이전 값 유지)
         // 힌트: try-catch 구조 사용
+        try {
+            const data = await notificationService.getAll();
+            setNotifications(data);
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     // -------------------------------------------------------------------------
@@ -143,6 +149,15 @@ export default function NotificationsPage() {
         //           c. showAlert('모든 알림이 읽음 처리되었습니다.', '알림')
         // TODO: [3] catch 블록에서 showAlert('알림 처리에 실패했습니다.')
         // 힌트: showConfirm(message, async () => { ... }, confirmButtonText) 형태로 호출
+        showConfirm('모든 알림을 읽음 처리하시겠습니까?', async () => {
+            try {
+                await notificationService.markAllRead();
+                loadNotifications();
+                showConfirm('모든 알림이 읽음 처리되었습니다.', '알림');
+            } catch (error) {
+                showAlert('알림 처리에 실패했습니다.');
+            }
+        }, '모두 읽음');
     };
 
     // -------------------------------------------------------------------------

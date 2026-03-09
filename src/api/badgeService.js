@@ -166,6 +166,27 @@ export const badgeService = {
         //   } catch(error) {
         //     console.warn(...); return { level: 1, totalBadges: 0, recentBadges: [], typeCounts: [] }
         //   }
+        try {
+            const response = await apiClient.get('/badges/stats');
+            const data = response.data || {}; //앞이 falsy한 값이면 {}를 쓰겠다
+            const badgesCount = data.totalCount || data.totalBadges || 0;
+            const calculatedLevel = Math.floor(badgesCount / 5) + 1;
+            const recentBadges = (data.typeCounts || []).map((tc, idx) => ({
+                //typeCounts 는 백엔드에서 받아오는 배지유형별 집계 배열
+                //tc는 typeCounts의 각 항목
+                //tc는 { typeName, count } 형식의 객체
+                //map을통해서 recentBadges 배열을 생성
+                id: idx + 1,
+                name: tc.typeName || tc.name || '달개',
+                emoji: tc.emoji || '🏅',
+                count: tc.count || 0
+            }));
+            return { totalBadges: badgesCount, recentBadges, level: calculatedLevel, typeCounts: data.typeCounts || [] };
+            //객체반환이고 recentBadges는 단축프로퍼티
+        } catch (error) {
+            console.warn(error);
+            return { level: 1, totalBadges: 0, recentBadges: [], typeCounts: [] };
+        }
     },
 
     /**
@@ -202,6 +223,22 @@ export const badgeService = {
         //     }))
         //     return { totalBadges: badgesCount, recentBadges, level: Math.floor(badgesCount/5)+1, typeCounts: data.typeCounts||[] }
         //   } catch(error) { console.warn(...); return { totalBadges: 0, recentBadges: [], level: 1, typeCounts: [] } }
+        try {
+            const response = await apiClient.get(`/badges/stats/${userId}`);
+            const data = response.data || {};
+            const badgesCount = data.totalCount || data.totalBadges || 0;
+            const calculatedLevel = Math.floor(badgesCount / 5) + 1;
+            const recentBadges = (data.typeCounts || []).map((tc, idx) => ({
+                id: idx + 1,
+                name: tc.typeName || tc.name || '달개',
+                emoji: tc.emoji || '🏅',
+                count: tc.count || 0
+            }));
+            return { totalBadges: badgesCount, recentBadges, level: calculatedLevel, typeCounts: data.typeCounts || [] };
+        } catch (error) {
+            console.warn(error);
+            return { level: 1, totalBadges: 0, recentBadges: [], typeCounts: [] };
+        }
     },
 
     /**
@@ -235,6 +272,13 @@ export const badgeService = {
         //     response = await apiClient.get('/badges/ranking/global', { params })
         //     return response.data
         //   } catch(error) { console.warn(...); return { content: [], totalPages: 0 } }
+        try {
+            const response = await apiClient.get('/badges/ranking/global', { params }); //params는 페이지번호,크기
+            return response.data;
+        } catch (error) {
+            console.warn(error);
+            return { content: [], totalPages: 0 };
+        }
     },
 
     /**
@@ -267,6 +311,13 @@ export const badgeService = {
         //     response = await apiClient.get('/badges/ranking/friends', { params })
         //     return response.data
         //   } catch(error) { console.warn(...); return { content: [], totalPages: 0 } }
+        try {
+            const response = await apiClient.get('/badges/ranking/friends', { params }); //params는 페이지번호,크기
+            return response.data;
+        } catch (error) {
+            console.warn(error);
+            return { content: [], totalPages: 0 };
+        }
     },
 
     /**
@@ -312,6 +363,19 @@ export const badgeService = {
         //     console.warn(...)
         //     return [ 4개의 더미 달개 유형 배열: 좋아요❤️, 슬퍼요😢, 화나요😠, 응원해요💪 ]
         //   }
+        try {
+            const response = await apiClient.get('/badges/types');
+            return response.data.map(type => ({
+                id: type.id,
+                category: 'BADGE',
+                title: type.name || '달개',
+                description: type.description || '',
+                emoji: type.emoji || '🏅'
+            }));
+        } catch (error) {
+            console.warn(error);
+            return [];
+        }
     },
 
     /**
@@ -328,32 +392,23 @@ export const badgeService = {
      * HTTP: GET /api/albums/latest-friend
      * 인증 필요: 예
      */
-    getLatestFriendStory: async () => {
-        // TODO: GET /albums/latest-friend 를 호출하고 response.data를 반환하세요.
-        // 힌트: albums 엔드포인트를 호출합니다 (badges가 아님에 주의).
-        //   try { response = await apiClient.get('/albums/latest-friend'); return response.data }
-        //   catch(error) { console.warn(...); return null }
+    // getLatestFriendStory: async () => { // 이거 불필요한 코드 같음
+    //     // TODO: GET /albums/latest-friend 를 호출하고 response.data를 반환하세요.
+    //     // 힌트: albums 엔드포인트를 호출합니다 (badges가 아님에 주의).
+    //     //   try { response = await apiClient.get('/albums/latest-friend'); return response.data }
+    //     //   catch(error) { console.warn(...); return null }
+
+    toggleAlbumDalgae: async (albumId, badgeTypeId) => {
+        const response = await apiClient.post(
+            `/badges/albums/${albumId}/toggle`,
+            null,
+            { params: { badgeTypeId } } // 전달할 데이터가 하나라 바디대신 쿼리스트링으로
+        );
+        return response.data;
     },
 
-    /**
-     * [7] 달개(배지) 전달 — 현재 백엔드 미구현
-     *
-     * 특정 앨범에 달개(감정 표현 배지)를 전달하는 기능이지만,
-     * 백엔드에 해당 API가 아직 구현되어 있지 않아 항상 Error를 throw한다.
-     * 이 함수를 호출하는 측은 반드시 try-catch로 에러를 처리해야 한다.
-     *
-     * @param {number|string} _albumId - 달개를 전달할 앨범 ID (현재 미사용, _ prefix로 표시)
-     * @param {string}        _emoji   - 전달할 달개 이모지 (현재 미사용, _ prefix로 표시)
-     *
-     * @returns {never} 항상 Error를 throw하므로 정상 반환값 없음
-     * @throws {Error} '달개 전달 기능은 아직 준비 중입니다.'
-     *
-     * HTTP: 미구현 (엔드포인트 없음)
-     * 구현 예정: POST /api/badges/give 또는 POST /api/albums/{albumId}/badges
-     */
-    giveBadge: async (_albumId, _emoji) => {
-        // TODO: 미구현 상태를 알리는 경고 로그를 출력하고 에러를 throw하세요.
-        // 힌트: console.warn('giveBadge: 백엔드 미구현 기능입니다.')
-        //       throw new Error('달개 전달 기능은 아직 준비 중입니다.')
-    },
+    getAlbumDalgae: async (albumId) => {
+        const response = await apiClient.get(`/badges/albums/${albumId}`);
+        return response.data;
+    }
 };

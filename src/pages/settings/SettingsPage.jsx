@@ -49,10 +49,12 @@
  *   팝업 닫기: setPopup({ isOpen: false, type: null })
  *             배경 오버레이 클릭, X 버튼, CLOSE 버튼 모두 동일 동작
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, ChevronRight, LogOut, Shield, Trash2, Bell, Smartphone, FileText, X, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { userService } from '@/api/userService';
 
 export default function SettingsPage() {
     const navigate = useNavigate();
@@ -103,21 +105,40 @@ export default function SettingsPage() {
         //           newMode=false → document.documentElement.classList.remove('dark')
         // 힌트: Tailwind CSS의 class 기반 dark 모드 전략에 따라
         //       루트 요소에 'dark' 클래스를 추가/제거해야 dark:* CSS가 활성화됩니다.
+        const newMode = !isDarkMode;
+        setIsDarkMode(newMode);
+        localStorage.setItem('darkMode', String(newMode));
+        if (newMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     };
 
     /**
      * handleLogout: 로그아웃 처리 함수.
      *
+     * [구현상의 문제점 & 학습 포인트]
+     * 현재 이 함수는 단순 페이지 이동(`navigate`)만 수행하고 있습니다.
+     * 백엔드가 연동된 실제 환경에서는 브라우저의 전역 인증 상태(AuthContext)를 초기화하고, 
+     * 저장된 토큰(JWT 등)을 삭제하는 로직이 반드시 선행되어야 합니다.
+     *
+     * [실제 구현 시 추가 작업]:
+     * 1. 상단에서 `const { logout } = useAuth();` 를 호출하여 로그아웃 함수를 가져옵니다.
+     * 2. navigate 호출 직전에 `logout();`을 실행하여 세션을 안전하게 종료합니다.
+     *
      * 동작:
      *   1. window.confirm('로그아웃 하시겠습니까?'): 브라우저 확인 다이얼로그 표시
      *   2. 확인(OK) 클릭 시 → navigate('/login'): 로그인 페이지로 이동
      *   3. 취소 클릭 시 → 아무 동작 없음
-     *
-     * 주의: 현재 구현에서는 AuthContext의 logout()이나 토큰 삭제가 호출되지 않음.
-     *       실제 세션 무효화 없이 단순 페이지 이동만 발생.
      */
+    const { logout } = useAuth();
+
     const handleLogout = () => {
         if (window.confirm('로그아웃 하시겠습니까?')) {
+            // TODO: 실제 서비스 운영 시 AuthContext의 logout() 함수를 호출하여 
+            //       localStorage의 토큰을 삭제하고 전역 인증 상태를 null로 초기화해야 함.
+            logout();
             navigate('/login');
         }
     };
@@ -157,6 +178,31 @@ export default function SettingsPage() {
      *       - 개인정보 처리방침 → setPopup({ isOpen: true, type: 'privacy' })
      *       - Q&A 게시판 → /settings/qna
      */
+
+    const [isNotificationEnabled, setIsNotificationEnabled] = useState(null);
+
+    useEffect(() => {
+        userService.getSettings().then(data => {
+            setIsNotificationEnabled(data.notificationEnabled ?? true);
+        }).catch(() => {});
+    }, []);
+
+    const toggleNotification = async () => {
+        const newVal = !isNotificationEnabled;
+        setIsNotificationEnabled(newVal);
+        localStorage.setItem('notificationEnabled', String(newVal));
+        try {
+            await userService.updateSettings({
+                notificationEnabled: newVal,
+                showVisitorCount: false,
+                labFeaturesEnabled: false,
+                bgmUrl: null,
+                themeColor: null,
+            });
+        } catch(e) {
+            console.warn('알림 설정 저장 실패', e);
+        }
+    };
     const settingItems = [
         {
             title: '계정 설정', items: [
@@ -166,7 +212,13 @@ export default function SettingsPage() {
         },
         {
             title: '알림 및 표시', items: [
-                { icon: <Bell size={20} />, text: '알림 설정', path: '/settings/notifications' },
+                ...(isNotificationEnabled !== null ? [{
+                    icon: <Bell size={20} />,
+                    text: '알림',
+                    isToggle: true,
+                    value: isNotificationEnabled,
+                    onToggle: toggleNotification
+                }] : []),
                 {
                     icon: <Smartphone size={20} />,
                     text: '다크 모드',
@@ -261,9 +313,9 @@ export default function SettingsPage() {
                                         {item.isToggle && (
                                             <button
                                                 onClick={item.onToggle}
-                                                className={`relative w-[44px] h-[24px] rounded-full transition-all duration-300 ${item.value ? 'bg-black dark:bg-white' : 'bg-[#e5e5e5] dark:bg-gray-700'}`}
+                                                className={`relative w-[44px] h-[24px] rounded-full ${item.value ? 'bg-black dark:bg-white' : 'bg-[#e5e5e5] dark:bg-gray-700'}`}
                                             >
-                                                <div className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full transition-all duration-300 ${item.value ? 'translate-x-[20px] bg-white dark:bg-[#1c1f24]' : 'translate-x-0 bg-white'}`} />
+                                                <div className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full ${item.value ? 'translate-x-[20px] bg-white dark:bg-[#1c1f24]' : 'translate-x-0 bg-white'}`} />
                                             </button>
                                         )}
                                     </div>

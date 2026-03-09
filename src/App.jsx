@@ -81,7 +81,6 @@ import EditProfilePage from '@/pages/profile/EditProfilePage';
 import SettingsPage from '@/pages/settings/SettingsPage';
 import ChangePasswordPage from '@/pages/settings/ChangePasswordPage';
 import DeleteAccountPage from '@/pages/settings/DeleteAccountPage';
-import NotificationSettingsPage from '@/pages/settings/NotificationSettingsPage';
 import QnaPage from '@/pages/settings/QnaPage';
 import FriendsPage from '@/pages/friends/FriendsPage';
 import AddFriendPage from '@/pages/friends/AddFriendPage';
@@ -176,7 +175,6 @@ export default function App() {
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/settings/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
             <Route path="/settings/delete-account" element={<ProtectedRoute><DeleteAccountPage /></ProtectedRoute>} />
-            <Route path="/settings/notifications" element={<ProtectedRoute><NotificationSettingsPage /></ProtectedRoute>} />
             <Route path="/settings/qna" element={<ProtectedRoute><QnaPage /></ProtectedRoute>} />
 
             {/* 글벗(친구) 관련 페이지들 */}
