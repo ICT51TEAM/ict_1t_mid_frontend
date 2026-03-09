@@ -55,6 +55,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useAlert } from '@/context/AlertContext';
+import axios from 'axios';
 
 export default function KakaoCallback() {
     // ---------------------------------------------------------
@@ -106,62 +107,53 @@ export default function KakaoCallback() {
     // 클린업: 없음 (navigate는 클린업 필요 없음)
     // ---------------------------------------------------------
     useEffect(() => {
-        // TODO: [1] hasProcessed.current가 true이면 즉시 return
-        // TODO: [2] new URLSearchParams(location.search)로 파라미터 파싱
-        //           token = params.get('token')
-        //           isNewUser = params.get('isNewUser') === 'true'
-        //           nickname = decodeURIComponent(params.get('nickname') || '카카오 사용자')
-        // TODO: [3] token이 있으면:
-        //           hasProcessed.current = true 설정
-        //           tempUser = { id: 'social', provider: 'kakao', name: nickname } 생성
-        //           try/catch 안에서:
-        //             localStorage.setItem('accessToken', token)
-        //             localStorage.setItem('user', JSON.stringify(tempUser))
-        //             login(token, tempUser) 호출
-        //             isNewUser가 true이면 showAlert(`${nickname}님, 회원이 되신 것을 환영합니다!`, '환영합니다', 'success')
-        //             navigate('/', { replace: true })
-        //           catch 시: navigate('/login?error=true', { replace: true })
-        // TODO: [4] token이 없으면: console.error 후 navigate('/login', { replace: true })
         if (hasProcessed.current) return;
         hasProcessed.current = true;
-
+        // URL에서 인가 코드(code) 추출 (카카오 리다이렉트 시 전달됨)
         const params = new URLSearchParams(location.search);
-        const token = params.get('token');
-        const isNewUser = params.get('isNewUser') === 'true';
+        const accessToken = params.get('accessToken');
+        const refreshToken = params.get('refreshToken');
+        const isNewUser = params.get('isNewUser') === 'true'; // 문자열 'true'를 불리언으로 변환
+        const userStr = params.get('user');
 
-        console.log("검출된 토큰:", token); // 콘솔에 토큰이 찍히는지 확인
-        console.log("신규 유저 여부:", isNewUser);
+        console.log("전달받은 accessToken:", accessToken);
+        try {
+            if (accessToken && refreshToken) {
+                console.error("현재 URL:", window.location.href); // 현재 전체 주소를 찍어보세요.
+                //  로컬스토리지에 두 토큰 저장
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('refreshToken', refreshToken);
+                if (userStr) {
+                    localStorage.setItem('user', userStr);
+                }
+                // AuthContext의 login 함수 호출 (3개의 인자 전달)
+                const userData = userStr ? JSON.parse(decodeURIComponent(userStr)) : { id: 'temp', nickname: '사용자' };
+                login(accessToken, refreshToken, userData);
 
-        // 토큰이 있는 경우
-        if (token) {
-            try {
-                // 로그인 정보 저장
-                console.log("토큰 획득 성공!");
-                login(token);
+                console.log("accessToken 토큰 저장 완료", accessToken);
+                console.log("refreshToken 토큰 저장 완료", refreshToken);
 
-                //신규 유저 여부 판단
+                //페이지 이동
                 if (isNewUser) {
                     showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
                     navigate('/profile', { replace: true }); // 프로필 설정 페이지
                 }
                 else {
                     showAlert('카카오로 로그인이되었습니다.', '로그인 성공', 'success');
-                    const destination = location.state?.from?.pathname || 'feed';
+                    const destination = location.state?.from?.pathname || '/feed';
                     navigate(destination, { replace: true });
                 }
+
             }
-            catch (err) {
-                console.error('처리 중 오류:', err);
-                navigate('/login?error=true', { replace: true });
-            }
-            return;
         }
-        // 토큰이 없는 경우    
-        console.error("토큰이 없어 로그인 페이지로 리다이렉트합니다.");
-        navigate('/login', { replace: true });
+        catch (err) {
+            console.error('카카오 로그인 처리 중 오류:', err);
+            showAlert('로그인 처리 중 오류가 발생했습니다.', '오류', 'error');
+            navigate('/login?error=true', { replace: true });
+        }
+        return;
 
-
-    }, [location.search, navigate, login, showAlert]);
+    }, [location.search, navigate, login]);
 
     // ---------------------------------------------------------
     // [JSX 렌더링]

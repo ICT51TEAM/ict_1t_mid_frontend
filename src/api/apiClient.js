@@ -62,7 +62,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // localStorage에서 JWT 액세스 토큰을 읽어온다
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       // Bearer 스킴(scheme)으로 Authorization 헤더에 토큰을 첨부한다
       // 백엔드의 JWTAuthenticationFilter.java가 이 헤더를 파싱하여 인증을 처리한다
