@@ -87,7 +87,11 @@ export default function DeleteAccountPage() {
      */
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const isConfirmed = window.confirm('정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.');
+        const isConfirmed = await showAlert(
+        '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
+        '회원 탈퇴 확인',
+        'confirm' // 프로젝트의 Alert 종류에 따라 'warning' 또는 'confirm' 사용
+    );
         if (isConfirmed) {
             await userService.deleteAccount({ password });
             showAlert('탈퇴 처리가 완료되었습니다.','탈퇴 완료','success');
