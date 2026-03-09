@@ -37,8 +37,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X, Check } from 'lucide-react';
 import { userService } from '@/api/userService';
+import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 
 export default function ChangePasswordPage() {
     const navigate = useNavigate();
@@ -59,6 +61,17 @@ export default function ChangePasswordPage() {
         newPassword: '',
         confirmPassword: ''
     });
+
+    const password = formData.newPassword;
+    const passwordRules = {
+        length: password.length >= 8 && password.length <= 20, // 원본 주석에 맞춰 8~20자로 유지
+        // 길이 검사
+        hasLetter: /[a-zA-Z]/.test(password),
+        // 영문 포함 여부
+        hasNumber: /[0-9]/.test(password),
+        // 숫자 포함 여부
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password), // 특수문자 포함 여부
+    }
 
     // -------------------------------------------------------------------------
     // [핸들러 함수]
@@ -81,6 +94,9 @@ export default function ChangePasswordPage() {
      *   4. 성공 시: alert('비밀번호가 변경되었습니다.') → navigate('/settings')
      *   5. 에러 처리: try-catch 없음 (API 에러 시 콘솔에 미처리 예외로 표시됨)
      */
+    const { user } = useAuth();  // 실제 어떻게 쓰이는지에 따라 다름............ 아래 user.email도
+    const [loading, setLoading] = useState(false);
+    const { showConfirm, showAlert } = useAlert(); 
     const handleSubmit = async (e) => {
         // TODO: [1] e.preventDefault() 호출
         // TODO: [2] 클라이언트 측 유효성 검사:
@@ -90,6 +106,28 @@ export default function ChangePasswordPage() {
         //           주의: 첫 번째 인수 이메일이 'user@example.com'으로 하드코딩되어 있음
         // TODO: [4] 성공 시 alert('비밀번호가 변경되었습니다.') → navigate('/settings')
         // 힌트: try-catch 없이 구현 (API 에러 시 콘솔에 미처리 예외로 표시됨)
+        e.preventDefault(); //submit 이벤트의 기본 동작(페이지 새로고침) 방지
+        if (formData.newPassword !== formData.confirmPassword) {
+            showAlert('비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        // 비밀번호 규칙 전체 충족 확인
+        if (
+            !passwordRules.length ||
+            !passwordRules.hasLetter ||
+            !passwordRules.hasNumber ||
+            !passwordRules.hasSpecial
+        ) {
+            showAlert('비밀번호 규칙을 확인해주세요.', '비밀번호 오류');
+            return;
+        }
+        setLoading(true); //로딩 시작
+        await userService.changePassword({
+            currentPassword: formData.currentPassword,
+            newPassword: formData.newPassword
+        });
+        showConfirm('비밀번호가 변경되었습니다.');
+        navigate('/settings');
     };
 
     // -------------------------------------------------------------------------
@@ -176,7 +214,69 @@ export default function ChangePasswordPage() {
                                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                             />
                         </div>
-
+                        {/* ════════════════════════════════════ */}
+                        {/* ── 비밀번호 규칙 실시간 체크 표시 ── */}
+                        {/* 각 규칙을 충족하면 ✓(초록), 미충족이면 ✗(회색) */}
+                        {/* ════════════════════════════════════ */}
+                        <div className="bg-secondary rounded-[16px] p-5 shadow-sm border border-border">
+                            <p className="text-[14px] font-bold text-text-primary mb-3.5">비밀번호 규칙</p>
+                            <div className="space-y-2.5">
+                                {/* 규칙 1: 8~20자 */}
+                                <div className="flex items-center gap-2">
+                                    {/* 조건부 렌더링: 규칙 충족이면 Check 아이콘, 아니면 X 아이콘 */}
+                                    {passwordRules.length ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    {/* 충족 시 진한 텍스트, 미충족 시 연한 텍스트 */}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.length ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        8~20자 이내
+                                    </span>
+                                </div>
+                                {/* 규칙 2: 영문 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasLetter ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasLetter ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        영문 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 3: 숫자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasNumber ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasNumber ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        숫자 포함
+                                    </span>
+                                </div>
+                                {/* 규칙 4: 특수문자 포함 */}
+                                <div className="flex items-center gap-2">
+                                    {passwordRules.hasSpecial ? (
+                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                    ) : (
+                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                    )}
+                                    <span
+                                        className={`text-[13px] ${passwordRules.hasSpecial ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
+                                    >
+                                        특수문자 포함 (!@#$%^&* 등)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                         {/* 제출 버튼: type="submit"으로 form의 onSubmit 트리거 */}
                         <button
                             type="submit"

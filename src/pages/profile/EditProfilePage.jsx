@@ -42,6 +42,7 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { useAuth } from '@/context/AuthContext';
+import { DEFAULT_AVATAR } from '@/utils/imageUtils';
 
 export default function EditProfilePage() {
     const navigate = useNavigate();
@@ -138,6 +139,23 @@ export default function EditProfilePage() {
             // TODO: [4] 실패 시 authUser 기반으로 fallbackUser 구성하여 setUser(), setFormData() 설정
             //           fallbackUser.profileImage: authUser?.profileImageUrl 또는 기본 picsum 이미지
             // 힌트: finally 블록에서 setIsLoading(false) 호출
+
+            setIsLoading(true);
+            try {
+                const data = await userService.getMyProfile();
+                setUser(data);
+                setFormData({ username: data.username, visibility: data.visibility });
+            } catch (error) {
+                console.warn(error);
+                const fallbackUser = {
+                    ...authUser,
+                    profileImage: authUser?.profileImageUrl || DEFAULT_AVATAR // ?. null이나 undefined면 undefined 반환
+                };
+                setUser(fallbackUser);
+                setFormData({ username: fallbackUser.username, visibility: fallbackUser.visibility });
+            } finally {
+                setIsLoading(false);
+            }
         };
         loadUser();
     }, [authUser]);
@@ -164,6 +182,12 @@ export default function EditProfilePage() {
         // TODO: [3] setProfileFile(file): File 객체 저장
         // TODO: [4] URL.createObjectURL(file)로 Blob URL 생성 → setPreviewUrl()로 미리보기 반영
         // 힌트: 이 시점에 서버 업로드는 발생하지 않음. UI 미리보기만 즉시 갱신됨.
+
+        //서버에 파일을 올리지는 않고 미리보기만 보여줌
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setProfileFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
     };
 
     /**
@@ -208,6 +232,31 @@ export default function EditProfilePage() {
         // TODO: [3] 성공 시 alert('프로필이 성공적으로 수정되었습니다.') → navigate('/profile')
         // TODO: [4] 실패 시 console.error + alert(에러 메시지 또는 기본 메시지)
         // 힌트: finally 블록에서 setIsSaving(false) 호출
+        e.preventDefault(); //form태그의 기본동작 방지(submit때문에)
+        setIsSaving(true); //중복제출 방지용
+        try {
+            if (profileFile) {
+                const formDataImg = new FormData();
+                formDataImg.append('file', profileFile);
+                const data = await userService.uploadProfileImage(formDataImg);
+                if (data.result?.profileImageUrl) {
+                    updateUser({ profileImageUrl: data.profileImageUrl }); // AuthContext 동기화
+                }
+            }
+            await userService.updateProfile({
+                username: formData.username,
+                visibility: formData.visibility
+            });
+            updateUser({ username: formData.username, visibility: formData.visibility });
+            showConfirm('프로필이 성공적으로 수정되었습니다.', () => {
+                navigate('/profile');
+            });
+        } catch (error) {
+            console.error(error);
+            showAlert(error.message || '프로필 수정에 실패했습니다.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // -------------------------------------------------------------------------
@@ -219,7 +268,7 @@ export default function EditProfilePage() {
      * 우선순위: previewUrl (새로 선택한 이미지) → user.profileImageUrl → user.profileImage → 기본 이미지
      * previewUrl은 파일 선택 즉시 생성되는 Blob URL로, 서버 응답 없이 미리보기를 제공.
      */
-    const currentImage = previewUrl || user?.profileImageUrl || user?.profileImage || 'https://picsum.photos/seed/default/200';
+    const currentImage = previewUrl || user?.profileImageUrl || user?.profileImage || DEFAULT_AVATAR;
 
     // -------------------------------------------------------------------------
     // [조기 반환: 로딩 상태]
@@ -299,6 +348,7 @@ export default function EditProfilePage() {
                                 src={currentImage}
                                 alt="profile"
                                 className="w-24 h-24 rounded-[28px] object-cover border-2 border-[#f3f3f3] shadow-sm"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
                             />
                             {/* hover 오버레이: opacity-0 → group-hover:opacity-100 트랜지션 */}
                             <div className="absolute inset-0 bg-black/40 rounded-[28px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
