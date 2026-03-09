@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     // TODO: localStorage에서 'authToken'과 'user'를 읽어 파싱 후 setUser() 호출, 완료 후 setIsLoading(false)
     const token = localStorage.getItem('authToken'); // 저장된 토큰 불러오기
-    const storageUser = localStorage.getItem('userData'); // 저장된 사용자 정보 불러오기
+    const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
     if (token && storageUser) {
       // 로그인 상태 복원
       try {
@@ -158,9 +158,9 @@ export const AuthProvider = ({ children }) => {
       catch (e) {
         console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
         logout();
-        isLoading = false;
       }
     }
+    setIsLoading(false);
   };
 
   // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────

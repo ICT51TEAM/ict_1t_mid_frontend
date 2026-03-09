@@ -49,10 +49,12 @@
  *   팝업 닫기: setPopup({ isOpen: false, type: null })
  *             배경 오버레이 클릭, X 버튼, CLOSE 버튼 모두 동일 동작
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, ChevronRight, LogOut, Shield, Trash2, Bell, Smartphone, FileText, X, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { userService } from '@/api/userService';
 
 export default function SettingsPage() {
     const navigate = useNavigate();
@@ -103,14 +105,14 @@ export default function SettingsPage() {
         //           newMode=false → document.documentElement.classList.remove('dark')
         // 힌트: Tailwind CSS의 class 기반 dark 모드 전략에 따라
         //       루트 요소에 'dark' 클래스를 추가/제거해야 dark:* CSS가 활성화됩니다.
-        useEffect(()=>{
-            localStorage.setItem('darkMode',String(isDarkMode));
-            if(isDarkMode){
-                document.documentElement.classList.add('dark');
-            }else{
-                document.documentElement.classList.remove('dark');
-            }
-        },[isDarkMode])
+        const newMode = !isDarkMode;
+        setIsDarkMode(newMode);
+        localStorage.setItem('darkMode', String(newMode));
+        if (newMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     };
 
     /**
@@ -176,6 +178,31 @@ export default function SettingsPage() {
      *       - 개인정보 처리방침 → setPopup({ isOpen: true, type: 'privacy' })
      *       - Q&A 게시판 → /settings/qna
      */
+
+    const [isNotificationEnabled, setIsNotificationEnabled] = useState(null);
+
+    useEffect(() => {
+        userService.getSettings().then(data => {
+            setIsNotificationEnabled(data.notificationEnabled ?? true);
+        }).catch(() => {});
+    }, []);
+
+    const toggleNotification = async () => {
+        const newVal = !isNotificationEnabled;
+        setIsNotificationEnabled(newVal);
+        localStorage.setItem('notificationEnabled', String(newVal));
+        try {
+            await userService.updateSettings({
+                notificationEnabled: newVal,
+                showVisitorCount: false,
+                labFeaturesEnabled: false,
+                bgmUrl: null,
+                themeColor: null,
+            });
+        } catch(e) {
+            console.warn('알림 설정 저장 실패', e);
+        }
+    };
     const settingItems = [
         {
             title: '계정 설정', items: [
@@ -185,7 +212,13 @@ export default function SettingsPage() {
         },
         {
             title: '알림 및 표시', items: [
-                { icon: <Bell size={20} />, text: '알림 설정', path: '/settings/notifications' },
+                ...(isNotificationEnabled !== null ? [{
+                    icon: <Bell size={20} />,
+                    text: '알림',
+                    isToggle: true,
+                    value: isNotificationEnabled,
+                    onToggle: toggleNotification
+                }] : []),
                 {
                     icon: <Smartphone size={20} />,
                     text: '다크 모드',
@@ -280,9 +313,9 @@ export default function SettingsPage() {
                                         {item.isToggle && (
                                             <button
                                                 onClick={item.onToggle}
-                                                className={`relative w-[44px] h-[24px] rounded-full transition-all duration-300 ${item.value ? 'bg-black dark:bg-white' : 'bg-[#e5e5e5] dark:bg-gray-700'}`}
+                                                className={`relative w-[44px] h-[24px] rounded-full ${item.value ? 'bg-black dark:bg-white' : 'bg-[#e5e5e5] dark:bg-gray-700'}`}
                                             >
-                                                <div className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full transition-all duration-300 ${item.value ? 'translate-x-[20px] bg-white dark:bg-[#1c1f24]' : 'translate-x-0 bg-white'}`} />
+                                                <div className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] rounded-full ${item.value ? 'translate-x-[20px] bg-white dark:bg-[#1c1f24]' : 'translate-x-0 bg-white'}`} />
                                             </button>
                                         )}
                                     </div>
