@@ -149,6 +149,15 @@ export const userService = {
         // 힌트: try { apiClient.get('/users/me') → data 추출 → calculatedLevel = Math.floor((data.totalBadges||0)/5)+1
         //        → return { ...data, level: data.level || calculatedLevel } }
         //       catch(error) { console.error(...); throw error; }
+        try {
+            const response = await apiClient.get('/users/me');
+            const data = response.data;
+            const calculatedLevel = Math.floor((data.totalBadges || 0) / 5) + 1; // ?. 쓸수없다. undefined를 채우고자 하는게 아니니까
+            return { ...data, level: calculatedLevel }; // 언제나 계산
+        } catch (error) {
+            console.error('Error fetching my profile:', error);
+            throw error;
+        }
     },
 
     /**
@@ -179,10 +188,12 @@ export const userService = {
      * 성공: 200 OK
      * 실패: 404 Not Found (사용자 없음), 403 Forbidden (PRIVATE 계정)
      */
+
     getUserProfile: async (userId) => {
-        // TODO: GET /users/{userId} 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.get(`/users/${userId}`) → response.data
+        const response = await apiClient.get(`/users/${userId}`);
+        return response.data;
     },
+
 
     /**
      * [3] 내 프로필 수정
@@ -207,8 +218,8 @@ export const userService = {
      * 실패: 400 (유효성 오류, 중복 닉네임 등), 401 Unauthorized
      */
     updateProfile: async (profileData) => {
-        // TODO: PUT /users/me 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me', profileData) → response.data
+        const response = await apiClient.put('/users/me', profileData);
+        return response.data;
     },
 
     /**
@@ -240,6 +251,8 @@ export const userService = {
         // TODO: POST /users/me/profile-image 를 호출하고 response.data를 반환하세요.
         // 힌트: Content-Type을 'multipart/form-data'로 오버라이드해야 합니다.
         //       apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } }) → response.data
+        const response = await apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        return response.data; //파일 업로드는 application/json(기본값)이 아니라 multipart/form-data
     },
 
     /**
@@ -263,8 +276,8 @@ export const userService = {
      * 실패: 400/401 (현재 비밀번호 불일치), 400 (새 비밀번호 유효성 오류)
      */
     changePassword: async (passwordData) => {
-        // TODO: PUT /users/me/password 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me/password', passwordData) → response.data
+        const response = await apiClient.put('/users/me/password', passwordData);
+        return response.data;
     },
 
     /**
@@ -293,7 +306,6 @@ export const userService = {
     deleteAccount: async (passwordData) => {
         const response = await apiClient.delete('/users/me', { data: passwordData });
         return response.data;
-
     },
 
     /**
@@ -315,8 +327,8 @@ export const userService = {
      * 성공: 200 OK
      */
     getSettings: async () => {
-        // TODO: GET /users/me/settings 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.get('/users/me/settings') → response.data
+        const response = await apiClient.get('/users/me/settings');
+        return response.data;
     },
 
     /**
@@ -343,7 +355,7 @@ export const userService = {
      * 실패: 400 Bad Request (유효하지 않은 설정 값)
      */
     updateSettings: async (settings) => {
-        // TODO: PUT /users/me/settings 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me/settings', settings) → response.data
+        const response = await apiClient.put('/users/me/settings', settings);
+        return response.data;
     }
 };
