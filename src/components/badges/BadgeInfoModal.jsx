@@ -99,6 +99,13 @@ export default function BadgeInfoModal({ isOpen, onClose }) {
     // TODO: setIsLoading(true) 후 badgeService.getAllTypes() 호출
     // TODO: 성공 시 setBadgeTypes(data), 실패 시 setBadgeTypes([])
     // 힌트: .then(setBadgeTypes).catch(() => setBadgeTypes([])).finally(() => setIsLoading(false))
+    if (!isOpen) return;    //모달 = 팝업창, isOpen = true 이면 팝업창이 열림
+
+    setIsLoading(true);
+    badgeService.getAllTypes()
+      .then(setBadgeTypes)    //badgeTypes를 나중에 화면에 뿌린다
+      .catch(() => setBadgeTypes([]))
+      .finally(() => setIsLoading(false));
   }, [isOpen]);
 
   // isOpen === false 이면 null 반환 → 모달이 DOM에서 완전히 사라짐
