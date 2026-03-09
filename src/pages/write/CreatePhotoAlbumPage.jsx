@@ -108,7 +108,7 @@ const layouts = [
  */
 const VISIBILITY_MAP = {
   private: 'PRIVATE',
-  friends: 'FRIENDS_ONLY',
+  friends: 'FRIENDS',
   public:  'PUBLIC',
 };
 
