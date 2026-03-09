@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
     setUser(userData); // userdate 갱신
     localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
+    setUser(userData); // userdate 갱신
   };
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
@@ -106,7 +107,8 @@ export const AuthProvider = ({ children }) => {
    */
   const logout = () => {
     // TODO: localStorage에서 'authToken', 'user' 제거 후 setUser(null) 호출
-    localStorage.removeItem('authToken'); //토큰삭제
+    localStorage.removeItem('accessToken'); // accessToken 삭제
+    localStorage.removeItem('refreshToken'); // refreshToken 삭제
     localStorage.removeItem('user'); //사용자 정보 삭제
     setUser(null); // state를 null로 변환
   };
@@ -149,7 +151,7 @@ export const AuthProvider = ({ children }) => {
    */
   const checkAuth = async () => {
     // TODO: localStorage에서 'authToken'과 'user'를 읽어 파싱 후 setUser() 호출, 완료 후 setIsLoading(false)
-    const token = localStorage.getItem('authToken'); // 저장된 토큰 불러오기
+    const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
     const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
     if (token && storageUser) {
       // 로그인 상태 복원
@@ -160,8 +162,9 @@ export const AuthProvider = ({ children }) => {
         console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
         logout();
       }
-    }
-    setIsLoading(false);
+      finally {
+        setIsLoading(false);
+      }
   };
 
   // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────

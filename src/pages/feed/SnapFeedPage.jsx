@@ -111,32 +111,46 @@ export default function SnapFeedPage() {
     //   → 이미 진행 중인 비동기 요청의 응답이 왔을 때 setState를 막아 메모리 누수 방지
     // ---------------------------------------------------------
     useEffect(() => {
-        // TODO: apiClient.get('/albums/feed', { params: { type: 'photo', friendsOnly: filter==='following', tag: searchQuery||undefined } }) 호출
-        // TODO: cancelled 패턴(let cancelled=false)으로 메모리 누수 방지
-        // TODO: 성공 시 setAllItems(), 실패 시 setAllItems([]), finally에서 setLoading(false)
-        // 힌트: setLoading(true), setDisplayCount(20) 먼저 호출 후 API 요청
+        let cancelled = false;
+        setLoading(true);
+        setDisplayCount(20);
+
+        const fetchFeed = async () => {
+            try {
+                const tagParam = searchQuery || undefined;
+                const response = await apiClient.get('/albums/feed', {
+                    params: { type: 'photo', friendsOnly: filter === 'following', tag: tagParam }
+                });
+                if (!cancelled) {
+                    setAllItems(response.data || []);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setAllItems([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchFeed();
+
+        return () => {
+            cancelled = true;
+        };
     }, [filter, searchQuery]);
 
-    // ---------------------------------------------------------
-    // [useEffect #2] 무한 스크롤 IntersectionObserver 설정
-    // 실행 시점: 컴포넌트 마운트 시 1회 (빈 의존성 배열 [])
-    //
-    // 동작:
-    //   [1] sentinelRef.current(DOM 요소)가 없으면 즉시 return
-    //   [2] new IntersectionObserver 생성
-    //       - 콜백: entry.isIntersecting이 true이면 (요소가 뷰포트에 진입하면)
-    //               setDisplayCount(c => c + 20) → 20개 더 렌더링
-    //   [3] obs.observe(sentinelRef.current): 해당 요소 관찰 시작
-    //
-    // 클린업: return () => obs.disconnect()
-    //   → 컴포넌트 언마운트 시 IntersectionObserver 해제 (메모리 누수 방지)
-    //
-    // 주의: 이 useEffect는 마운트 시 1회만 실행되므로,
-    //       sentinelRef.current는 반드시 초기 렌더링에서 이미 DOM에 존재해야 한다.
-    // ---------------------------------------------------------
     useEffect(() => {
-        // TODO: new IntersectionObserver(() => setDisplayCount(prev => prev+20)) 로 sentinelRef 감시
-        // 힌트: obs.observe(sentinelRef.current), 클린업에서 obs.disconnect()
+        if (!sentinelRef.current) return;
+        const obs = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                setDisplayCount(prev => prev + 20);
+            }
+        });
+        obs.observe(sentinelRef.current);
+        return () => obs.disconnect();
     }, []);
 
     // ---------------------------------------------------------

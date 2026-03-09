@@ -218,8 +218,6 @@ export const userService = {
      * 실패: 400 (유효성 오류, 중복 닉네임 등), 401 Unauthorized
      */
     updateProfile: async (profileData) => {
-        // TODO: PUT /users/me 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me', profileData) → response.data
         const response = await apiClient.put('/users/me', profileData);
         return response.data;
     },
@@ -278,8 +276,6 @@ export const userService = {
      * 실패: 400/401 (현재 비밀번호 불일치), 400 (새 비밀번호 유효성 오류)
      */
     changePassword: async (passwordData) => {
-        // TODO: PUT /users/me/password 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me/password', passwordData) → response.data
         const response = await apiClient.put('/users/me/password', passwordData);
         return response.data;
     },
@@ -308,9 +304,8 @@ export const userService = {
      * 실패: 401 (비밀번호 불일치)
      */
     deleteAccount: async (passwordData) => {
-        // TODO: DELETE /users/me 를 호출하고 response.data를 반환하세요.
-        // 힌트: DELETE에 body를 포함하려면 axios config의 data 옵션을 사용합니다.
-        //       apiClient.delete('/users/me', { data: passwordData }) → response.data
+        const response = await apiClient.delete('/users/me', { data: passwordData });
+        return response.data;
     },
 
     /**
@@ -332,8 +327,6 @@ export const userService = {
      * 성공: 200 OK
      */
     getSettings: async () => {
-        // TODO: GET /users/me/settings 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.get('/users/me/settings') → response.data
         const response = await apiClient.get('/users/me/settings');
         return response.data;
     },
@@ -362,8 +355,6 @@ export const userService = {
      * 실패: 400 Bad Request (유효하지 않은 설정 값)
      */
     updateSettings: async (settings) => {
-        // TODO: PUT /users/me/settings 를 호출하고 response.data를 반환하세요.
-        // 힌트: apiClient.put('/users/me/settings', settings) → response.data
         const response = await apiClient.put('/users/me/settings', settings);
         return response.data;
     }

@@ -94,6 +94,7 @@ export default function LoginPage() {
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
                 const destination = location.state?.from?.pathname || 'feed';
                 navigate(destination, { replace: true });
+                console.log('로그인 처리 성공!!');
             }
             else {
                 throw new Error("서버로부터 토큰을 받지 못했습니다.");
