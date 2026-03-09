@@ -126,7 +126,7 @@ export default function EmailVerificationPage() {
                 ─────────────────────────────────────────────────────── */}
                 <div className="flex items-center justify-between mb-8">
                     <button onClick={() => navigate(-1)}><ArrowLeft size={24} /></button>
-                    <h1 className="text-[18px] font-black italic tracking-tighter uppercase">VERIFY EMAIL</h1>
+                    <h1 className="text-[20px] font-black italic tracking-tighter uppercase"></h1>
                     <div className="w-10"></div>
                 </div>
 
@@ -150,7 +150,7 @@ export default function EmailVerificationPage() {
                         step 2: "ENTER CODE" / "{email}로 전송된 6자리 인증번호를 입력해주세요."
                     ─────────────────────────────────────────────────── */}
                     <h2 className="text-2xl font-black italic mb-2 tracking-tighter">
-                        {step === 1 ? 'EMAIL AUTHENTICATION' : 'ENTER CODE'}
+                        {step === 1 ? '인증용 이메일 발송' : '인증 코드 입력'}
                     </h2>
                     <p className="text-[14px] text-[#a3b0c1] text-center mb-10 font-medium">
                         {step === 1
