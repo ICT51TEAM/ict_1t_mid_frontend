@@ -207,6 +207,39 @@ export default function FriendProfilePage() {
         //         찾으면 setRequestStatus('accepted') + setFriendshipId(matched.friendshipId)
         //         못 찾으면 setRequestStatus('none')
         //   실패: 무시 (catch(() => {}))
+            setIsLoading(true);
+        setPostsLoading(true);
+        // [API 1] userService.getUserProfile(friendId)
+        userService.getUserProfile(friendId)
+            .then(data => setUser(data))
+            .catch(() => setUser({ 
+                id: friendId, 
+                username: `User ${friendId}`, 
+                profileImageUrl: null, 
+                totalBadges: 0, 
+                friendCount: 0 
+            }))
+            .finally(() => setIsLoading(false));
+        // [API 2] apiClient.get('/albums/feed', ... )
+        apiClient.get('/albums/feed', { params: { type: 'photo' } })
+            .then(response => {
+                const filtered = (response.data || []).filter(post => String(post.authorId) === String(friendId));
+                setUserPosts(filtered);
+            })
+            .catch(() => setUserPosts([]))
+            .finally(() => setPostsLoading(false));
+        // [API 3] friendService.listFriends()
+        friendService.listFriends()
+            .then(friends => {
+                const matched = (friends || []).find(f => String(f.userId || f.id) === String(friendId));
+                if (matched) {
+                    setRequestStatus('accepted');
+                    setFriendshipId(matched.friendshipId);
+                } else {
+                    setRequestStatus('none');
+                }
+            })
+            .catch(() => {});
     }, [friendId]);
 
     /**
@@ -232,13 +265,30 @@ export default function FriendProfilePage() {
      * 에러: "오류가 발생했습니다. 다시 시도해주세요." 알림
      */
     const handleFriendAction = async () => {
-        // TODO: [1] setIsRequesting(true) 로 로딩 상태 시작
-        // TODO: [2] requestStatus === 'accepted' 이면 friendService.removeFriend(friendshipId) 호출
-        //           성공 시 setRequestStatus('none'), setFriendshipId(null), showAlert 호출
-        // TODO: [3] requestStatus === 'none' 이면 friendService.sendRequest(friendId) 호출
-        //           성공 시 setRequestStatus('pending'), showAlert 호출
-        // TODO: [4] 에러 시 showAlert으로 오류 알림 표시
-        // TODO: [5] finally에서 setIsRequesting(false) 로 로딩 상태 종료
+             // [1] setIsRequesting(true) 로 로딩 상태 시작
+        setIsRequesting(true);
+        try {
+            // [2] requestStatus === 'accepted' 이면 해제 동작
+            if (requestStatus === 'accepted') {
+                await friendService.removeFriend(friendshipId);
+                setRequestStatus('none');
+                setFriendshipId(null);
+                showAlert('success', '글벗 관계가 해제되었습니다.');
+            } 
+            // [3] requestStatus === 'none' 이면 신청 동작
+            else if (requestStatus === 'none') {
+                await friendService.sendRequest(friendId);
+                setRequestStatus('pending');
+                showAlert('success', '글벗 요청을 보냈습니다.');
+            }
+        } catch (error) {
+            // [4] 에러 시 showAlert으로 오류 알림 표시
+            console.error('친구 요청 오류:', error);
+            showAlert('error', '오류가 발생했습니다. 다시 시도해주세요.');
+        } finally {
+            // [5] finally에서 로딩 상태 종료
+            setIsRequesting(false);
+        }
     };
 
     // isLoading === true: 프로필 API 완료 전 → 전체 로딩 화면 표시
@@ -322,11 +372,10 @@ export default function FriendProfilePage() {
                         <button
                             onClick={handleFriendAction}
                             disabled={isRequesting || requestStatus === 'pending'}
-                            className={`flex-1 h-10 rounded-[4px] font-bold text-[13px] flex items-center justify-center gap-1 transition-colors ${
-                                requestStatus === 'pending' ? 'bg-gray-200 text-gray-500 border border-gray-300' :
-                                requestStatus === 'accepted' ? 'bg-white text-black border border-[#e5e5e5] hover:bg-gray-50' :
-                                'bg-black text-white hover:bg-gray-800'
-                            }`}
+                            className={`flex-1 h-10 rounded-[4px] font-bold text-[13px] flex items-center justify-center gap-1 transition-colors ${requestStatus === 'pending' ? 'bg-gray-200 text-gray-500 border border-gray-300' :
+                                    requestStatus === 'accepted' ? 'bg-white text-black border border-[#e5e5e5] hover:bg-gray-50' :
+                                        'bg-black text-white hover:bg-gray-800'
+                                }`}
                         >
                             {isRequesting ? <Loader2 className="animate-spin" size={16} /> : null}
                             {requestStatus === 'pending' ? '요청 대기중' : requestStatus === 'accepted' ? '글벗 해제' : '글벗 요청'}

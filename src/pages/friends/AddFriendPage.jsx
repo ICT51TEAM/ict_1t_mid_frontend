@@ -86,9 +86,21 @@ export default function AddFriendPage() {
      */
     const handleSearch = async (e) => {
         // TODO: [1] e.preventDefault()로 폼 기본 동작(페이지 리로드) 방지
+        e.preventDefault();
         // TODO: [2] query.trim()이 비어있으면 즉시 return
+        const trimmedQuery = query.trim();
+        if(!trimmedQuery) return;
         // TODO: [3] friendService.searchUsers(query) 호출 후 응답을 setResults()에 저장
+        try{
+             const data = await friendService.searchUsers(trimmedQuery);
+             setResults(data || []);
+
+        }catch(error){
+            alert('친구를 찾을 수 없습니다.');
+            setResults([]);
+        }
         // 힌트: await를 사용하여 비동기 API 결과를 기다립니다.
+
     };
 
     return (
@@ -162,7 +174,15 @@ export default function AddFriendPage() {
                                     </div>
                                     {/* 친구 신청 버튼 (현재 alert 처리, API 미연동) */}
                                     <button
-                                        onClick={() => alert('친구 요청을 보냈습니다.')}
+                                        onClick={async () => {
+                                            try {
+                                                 await friendService.sendRequest(user.id || user.userId);
+                                                    alert('친구 요청을 보냈습니다.');
+                                            } catch (error) {
+                                                console.error('친구 요청 오류:', error);
+                                                alert('친구 요청에 실패하거나 이미 요청된 상태입니다.');
+                                            }
+                                        }}
                                         className="px-4 py-2 bg-black text-white text-[12px] font-bold rounded-[4px]"
                                     >
                                         친구 신청
