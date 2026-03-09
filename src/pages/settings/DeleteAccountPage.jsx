@@ -41,10 +41,12 @@ import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { userService } from '@/api/userService';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DeleteAccountPage() {
     const navigate = useNavigate();
 
+    const {logout} = useAuth();
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
     // -------------------------------------------------------------------------
@@ -84,13 +86,18 @@ export default function DeleteAccountPage() {
      * 에러 처리: try-catch 없음. API 실패 시 미처리 예외가 콘솔에 출력됨.
      */
     const handleSubmit = async (e) => {
-        // TODO: [1] e.preventDefault() 호출
-        // TODO: [2] window.confirm('정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.')
-        //           확인(OK) 클릭 시 아래 단계 실행, 취소 클릭 시 아무 동작 없음
-        // TODO: [3] (확인 클릭 시) userService.deleteAccount({ password }) 호출
-        //           → 백엔드에 비밀번호를 담아 DELETE 요청
-        // TODO: [4] alert('탈퇴 처리가 완려되었습니다.') → navigate('/login')
-        // 힌트: try-catch 없이 구현, window.confirm 결과를 if 조건으로 감싸서 처리
+        e.preventDefault();
+        const isConfirmed = await showAlert(
+        '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
+        '회원 탈퇴 확인',
+        'confirm' // 프로젝트의 Alert 종류에 따라 'warning' 또는 'confirm' 사용
+    );
+        if (isConfirmed) {
+            await userService.deleteAccount({ password });
+            showAlert('탈퇴 처리가 완료되었습니다.','탈퇴 완료','success');
+            logout();
+            navigate('/login');
+        }
     };
 
     // -------------------------------------------------------------------------
