@@ -108,7 +108,7 @@ const layouts = [
  */
 const VISIBILITY_MAP = {
   private: 'PRIVATE',
-  friends: 'FRIENDS_ONLY',
+  friends: 'FRIENDS',
   public:  'PUBLIC',
 };
 
@@ -210,10 +210,25 @@ export default function CreatePhotoAlbumPage() {
    */
   const handlePhotoUpload = (e) => {
     // TODO: e.target.files에서 File 배열 추출
+     const files = e.target.files;
     // TODO: 각 File을 { url: URL.createObjectURL(file), file } 객체로 변환
+    if(files){
+      const newPhotoObjects = Array.from(files).map((file) => ({
+        url: URL.createObjectURL(file), // 브라우저 로컬 미리보기 URL
+        file: file
+      }));
+    
     // TODO: 기존 photos + 새 항목 합쳐 최대 4장(.slice(0,4))으로 제한 후 setPhotos()
     // 힌트: 사진 수에 따라 setSelectedLayout(1/2/4) 자동 조정
+      const updatedPhotos = [...photos, ...newPhotoObjects].slice(0, 4);
+      setPhotos(updatedPhotos);
+
+      if (updatedPhotos.length === 1) setSelectedLayout(1);
+      else if (updatedPhotos.length === 2) setSelectedLayout(2);
+      else if (updatedPhotos.length >= 4) setSelectedLayout(4);
+    }
   };
+
 
   /**
    * @function removePhoto
@@ -356,11 +371,57 @@ export default function CreatePhotoAlbumPage() {
    */
   const handleComplete = async () => {
     // TODO: [유효성 검사] title, content, photos.length===0, userId===null 체크
-    // TODO: [단계 1] photoService.uploadPhotos({ files: photos.map(p=>p.file), userId }) 호출
+    if (!title.trim()) { showAlert('제목을 입력해주세요.', '입력 오류', 'alert'); return; }
+    if (!content.trim()) { showAlert('내용을 입력해주세요.', '입력 오류', 'alert'); return; }
+    if (photos.length === 0) { showAlert('사진을 1장 이상 업로드해주세요.', '입력 오류', 'alert'); return; }
+
+    const userId = getCurrentUserId();
+    if (!userId) {
+      showAlert('로그인 정보가 없습니다. 다시 로그인해주세요.', '인증 오류', 'alert');
+      navigate('/login');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+        const uploadResult = await photoService.uploadPhotos({
+        files: photos.map((p) => p.file),
+        userId,
+      });
+
+      const uploadedPhotos = uploadResult?.photos ?? [];
+      if (uploadedPhotos.length === 0) throw new Error('업로드된 사진 정보가 없습니다.');
+
+      const photoIds = uploadedPhotos.map((p) => p.photoId);
+      const slotIndexes = photoIds.map((_, i) => i); // [0, 1, 2, ...] 순서 인덱스
+
+
     // TODO: [단계 2] albumService.createAlbum({ userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }) 호출
+       const result = await albumService.createAlbum({
+        userId,
+        title: title.trim(),
+        bodyText: content.trim(),
+        recordDate: selectedDate,
+        visibility: VISIBILITY_MAP[visibility],
+        layoutType: getLayoutType(selectedLayout),
+        photoIds,
+        slotIndexes,
+        tags,
+      });
+
+      showAlert(result?.message || '스냅이 게시되었습니다!', '게시 완료', 'success');
+      navigate(`/snap/${result.albumId}`, { state: { fromPage: 'create' } });
+    } catch (e) {
+      console.error(e);
+      const message = e.response?.data?.message || e.message || '글 작성에 실패했습니다.';
+      showAlert(message, '업로드 실패', 'alert');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
     // 힌트: 성공 시 showAlert() + navigate(`/snap/${result.albumId}`), 실패 시 showAlert(에러메시지)
     // 힌트: setIsSubmitting(true) → try/catch/finally → setIsSubmitting(false)
-  };
+
 
   return (
     // ResponsiveLayout 미사용 (페이지 전체가 독립적인 전체화면 레이아웃)
