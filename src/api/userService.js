@@ -291,9 +291,9 @@ export const userService = {
      * 실패: 401 (비밀번호 불일치)
      */
     deleteAccount: async (passwordData) => {
-        // TODO: DELETE /users/me 를 호출하고 response.data를 반환하세요.
-        // 힌트: DELETE에 body를 포함하려면 axios config의 data 옵션을 사용합니다.
-        //       apiClient.delete('/users/me', { data: passwordData }) → response.data
+        const response = await apiClient.delete('/users/me', { data: passwordData });
+        return response.data;
+
     },
 
     /**
