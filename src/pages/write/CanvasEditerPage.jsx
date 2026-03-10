@@ -265,9 +265,9 @@ export default function CanvasEditor() {
             const idx = prev.findIndex(el => el.id === id);
             if (idx === -1) return prev;
             const arr = [...prev];
-            if (direction === 'up'     && idx < arr.length - 1) [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
-            else if (direction === 'down'   && idx > 0)             [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
-            else if (direction === 'top')    { const [it] = arr.splice(idx, 1); arr.push(it); }
+            if (direction === 'up' && idx < arr.length - 1) [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+            else if (direction === 'down' && idx > 0) [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+            else if (direction === 'top') { const [it] = arr.splice(idx, 1); arr.push(it); }
             else if (direction === 'bottom') { const [it] = arr.splice(idx, 1); arr.unshift(it); }
             return arr;
         });
@@ -383,9 +383,9 @@ export default function CanvasEditor() {
                                             </div>
                                             <div className="flex gap-1 shrink-0">
                                                 {[
-                                                    { dir: 'top',    Icon: ChevronsUp,   disabled: isTop,    cls: 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-800' },
-                                                    { dir: 'up',     Icon: ChevronUp,    disabled: isTop,    cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
-                                                    { dir: 'down',   Icon: ChevronDown,  disabled: isBottom, cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
+                                                    { dir: 'top', Icon: ChevronsUp, disabled: isTop, cls: 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-800' },
+                                                    { dir: 'up', Icon: ChevronUp, disabled: isTop, cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
+                                                    { dir: 'down', Icon: ChevronDown, disabled: isBottom, cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
                                                     { dir: 'bottom', Icon: ChevronsDown, disabled: isBottom, cls: 'text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' },
                                                 ].map(({ dir, Icon, disabled, cls }) => (
                                                     <button key={dir} onClick={(e) => { e.stopPropagation(); moveLayer(el.id, dir); }}
