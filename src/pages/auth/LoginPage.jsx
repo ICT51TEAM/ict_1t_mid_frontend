@@ -157,7 +157,7 @@ export default function LoginPage() {
                     [카카오 로그인 버튼]
                     - type="button": form submit 이벤트 차단 (handleLogin 호출 안 됨)
                     - onClick: window.location.href를 백엔드 OAuth2 진입점으로 직접 변경
-                      (http://100.91.129.24:8080/api/oauth2/authorization/kakao)
+                      (http://localhost:8080/api/oauth2/authorization/kakao)
                     - 카카오 공식 색상 #FEE500(배경) + #191919(텍스트)
                     - SVG 아이콘(카카오 로고 말풍선 형태) 인라인 포함
                 ─────────────────────────────────────────────────────── */}
@@ -206,7 +206,7 @@ export default function LoginPage() {
                     ─────────────────────────────────────────────────── */}
                     <button
                         type="button"
-                        onClick={() => window.location.href = 'http://100.91.129.24:8080/api/oauth2/authorization/kakao'}
+                        onClick={() => window.location.href = 'http://localhost:8080/api/oauth2/authorization/kakao'}
                         className="w-full h-12 bg-[#FEE500] text-[#191919] font-bold text-[15px] rounded-[4px] flex items-center justify-center gap-3 hover:bg-[#FADA0A] transition-all active:scale-[0.98]"
                     >
                         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">

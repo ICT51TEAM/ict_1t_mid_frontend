@@ -10,7 +10,7 @@
  * @카카오_OAuth2_전체_흐름
  * ─────────────────────────────────────────────────────────────────────────
  * [1] 사용자가 LoginPage의 "카카오 로그인" 버튼 클릭
- *     → window.location.href = 'http://100.91.129.24:8080/api/oauth2/authorization/kakao'
+ *     → window.location.href = 'http://localhost:8080/api/oauth2/authorization/kakao'
  *
  * [2] 백엔드(Spring Security OAuth2)가 카카오 인증 서버로 리다이렉트
  *
