@@ -156,6 +156,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
     const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     if (token && storageUser) {
       // 로그인 상태 복원
@@ -165,9 +166,15 @@ export const AuthProvider = ({ children }) => {
       if (token && storageUser) {
         // 로그인 상태 복원
 >>>>>>> Stashed changes
+=======
+    try {
+      if (token && storageUser) {
+        // 로그인 상태 복원
+>>>>>>> Stashed changes
         setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
         setIsAuthenticated(true);
       }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
       catch (e) {
         console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
@@ -178,6 +185,8 @@ export const AuthProvider = ({ children }) => {
         setIsLoading(false);
       }
 =======
+=======
+>>>>>>> Stashed changes
     }
     catch (e) {
       console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
@@ -185,6 +194,9 @@ export const AuthProvider = ({ children }) => {
     }
     finally {
       setIsLoading(false);
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
   };
