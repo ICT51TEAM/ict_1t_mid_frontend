@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   // ── 파생 상태: 인증 여부 ──────────────────────────────────────────────────
   // user 객체가 존재하면 true, null이면 false.
   // !!를 사용해 불리언으로 변환함. 별도 state가 아닌 파생값이므로 항상 user와 동기화됨.
-  const isAuthenticated = !!user;
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // ── 함수: login ───────────────────────────────────────────────────────────
   /**
@@ -90,12 +90,15 @@ export const AuthProvider = ({ children }) => {
    *   localStorage['user']      = JSON.stringify(userData) (직렬화된 객체)
    */
   const login = (accessToken, refreshToken, userData) => {
-    // TODO: localStorage에 'authToken'(token), 'user'(JSON.stringify(userData)) 저장 후 setUser(userData) 호출
+    if (!accessToken || !userData) {
+      console.error("로그인 데이터가 부족합니다:", { accessToken, userData });
+      return;
+    }
     localStorage.setItem('accessToken', accessToken); // 로컬스토리지에 accessToken 저장
     localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
-    setUser(userData); // userdate 갱신
     localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
     setUser(userData); // userdate 갱신
+    setIsAuthenticated(true);
   };
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
@@ -150,23 +153,22 @@ export const AuthProvider = ({ children }) => {
    *   4. 항상 마지막에 isLoading = false로 설정 (성공/실패 무관)
    */
   const checkAuth = async () => {
-    // TODO: localStorage에서 'authToken'과 'user'를 읽어 파싱 후 setUser() 호출, 완료 후 setIsLoading(false)
-
     const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
-
     const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
-    if (token && storageUser) {
-      // 로그인 상태 복원
-      try {
+    try {
+      if (token && storageUser) {
+        // 로그인 상태 복원
         setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
+        setIsAuthenticated(true);
       }
-      catch (e) {
-        console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
-        logout();
-      }
-      finally {
-        setIsLoading(false);
-      }
+    }
+    catch (e) {
+      console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
+      localStorage.removeItem('user');
+      logout();
+    }
+    finally {
+      setIsLoading(false);
     }
   };
 
