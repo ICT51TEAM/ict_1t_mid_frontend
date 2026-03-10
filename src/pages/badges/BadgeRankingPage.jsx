@@ -99,13 +99,26 @@ export default function BadgeRankingPage() {
      *   5. finally: isLoading = false (항상 로딩 해제)
      */
     useEffect(() => {
-        // TODO: setIsLoading(true) 먼저 호출
-        // TODO: activeTab === 'GLOBAL' → badgeService.getGlobalRanking() 호출
-        //       activeTab === 'FRIENDS' → badgeService.getFriendsRanking() 호출
-        // TODO: 응답이 배열이면 setRanking(data), 아니면 setRanking([])
-        // TODO: 에러 시 console.error + setRanking([])
-        // 힌트: async 함수(load) 내부에서 try/catch/finally, finally에서 setIsLoading(false)
-    }, [activeTab]);
+        const load = async () => {
+            setIsLoading(true);
+            try {
+                if (activeTab === 'GLOBAL') {
+                    const data = await badgeService.getGlobalRanking();
+                    setRanking(Array.isArray(data) ? data : []);
+                } else {
+                    const data = await badgeService.getFriendsRanking();
+                    setRanking(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                console.error('랭킹 로드 실패:', error);
+                setRanking([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        load();
+    }, [activeTab]); // global, friends 탭이 바뀔 때마다 실행
+    
 
     /**
      * @function renderContent
