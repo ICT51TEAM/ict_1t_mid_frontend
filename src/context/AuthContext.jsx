@@ -155,13 +155,20 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
     const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
+<<<<<<< Updated upstream
 
     if (token && storageUser) {
       // 로그인 상태 복원
       try {
+=======
+    try {
+      if (token && storageUser) {
+        // 로그인 상태 복원
+>>>>>>> Stashed changes
         setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
         setIsAuthenticated(true);
       }
+<<<<<<< Updated upstream
       catch (e) {
         console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
         localStorage.removeItem('user');
@@ -170,6 +177,15 @@ export const AuthProvider = ({ children }) => {
       finally {
         setIsLoading(false);
       }
+=======
+    }
+    catch (e) {
+      console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
+      logout();
+    }
+    finally {
+      setIsLoading(false);
+>>>>>>> Stashed changes
     }
   };
 
