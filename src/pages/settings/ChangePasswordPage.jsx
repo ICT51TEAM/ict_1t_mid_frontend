@@ -126,7 +126,7 @@ export default function ChangePasswordPage() {
             currentPassword: formData.currentPassword,
             newPassword: formData.newPassword
         });
-        showConfirm('비밀번호가 변경되었습니다.');
+        showAlert('비밀번호가 변경되었습니다.', '성공', 'success');
         navigate('/settings');
     };
 

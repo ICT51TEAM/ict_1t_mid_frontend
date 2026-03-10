@@ -50,6 +50,7 @@ import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Crown } from 'lucide-react';
 import { badgeService } from '@/api/badgeService';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
 
 export default function BadgeRankingPage() {
     const navigate = useNavigate();
@@ -102,12 +103,13 @@ export default function BadgeRankingPage() {
         const load = async () => {
             setIsLoading(true);
             try {
+                // BadgeRankingPage useEffect 수정
                 if (activeTab === 'GLOBAL') {
                     const data = await badgeService.getGlobalRanking();
-                    setRanking(Array.isArray(data) ? data : []);
+                    setRanking(Array.isArray(data?.content) ? data.content : []);
                 } else {
                     const data = await badgeService.getFriendsRanking();
-                    setRanking(Array.isArray(data) ? data : []);
+                    setRanking(Array.isArray(data?.content) ? data.content : []);
                 }
             } catch (error) {
                 console.error('랭킹 로드 실패:', error);
@@ -154,24 +156,31 @@ export default function BadgeRankingPage() {
         return (
             <div className="flex flex-col">
                 {ranking.map((user, idx) => (
-                    <div key={user.id} className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35]">
+                    <div key={user.userId || user.id || idx} className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35]">
                         <div className="flex items-center gap-4">
                             {/* 순위 표시: 1위 = Crown 아이콘(노란색), 2위+ = 숫자 */}
                             <div className="w-6 text-[14px] font-black italic text-[#ccd3db]">
                                 {idx + 1 === 1 ? <Crown size={18} className="text-yellow-400" /> : idx + 1}
                             </div>
                             {/* 프로필 이미지 */}
-                            <img src={user?.profileImage} alt="p" className="w-10 h-10 rounded-xl border border-[#f3f3f3]" />
+                            <img
+                                src={getImageUrl(user?.profileImageUrl || user?.profileImage) || DEFAULT_AVATAR}
+                                alt="p"
+                                className="w-10 h-10 rounded-xl border border-[#f3f3f3]"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
+                            />
                             <div className="flex flex-col">
                                 {/* 유저명 */}
                                 <span className="font-bold text-[14px]">{user?.username}</span>
                                 {/* 달개 레벨 (파란색) */}
-                                <span className="text-[11px] text-blue-600 font-bold">LV.{user?.level || 1}</span>
+                                <span className="text-[11px] text-blue-600 font-bold">
+                                    LV.{user?.level || Math.floor((user?.totalBadges || 0) / 5) + 1}
+                                </span>
                             </div>
                         </div>
                         {/* 포인트: 1위 = 10000pts, 순위마다 100pts 감소 */}
                         <div className="text-[12px] font-bold text-[#7b8b9e]">
-                            {10000 - idx * 100} pts
+                            {(user?.totalBadges || 0) * 100} pts
                         </div>
                     </div>
                 ))}

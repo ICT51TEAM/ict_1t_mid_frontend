@@ -62,6 +62,7 @@ import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 // 미읽음 알림 수 조회 API 서비스
 import { notificationService } from '@/api/notificationService';
+import { userService } from '@/api/userService';
 
 /**
  * @component SnapHeader
@@ -75,7 +76,10 @@ export default function SnapHeader() {
 
     // ── 컨텍스트: 로그인 여부 ─────────────────────────────────────────────────
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
+
     const { isAuthenticated } = useAuth();
+
+
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
@@ -100,6 +104,11 @@ export default function SnapHeader() {
      *   - 컴포넌트 언마운트 또는 isAuthenticated 변경 시:
      *     clearInterval(interval)로 폴링 타이머를 해제해 메모리 누수 방지
      */
+
+
+
+
+
     useEffect(() => {
         // TODO: setInterval로 30초마다 notificationService.getUnreadCount() 호출해
         //       setUnreadCount() 업데이트, 클린업에서 clearInterval 호출
@@ -107,6 +116,36 @@ export default function SnapHeader() {
         //       fetchUnread 비동기 함수 안에서 try/catch로 data?.count ?? 0 처리
         //       fetchUnread()를 즉시 1회 호출 후 setInterval(fetchUnread, 30000) 등록
         //       return () => clearInterval(interval) 로 클린업
+        if (!isAuthenticated) {
+            setUnreadCount(0);
+            return;
+        }
+
+        const fetchUnread = async () => {
+            try {
+                // localStorage에 값이 없으면 서버에서 가져오기
+                let notiEnabled = localStorage.getItem('notificationEnabled');
+                if (notiEnabled === null) {
+                    const settings = await userService.getSettings();
+                    notiEnabled = String(settings.notificationEnabled ?? true);
+                    localStorage.setItem('notificationEnabled', notiEnabled);
+                }
+
+                if (notiEnabled === 'false') {
+                    setUnreadCount(0);
+                    return;
+                }
+
+                const data = await notificationService.getAll();
+                setUnreadCount(
+                    Array.isArray(data) ? data.filter(n => !(n.isRead ?? n.read)).length : 0
+                );
+            } catch (e) {}
+        };
+
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
+        return () => clearInterval(interval);
     }, [isAuthenticated]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
