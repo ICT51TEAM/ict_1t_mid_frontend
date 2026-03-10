@@ -17,11 +17,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://100.91.129.24:8080',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: 'http://100.91.129.24:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/uploads/, '/api/uploads'),
       },

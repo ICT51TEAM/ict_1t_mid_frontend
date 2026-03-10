@@ -19,15 +19,15 @@ import axios from 'axios';
 
 /**
  * [환경 감지 및 Base URL 결정 함수]
- * - 웹 브라우저 (Vite): http://localhost:8080/api
+ * - 웹 브라우저 (Vite): http://100.91.129.24:8080/api (또는 localhost:8080/api)
  * - 안드로이드 에뮬레이터: http://10.0.2.2:8080/api
  */
 const getBaseUrl = () => {
   const { hostname, port, href } = window.location;
 
-  // 브라우저 개발 환경 (localhost) → Vite 프록시 사용 (CORS 우회)
-  if (hostname === 'localhost' && port === '5173') {
-    console.log('[Environment]: Web Browser (localhost:5173)');
+  // 브라우저 개발 환경 (localhost 또는 100.91.129.24) → Vite 프록시 사용 (CORS 우회)
+  if ((hostname === 'localhost' || hostname === '100.91.129.24') && port === '5173') {
+    console.log(`[Environment]: Web Browser (${hostname}:${port})`);
     return '/api';
   }
   // Android 에뮬레이터 (Capacitor) 또는 실 기기
