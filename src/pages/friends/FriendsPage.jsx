@@ -139,6 +139,22 @@ export default function FriendsPage() {
      *   두 호출은 순차(await) 실행됨
      * 에러 시 콘솔에 출력하고 상태는 빈 배열로 유지
      */
+    const fetchAllData = async () => {
+        try {
+            const [friendsData, receiveData, sentData] = await Promise.all([
+                friendService.listFriends(),
+                friendService.listPendingRequests(),
+                friendService.listSentPendingRequests()
+            ]);
+            setFriends(friendsData || []);
+            setReceivedRequests(receiveData || []);
+            setSentRequests(sentData || []);
+        }
+        catch (error) {
+            console.error('데이터 로딩 실패:', error);
+        }
+    }
+
     useEffect(() => {
         // TODO: friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
         // 힌트: Promise.all([...]) 또는 순차 await로 두 API를 호출하고
@@ -350,7 +366,6 @@ export default function FriendsPage() {
                 {/* 검색 바 */}
                 <div className="px-4 py-6 flex flex-col gap-3 sticky top-[110px] bg-white dark:bg-[#1c1f24] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     <div className="flex gap-3">
-                        {/* 검색 입력창 (Search 아이콘 포함) */}
                         <div className="relative flex-1 group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ccd3db] group-hover:text-black transition-colors" size={18} />
                             <input
@@ -365,24 +380,12 @@ export default function FriendsPage() {
                             <UserPlus size={22} />
                         </button>
                     </div>
-
-                    {/* 실시간 검색 결과 드롭다운
-                        조건: searchQuery 비지 않음 AND searchResults.length > 0
-                        각 항목: 프로필 이미지 + 유저명 + #ID → 클릭 시 프로필 페이지 이동 */}
+                    {/* 검색 결과 드롭다운 */}
                     {searchQuery && searchResults.length > 0 && (
                         <div className="bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35] rounded-xl shadow-2xl mt-1 overflow-hidden">
                             {searchResults.map(user => (
-                                <div
-                                    key={user.id}
-                                    onClick={() => navigate(`/friend/${user.id || user.userId}`)}
-                                    className="flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#292e35] border-b border-[#fafafa] dark:border-[#292e35] last:border-0 cursor-pointer"
-                                >
-                                    {/* 검색 결과 프로필 이미지 (실패 시 DEFAULT_AVATAR) */}
-                                    <img
-                                        src={getImageUrl(user.profileImageUrl || user.profileImage) || DEFAULT_AVATAR}
-                                        className="w-10 h-10 rounded-full object-cover"
-                                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
-                                    />
+                                <div key={user.userId} onClick={() => navigate(`/friend/${user.userId}`)} className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer">
+                                    <img src={getImageUrl(user.profileImageUrl) || DEFAULT_AVATAR} className="w-10 h-10 rounded-full object-cover" />
                                     <div className="flex flex-col">
                                         <span className="font-bold">{user.username}</span>
                                         <span className="text-[11px] text-[#7b8b9e]">#{user.userId}</span>
@@ -393,13 +396,7 @@ export default function FriendsPage() {
                     )}
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Tabs (sticky, top-[154px])
-                    - ALL FRIENDS: friends.length 표시, 클릭 시 activeTab = 'LIST'
-                    - REQUESTS   : pending.length 표시, 클릭 시 activeTab = 'PENDING'
-                    - 활성 탭: 검정 텍스트 + 하단 2.5px 검정 밑줄
-                    - 비활성 탭: 회색 텍스트 (#ccd3db)
-                ────────────────────────────────────────────────────── */}
+                {/* 탭 메뉴 */}
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
                         { id: 'LIST', label: 'ALL FRIENDS', count: friends.length },
@@ -411,7 +408,6 @@ export default function FriendsPage() {
                             className={`flex-1 py-4 text-[12px] font-black tracking-[1px] relative transition-colors ${activeTab === tab.id ? 'text-black' : 'text-[#ccd3db]'}`}
                         >
                             {tab.label} <span className="ml-1 opacity-50">[{tab.count}]</span>
-                            {/* 활성 탭 하단 인디케이터 */}
                             {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-black" />}
                         </button>
                     ))}

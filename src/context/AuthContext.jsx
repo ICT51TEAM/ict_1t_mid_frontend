@@ -109,11 +109,7 @@ export const AuthProvider = ({ children }) => {
    *              user 상태를 null로 초기화한다.
    *              이 함수 호출 후 isAuthenticated는 자동으로 false가 된다.
    */
-<<<<<<< Updated upstream
-  const logout = async () => {
-    try {
-      await apiClient.post('/api/auth/logout');
-=======
+
 
 
 
@@ -128,7 +124,6 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
       });
->>>>>>> Stashed changes
     }
     catch (err) {
       console.error("서버 로그아웃 처리 실패 (무시하고 클라이언트 정리 진행):", err);
@@ -140,105 +135,102 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('notificationEnabled'); // 알림 설정 삭제
 
       setUser(null); // state를 null로 변환
-<<<<<<< Updated upstream
-      setIsAuthenticated(false);
-    }
-=======
+
     }
 
->>>>>>> Stashed changes
-  };
-
-  // ── 함수: updateUser ──────────────────────────────────────────────────────
-  /**
-   * @function updateUser
-   * @description 현재 로그인된 사용자의 정보를 부분 업데이트(patch)한다.
-   *              기존 user 객체에 새 데이터를 스프레드(...)로 병합하므로,
-   *              변경된 필드만 전달해도 된다.
-   *              변경된 정보는 localStorage['user']에도 반영된다.
-   *
-   * @param {object} data - 업데이트할 사용자 정보의 일부 (예: { profileImage: '...' })
-   *
-   * 주의: 로그인되지 않은 상태(user === null)에서 호출하면 아무 변경 없이 null을 반환.
-   */
-  const updateUser = (data) => {
-    // TODO: setUser(prev => ({...prev, ...data})) 로 사용자 정보 부분 업데이트
-    setUser((prev) => {
-      if (!prev) return null;
-      const updateUser = { ...prev, ...data };
-      //변경된 정보를 localStorage에도 저장하여 새로고침 유지
-      localStorage.setItem('user', JSON.stringify(updateUser));
-      return updateUser;
-    });
-  };
-
-  // ── 함수: checkAuth ───────────────────────────────────────────────────────
-  /**
-   * @function checkAuth
-   * @description 앱 최초 실행 시 localStorage에 저장된 인증 정보로 세션을 복원한다.
-   *              비동기 함수(async)이지만 현재 구현은 네트워크 요청 없이 로컬 스토리지만 읽음.
-   *              (향후 서버에 토큰 유효성 검증 요청을 추가할 수 있는 구조)
-   *
-   * 동작 흐름:
-   *   1. localStorage에서 'authToken'과 'user' 읽기
-   *   2. 둘 다 존재하면 'user' 문자열을 JSON.parse로 파싱하여 user 상태 복원
-   *   3. JSON 파싱 실패(손상된 데이터)면 logout()으로 저장소를 정리
-   *   4. 항상 마지막에 isLoading = false로 설정 (성공/실패 무관)
-   */
-  const checkAuth = async () => {
-    const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
-    const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
-    try {
-      if (token && storageUser) {
-        // 서버에 토큰 갱신 요청으로 유효성 확인
-        const { data } = await apiClient.post('/auth/refresh', {}, {
-          withCredentials: true
-        });
-        // 로그인 상태 복원
-        localStorage.setItem('accessToken', data.accessToken);
-        setUser(JSON.parse(storageUser));
-      }
-    }
-    catch (e) {
-      // 갱신 실패 = 완전 만료 → 정리
-      console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('user');
-      setUser(null);
-    }
-    finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────
-  // [실행 시점] 컴포넌트가 처음 DOM에 마운트될 때 단 1회 실행 (의존성 배열 = [])
-  // [하는 일]   checkAuth()를 호출해 localStorage에서 이전 세션의 인증 정보를 복원
-  // [정리(cleanup)] 없음. 단순 1회성 초기화 작업이므로 정리 함수 불필요.
-  useEffect(() => {
-    // checkAuth() 호출
-    checkAuth();
-  }, []); // 빈 배열: 마운트 1회만 실행, 의존성 없음
-
-  // ─── JSX: Context Provider 렌더링 ─────────────────────────────────────────
-  // AuthContext.Provider로 하위 트리를 감싸고 value에 공개할 상태·함수를 전달.
-  // {children}은 <AuthProvider>로 감싸인 모든 하위 컴포넌트 트리를 의미함.
-  return (
-    <AuthContext.Provider
-      value={{
-        user,           // 현재 로그인 사용자 객체 (null이면 비로그인)
-        isAuthenticated, // 로그인 여부 boolean
-        isLoading,      // 초기 세션 복원 중 여부 boolean
-        login,          // 로그인 처리 함수
-        logout,         // 로그아웃 처리 함수
-        checkAuth,      // 세션 재확인 함수 (외부에서 필요 시 호출 가능)
-        updateUser,     // 사용자 정보 부분 업데이트 함수
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  }
 };
+
+// ── 함수: updateUser ──────────────────────────────────────────────────────
+/**
+ * @function updateUser
+ * @description 현재 로그인된 사용자의 정보를 부분 업데이트(patch)한다.
+ *              기존 user 객체에 새 데이터를 스프레드(...)로 병합하므로,
+ *              변경된 필드만 전달해도 된다.
+ *              변경된 정보는 localStorage['user']에도 반영된다.
+ *
+ * @param {object} data - 업데이트할 사용자 정보의 일부 (예: { profileImage: '...' })
+ *
+ * 주의: 로그인되지 않은 상태(user === null)에서 호출하면 아무 변경 없이 null을 반환.
+ */
+const updateUser = (data) => {
+  // TODO: setUser(prev => ({...prev, ...data})) 로 사용자 정보 부분 업데이트
+  setUser((prev) => {
+    if (!prev) return null;
+    const updateUser = { ...prev, ...data };
+    //변경된 정보를 localStorage에도 저장하여 새로고침 유지
+    localStorage.setItem('user', JSON.stringify(updateUser));
+    return updateUser;
+  });
+};
+
+// ── 함수: checkAuth ───────────────────────────────────────────────────────
+/**
+ * @function checkAuth
+ * @description 앱 최초 실행 시 localStorage에 저장된 인증 정보로 세션을 복원한다.
+ *              비동기 함수(async)이지만 현재 구현은 네트워크 요청 없이 로컬 스토리지만 읽음.
+ *              (향후 서버에 토큰 유효성 검증 요청을 추가할 수 있는 구조)
+ *
+ * 동작 흐름:
+ *   1. localStorage에서 'authToken'과 'user' 읽기
+ *   2. 둘 다 존재하면 'user' 문자열을 JSON.parse로 파싱하여 user 상태 복원
+ *   3. JSON 파싱 실패(손상된 데이터)면 logout()으로 저장소를 정리
+ *   4. 항상 마지막에 isLoading = false로 설정 (성공/실패 무관)
+ */
+const checkAuth = async () => {
+  const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
+  const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
+  try {
+    if (token && storageUser) {
+      // 서버에 토큰 갱신 요청으로 유효성 확인
+      const { data } = await apiClient.post('/auth/refresh', {}, {
+        withCredentials: true
+      });
+      // 로그인 상태 복원
+      localStorage.setItem('accessToken', data.accessToken);
+      setUser(JSON.parse(storageUser));
+    }
+  }
+  catch (e) {
+    // 갱신 실패 = 완전 만료 → 정리
+    console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    setUser(null);
+  }
+  finally {
+    setIsLoading(false);
+  }
+};
+
+// ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────
+// [실행 시점] 컴포넌트가 처음 DOM에 마운트될 때 단 1회 실행 (의존성 배열 = [])
+// [하는 일]   checkAuth()를 호출해 localStorage에서 이전 세션의 인증 정보를 복원
+// [정리(cleanup)] 없음. 단순 1회성 초기화 작업이므로 정리 함수 불필요.
+useEffect(() => {
+  // checkAuth() 호출
+  checkAuth();
+}, []); // 빈 배열: 마운트 1회만 실행, 의존성 없음
+
+// ─── JSX: Context Provider 렌더링 ─────────────────────────────────────────
+// AuthContext.Provider로 하위 트리를 감싸고 value에 공개할 상태·함수를 전달.
+// {children}은 <AuthProvider>로 감싸인 모든 하위 컴포넌트 트리를 의미함.
+return (
+  <AuthContext.Provider
+    value={{
+      user,           // 현재 로그인 사용자 객체 (null이면 비로그인)
+      isAuthenticated, // 로그인 여부 boolean
+      isLoading,      // 초기 세션 복원 중 여부 boolean
+      login,          // 로그인 처리 함수
+      logout,         // 로그아웃 처리 함수
+      checkAuth,      // 세션 재확인 함수 (외부에서 필요 시 호출 가능)
+      updateUser,     // 사용자 정보 부분 업데이트 함수
+    }}
+  >
+    {children}
+  </AuthContext.Provider>
+);
+
 
 // ─── 커스텀 훅: useAuth ────────────────────────────────────────────────────────
 /**
