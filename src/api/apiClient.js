@@ -96,12 +96,23 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // 🚩 [수정] 로그인/회원가입/리프레시 자체 요청 중 발생한 에러는 갱신 로직을 타지 않음
+    // URL에 'login', 'signup', 'refresh'가 포함되어 있다면 바로 에러 리턴
+    const isAuthPath = originalRequest.url.includes('/auth/login') ||
+      originalRequest.url.includes('/auth/signup') ||
+      originalRequest.url.includes('/auth/refresh');
+
+    if (isAuthPath || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
     // 401 에러(인증 만료)가 발생하고 재시도한 적이 없을 때
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         // 1. 서버에 새로운 액세스 토큰 요청 (쿠키는 자동으로 전송됨)
+        // 🚩 [주의] baseURL이 이미 설정되어 있다면 상대 경로 '/auth/refresh'만 사용하세요.
         const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {}, {
           withCredentials: true
         });
@@ -119,11 +130,17 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
 
-        showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
+        // showAlert가 정의되어 있는지 확인 후 실행
+        if (typeof showAlert === 'function') {
+          showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
+        }
+
+        // 무한 루프 방지를 위해 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
+
     // 모든 에러를 호출부로 전파하여 개별 try-catch에서 처리할 수 있게 한다
     console.error('❌ [API Error]:', error.message);
     return Promise.reject(error);

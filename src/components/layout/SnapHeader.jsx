@@ -62,6 +62,8 @@ import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 // 미읽음 알림 수 조회 API 서비스
 import { notificationService } from '@/api/notificationService';
+// 🚩 [추가] 유저 설정 조회 API 서비스 (ReferenceError 해결)
+import { userService } from '@/api/userService';
 
 /**
  * @component SnapHeader
