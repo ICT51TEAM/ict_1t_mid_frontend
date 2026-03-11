@@ -107,6 +107,43 @@ export default function SnapHeader() {
         //       fetchUnread 비동기 함수 안에서 try/catch로 data?.count ?? 0 처리
         //       fetchUnread()를 즉시 1회 호출 후 setInterval(fetchUnread, 30000) 등록
         //       return () => clearInterval(interval) 로 클린업
+
+        if (!isAuthenticated) {
+            setUnreadCount(0);
+            return;
+        }
+
+        const fetchUnread = async () => {
+            try {
+                // localStorage에 값이 없으면 서버에서 가져오기
+                let notiEnabled = localStorage.getItem('notificationEnabled');
+
+                if (notiEnabled === null) {
+                    const settings = await userService.getSettings();
+                    notiEnabled = String(settings.notificationEnabled ?? true);
+                    localStorage.setItem('notificationEnabled', notiEnabled);
+                }
+
+                if (notiEnabled === 'false') {
+                    setUnreadCount(0);
+                    return;
+                }
+
+                const data = await notificationService.getAll();
+                setUnreadCount(
+                    Array.isArray(data)
+                        ? data.filter(n => !(n.isRead ?? n.read)).length
+                        : 0
+                );
+            } catch (e) {
+                console.error("알림을 가져오는 중 오류 발생:", e);
+            }
+        };
+
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
+
+        return () => clearInterval(interval);
     }, [isAuthenticated]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────

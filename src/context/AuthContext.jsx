@@ -89,13 +89,13 @@ export const AuthProvider = ({ children }) => {
    *   localStorage['authToken'] = token (문자열)
    *   localStorage['user']      = JSON.stringify(userData) (직렬화된 객체)
    */
-  const login = (accessToken, refreshToken, userData) => {
+  const login = (accessToken, userData) => {
     if (!accessToken || !userData) {
       console.error("로그인 데이터가 부족합니다:", { accessToken, userData });
       return;
     }
     localStorage.setItem('accessToken', accessToken); // 로컬스토리지에 accessToken 저장
-    localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
+    //localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
     localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
     setUser(userData); // userdate 갱신
     setIsAuthenticated(true);
@@ -108,12 +108,22 @@ export const AuthProvider = ({ children }) => {
    *              user 상태를 null로 초기화한다.
    *              이 함수 호출 후 isAuthenticated는 자동으로 false가 된다.
    */
-  const logout = () => {
-    // TODO: localStorage에서 'authToken', 'user' 제거 후 setUser(null) 호출
-    localStorage.removeItem('accessToken'); // accessToken 삭제
-    localStorage.removeItem('refreshToken'); // refreshToken 삭제
-    localStorage.removeItem('user'); //사용자 정보 삭제
-    setUser(null); // state를 null로 변환
+  const logout = async () => {
+    try {
+      await apiClient.post('/api/auth/logout');
+    }
+    catch (err) {
+      console.error("서버 로그아웃 처리 실패 (무시하고 클라이언트 정리 진행):", err);
+    }
+    finally {
+      localStorage.removeItem('accessToken'); // accessToken 삭제
+      //localStorage.removeItem('refreshToken'); // refreshToken 삭제
+      localStorage.removeItem('user'); //사용자 정보 삭제
+      localStorage.removeItem('notificationEnabled'); // 알림 설정 삭제
+
+      setUser(null); // state를 null로 변환
+      setIsAuthenticated(false);
+    }
   };
 
   // ── 함수: updateUser ──────────────────────────────────────────────────────
