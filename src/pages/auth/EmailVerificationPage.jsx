@@ -1,7 +1,4 @@
-/**
- * @file EmailVerificationPage.jsx
- * @route /verify-email
- */
+
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
