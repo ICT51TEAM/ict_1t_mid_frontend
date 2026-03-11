@@ -57,7 +57,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { UserPlus, UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
+import { UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
 import { friendService } from '@/api/friendService';
 import { useAlert } from '@/context/AlertContext';
 import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
@@ -356,13 +356,13 @@ export default function FriendsPage() {
                             />
                         </div>
                         {/* UserPlus 버튼: /add-friend 페이지 이동 */}
-                        <button
+                        {/* {/* <button                ------------------depricated--------------------
                             onClick={() => navigate('/add-friend')}
                             className="w-12 h-12 bg-black text-white rounded-[8px] flex items-center justify-center hover:scale-105 transition-all shadow-md"
                         >
                             <UserPlus size={22} />
-                        </button>
-                    </div>
+                        </button> */}
+                    </div> 
 
                     {/* 실시간 검색 결과 드롭다운
                         조건: searchQuery 비지 않음 AND searchResults.length > 0

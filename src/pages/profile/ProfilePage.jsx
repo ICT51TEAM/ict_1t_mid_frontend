@@ -332,13 +332,21 @@ export default function ProfilePage() {
                     ].map(t => (
                         <button
                             key={t.id}
-                            onClick={() => setActiveTab(t.id)}
-                            className={`flex-1 py-4 flex justify-center relative ${activeTab === t.id ? 'text-black dark:text-[#e5e5e5]' : 'text-[#ccd3db] hover:text-[#a3b0c1]'}`}
+                            onClick={() => t.id === 'POSTS' && setActiveTab(t.id)}
+                            disabled={t.id !== 'POSTS'}
+                            className={`flex-1 py-4 flex justify-center items-center gap-1 relative 
+                                ${t.id === 'POSTS' 
+                                    ? (activeTab === t.id ? 'text-black dark:text-[#e5e5e5]' : 'text-[#ccd3db] hover:text-[#a3b0c1]')
+                                    : 'text-[#ccd3db] opacity-40 cursor-not-allowed'
+                                }`}
                         >
-                            {/* 활성 탭은 strokeWidth 2.5, 비활성은 1.5 */}
                             <t.icon size={22} className={activeTab === t.id ? 'stroke-[2.5px]' : 'stroke-[1.5px]'} />
-                            {/* 활성 탭 하단 밑줄 인디케이터: 버튼 너비의 60% (left 20% ~ right 20%) */}
-                            {activeTab === t.id && <div className="absolute bottom-0 left-[20%] right-[20%] h-[2.5px] bg-black dark:bg-[#e5e5e5]" />}
+                            {t.id !== 'POSTS' && (
+                                <span className="text-[9px] font-black tracking-widest uppercase">준비중</span>
+                            )}
+                            {activeTab === t.id && t.id === 'POSTS' && (
+                                <div className="absolute bottom-0 left-[20%] right-[20%] h-[2.5px] bg-black dark:bg-[#e5e5e5]" />
+                            )}
                         </button>
                     ))}
                 </div>
