@@ -264,7 +264,7 @@ export default function EditProfilePage() {
                 visibility: formData.visibility
             });
             updateUser({ username: formData.username, visibility: formData.visibility });
-            showAlert('프로필이 수정되었습니다.', '프로필');
+            showAlert('프로필이 수정되었습니다.', '프로필', 'success');
             setTimeout(() => navigate('/profile'), 1000);
         } catch (error) {
             console.error(error);
