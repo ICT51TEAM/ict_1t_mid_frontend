@@ -1,7 +1,4 @@
-/**
- * @file ForgotPasswordPage.jsx
- * @route /forgot-password
- */
+
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
