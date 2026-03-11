@@ -106,9 +106,9 @@ export default function GlobalNav() {
      *              AuthContext의 logout()으로 인증 상태를 초기화하고
      *              /login 페이지로 이동한다.
      */
-    const handleLogout = () => {
+    const handleLogout = async () => {
         // AuthContext의 logout: localStorage 토큰·유저 정보 삭제 + user 상태 null
-        logout();
+        await logout();
         // 로그아웃 후 로그인 페이지로 리다이렉트
         showAlert('로그아웃되었습니다.', '로그아웃', 'success');
         navigate('/login');
