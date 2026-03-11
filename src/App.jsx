@@ -71,6 +71,7 @@ import TodayPage from '@/pages/feed/TodayPage';
 import RankingPage from '@/pages/feed/RankingPage';
 import FollowingPage from '@/pages/feed/FollowingPage';
 import SnapDetailPage from '@/pages/feed/SnapDetailPage';
+import CanvasEditorPage from '@/pages/write/CanvasEditerPage';
 // Auth
 import LoginPage from '@/pages/auth/LoginPage';
 import SignupPage from '@/pages/auth/SignupPage';
@@ -97,6 +98,7 @@ import KakaoCallback from '@/pages/auth/KakaoCallback';
 import CreatePhotoAlbumPage from '@/pages/write/CreatePhotoAlbumPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useEffect } from 'react';
+
 
 export default function App() {
     // -------------------------------------------------------------------------
@@ -191,6 +193,7 @@ export default function App() {
             {/* 게시글 작성: 일반 작성(/create) 및 포토앨범 작성(/create-photo-album) */}
             <Route path="/create" element={<ProtectedRoute><CreatePage /></ProtectedRoute>} />
             <Route path="/create-photo-album" element={<ProtectedRoute><CreatePhotoAlbumPage /></ProtectedRoute>} />
+            <Route path="/create-canvas" element={<ProtectedRoute><CanvasEditorPage /></ProtectedRoute>} />
 
             {/* 알림 목록 */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />

@@ -74,8 +74,8 @@
  *   localStorage['user'] 에서 JSON.parse 후 .id 추출.
  *   없으면 로그인 페이지(/login)로 이동.
  */
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Calendar, Loader2, ImagePlus } from 'lucide-react';
 import { photoService } from '@/api/photoService';
 import { albumService } from '@/api/albumService';
@@ -93,10 +93,10 @@ import { useAlert } from '@/context/AlertContext';
  *   id=4: 사진 4장  → Quad      → apiValue: 'grid'           (2×2 격자)
  */
 const layouts = [
-  { id: 1, name: '1장',   grid: 'grid-cols-1',            apiValue: 'single' },
-  { id: 2, name: '2장 가로', grid: 'grid-cols-2',          apiValue: 'horizontal-two' },
-  { id: 3, name: '2장 세로', grid: 'grid-rows-2',          apiValue: 'vertical-two' },
-  { id: 4, name: '4장',   grid: 'grid-cols-2 grid-rows-2', apiValue: 'grid' },
+  { id: 1, name: '1장', grid: 'grid-cols-1', apiValue: 'single' },
+  { id: 2, name: '2장 가로', grid: 'grid-cols-2', apiValue: 'horizontal-two' },
+  { id: 3, name: '2장 세로', grid: 'grid-rows-2', apiValue: 'vertical-two' },
+  { id: 4, name: '4장', grid: 'grid-cols-2 grid-rows-2', apiValue: 'grid' },
 ];
 
 /**
@@ -109,12 +109,13 @@ const layouts = [
 const VISIBILITY_MAP = {
   private: 'PRIVATE',
   friends: 'FRIENDS',
-  public:  'PUBLIC',
+  public: 'PUBLIC',
 };
 
 export default function CreatePhotoAlbumPage() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { showAlert } = useAlert();
+  const { showConfirm, showAlert } = useAlert();
 
   /**
    * @state photos
@@ -210,16 +211,16 @@ export default function CreatePhotoAlbumPage() {
    */
   const handlePhotoUpload = (e) => {
     // TODO: e.target.files에서 File 배열 추출
-     const files = e.target.files;
+    const files = e.target.files;
     // TODO: 각 File을 { url: URL.createObjectURL(file), file } 객체로 변환
-    if(files){
+    if (files) {
       const newPhotoObjects = Array.from(files).map((file) => ({
         url: URL.createObjectURL(file), // 브라우저 로컬 미리보기 URL
         file: file
       }));
-    
-    // TODO: 기존 photos + 새 항목 합쳐 최대 4장(.slice(0,4))으로 제한 후 setPhotos()
-    // 힌트: 사진 수에 따라 setSelectedLayout(1/2/4) 자동 조정
+
+      // TODO: 기존 photos + 새 항목 합쳐 최대 4장(.slice(0,4))으로 제한 후 setPhotos()
+      // 힌트: 사진 수에 따라 setSelectedLayout(1/2/4) 자동 조정
       const updatedPhotos = [...photos, ...newPhotoObjects].slice(0, 4);
       setPhotos(updatedPhotos);
 
@@ -383,7 +384,7 @@ export default function CreatePhotoAlbumPage() {
     }
     setIsSubmitting(true);
     try {
-        const uploadResult = await photoService.uploadPhotos({
+      const uploadResult = await photoService.uploadPhotos({
         files: photos.map((p) => p.file),
         userId,
       });
@@ -395,8 +396,8 @@ export default function CreatePhotoAlbumPage() {
       const slotIndexes = photoIds.map((_, i) => i); // [0, 1, 2, ...] 순서 인덱스
 
 
-    // TODO: [단계 2] albumService.createAlbum({ userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }) 호출
-       const result = await albumService.createAlbum({
+      // TODO: [단계 2] albumService.createAlbum({ userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }) 호출
+      const result = await albumService.createAlbum({
         userId,
         title: title.trim(),
         bodyText: content.trim(),
@@ -419,9 +420,56 @@ export default function CreatePhotoAlbumPage() {
     }
   };
 
-    // 힌트: 성공 시 showAlert() + navigate(`/snap/${result.albumId}`), 실패 시 showAlert(에러메시지)
-    // 힌트: setIsSubmitting(true) → try/catch/finally → setIsSubmitting(false)
+  // 힌트: 성공 시 showAlert() + navigate(`/snap/${result.albumId}`), 실패 시 showAlert(에러메시지)
+  // 힌트: setIsSubmitting(true) → try/catch/finally → setIsSubmitting(false)
 
+  // canvasEditerPage에서 넘어온 이미지 수신
+  useEffect(() => {
+    const canvasData = location.state?.canvasFile;
+
+    if (canvasData) {
+      const newImage = {
+        id: Date.now(),
+        url: canvasData.url,
+        file: canvasData.file,
+        isCanvas: true
+      };
+
+      // 최신 상태(prev)를 기준으로 개수 체크 및 처리
+      setPhotos(prev => {
+        // 1. 이미 4장이 꽉 찬 경우
+        if (prev.length >= 4) {
+          showConfirm({
+            title: "사진 개수 초과",
+            message: "이미 4장의 사진이 등록되어 있습니다.\n마지막 사진을 현재 제작한 이미지로 교체할까요?",
+            confirmText: "교체하기",
+            cancelText: "유지하기",
+            type: "alert",
+            onConfirm: () => {
+              setPhotos(current => [...current.slice(0, -1), newImage]);
+              showAlert("마지막 사진이 제작한 이미지로 교체되었습니다.", "완료", "success");
+            }
+          });
+          // Confirm 모달이 떴으므로 여기선 일단 기존 상태 유지
+          return prev;
+        }
+
+        // 2. 4장 미만인 경우 (단순 추가)
+        const updated = [...prev, newImage];
+
+        // 추가된 후의 사진 수에 따라 레이아웃 자동 조정
+        if (updated.length === 1) setSelectedLayout(1);
+        else if (updated.length === 2) setSelectedLayout(2);
+        else if (updated.length >= 4) setSelectedLayout(4);
+
+        return updated;
+      });
+
+      // 데이터 중복 수신 방지를 위해 state 초기화
+      window.history.replaceState({}, document.title);
+      location.state.canvasFile = null;
+    }
+  }, [location.state]);
 
   return (
     // ResponsiveLayout 미사용 (페이지 전체가 독립적인 전체화면 레이아웃)
@@ -489,7 +537,7 @@ export default function CreatePhotoAlbumPage() {
               id=1 → 'Solo', id=2 → 'Twin H', id=3 → 'Twin V', id=4 → 'Quad'
         ────────────────────────────────────────────────────── */}
         <div className="space-y-4">
-          <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장)</h3>
+          <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장, 확장자 : "jpg", "jpeg", "png", "webp" 파일만 가능합니다)</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {/* 사진 추가 버튼 (4장 미만일 때만 표시) */}
             {photos.length < 4 && (
@@ -517,6 +565,18 @@ export default function CreatePhotoAlbumPage() {
             ))}
           </div>
 
+          {/* 이미지를 직접 제작 원하는 경우 canvasEditerPage 이동 */}
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장)</h3>
+            <button
+              onClick={() => navigate('/create-canvas')}
+              className="text-[12px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
+            >
+              🎨 캔버스에서 직접 만들기
+            </button>
+          </div>
+
+
           {/* 레이아웃 선택 패널 (사진 1장 이상일 때만 표시) */}
           {photos.length > 0 && (
             <div className="bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-[32px] p-6 shadow-sm mt-6 overflow-hidden relative">
@@ -531,14 +591,12 @@ export default function CreatePhotoAlbumPage() {
                   <button
                     key={layout.id}
                     onClick={() => setSelectedLayout(layout.id)}
-                    className={`relative w-20 flex flex-col items-center gap-3 transition-all duration-300 group ${
-                      selectedLayout === layout.id ? 'scale-110' : 'opacity-60 grayscale hover:opacity-100'
-                    }`}
+                    className={`relative w-20 flex flex-col items-center gap-3 transition-all duration-300 group ${selectedLayout === layout.id ? 'scale-110' : 'opacity-60 grayscale hover:opacity-100'
+                      }`}
                   >
                     {/* 레이아웃 격자 미리보기 박스 */}
-                    <div className={`w-full aspect-square rounded-2xl border-2 transition-all p-1.5 ${
-                      selectedLayout === layout.id ? 'border-black dark:border-white shadow-xl bg-gray-50 dark:bg-gray-800' : 'border-transparent bg-gray-100 dark:bg-gray-900'
-                    }`}>
+                    <div className={`w-full aspect-square rounded-2xl border-2 transition-all p-1.5 ${selectedLayout === layout.id ? 'border-black dark:border-white shadow-xl bg-gray-50 dark:bg-gray-800' : 'border-transparent bg-gray-100 dark:bg-gray-900'
+                      }`}>
                       {/* 격자 미리보기: layout.grid 클래스로 형태 결정 */}
                       <div className={`w-full h-full ${layout.grid} gap-1 p-0.5 grid`}>
                         {/* 칸 수: id=1→1칸, id=2|3→2칸, id=4→4칸 */}
@@ -550,9 +608,8 @@ export default function CreatePhotoAlbumPage() {
                       </div>
                     </div>
                     {/* 레이아웃 레이블 (선택됨: 항상 표시, 미선택: hover 시만 표시) */}
-                    <span className={`text-[10px] font-black italic tracking-widest uppercase transition-all ${
-                      selectedLayout === layout.id ? 'text-black dark:text-white opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'
-                    }`}>
+                    <span className={`text-[10px] font-black italic tracking-widest uppercase transition-all ${selectedLayout === layout.id ? 'text-black dark:text-white opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'
+                      }`}>
                       {layout.id === 1 ? 'Solo' : layout.id === 2 ? 'Twin H' : layout.id === 3 ? 'Twin V' : 'Quad'}
                     </span>
                     {/* 선택된 레이아웃 하단 점 인디케이터 */}
@@ -662,16 +719,15 @@ export default function CreatePhotoAlbumPage() {
             {[
               { value: 'private', label: '나만보기' },    // → PRIVATE
               { value: 'friends', label: '글벗만' },      // → FRIENDS_ONLY
-              { value: 'public',  label: '전체공개' },    // → PUBLIC
+              { value: 'public', label: '전체공개' },    // → PUBLIC
             ].map((option) => (
               <button
                 key={option.value}
                 onClick={() => setVisibility(option.value)}
-                className={`flex-1 py-3 rounded-xl text-center transition-all font-bold text-[13px] border ${
-                  visibility === option.value
-                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'  // 선택됨
-                    : 'border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-gray-400'   // 미선택
-                }`}
+                className={`flex-1 py-3 rounded-xl text-center transition-all font-bold text-[13px] border ${visibility === option.value
+                  ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'  // 선택됨
+                  : 'border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-gray-400'   // 미선택
+                  }`}
               >
                 {option.label}
               </button>

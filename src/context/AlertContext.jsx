@@ -22,28 +22,49 @@ export function AlertProvider({ children }) {
         message: '',      // 메시지 (기본값 빈 문자열)
         type: 'alert',    // 기본 타입: 빨간 경고 아이콘
         onConfirm: null,  // 확인 콜백 없음 = 단순 알림 모드
+        onCancel: null,      // 추가: 취소 시 실행할 콜백
+        confirmText: '확인',  // 추가: 확인 버튼 텍스트 커스텀
+        cancelText: '취소',   // 추가: 취소 버튼 텍스트 커스텀
     });
 
     // ── 함수: closeAlert ──────────────────────────────────────────────────────
-    const closeAlert = () => {
+    const closeAlert = useCallback(() => {
         setAlert(prev => ({ ...prev, isOpen: false, onConfirm: null }));
-    };
+        //지연 후 초기화
+        setTimeout(() => {
+            setAlert(prev => ({ ...prev, onConfirm: null, onCancel: null }));
+        }, 200);
+    }, []);
 
     // ── 함수: showAlert ───────────────────────────────────────────────────────
     const showAlert = useCallback((message, title = '알림', type = 'alert') => {
-        setAlert({ isOpen: true, message, title: title || '알림', type: type || 'info', onConfirm: null });
+        setAlert({
+            isOpen: true, message, title: title || '알림', type: type || 'info',
+            onConfirm: null, onCancel: null, confirmText: '확인'
+        });
     }, []);
 
     // ── 함수: showConfirm ─────────────────────────────────────────────────────
-    const showConfirm = (message, onConfirm, title = '확인', type = 'info') => {
-        setAlert({ isOpen: true, message, title: title || '확인', type: type || 'info', onConfirm });
-    };
+    const showConfirm = useCallback(({
+        message, onConfirm, onCancel, title = '확인', type = 'info', confirmText = '확인', cancelText = '취소' }) => {
+        setAlert({ isOpen: true, message, title: title || '확인', type: type || 'info', onConfirm, onCancel, confirmText, cancelText });
+    }, []);
 
     // ── 함수: handleConfirm ───────────────────────────────────────────────────
     const handleConfirm = () => {
         // onConfirm 콜백이 있으면 실행 (사용자가 확인에 동의한 경우)
         if (alert.onConfirm) {
             alert.onConfirm();
+        }
+        // 콜백 실행 여부와 무관하게 항상 모달 닫기
+        closeAlert();
+    };
+
+    // ── 함수: handleonCancel ───────────────────────────────────────────────────
+    const handleonCancel = () => {
+        // onCancle콜백이 있으면 실행 (사용자가 취소에 동의한 경우)
+        if (alert.onCancel) {
+            alert.onCancel();
         }
         // 콜백 실행 여부와 무관하게 항상 모달 닫기
         closeAlert();
@@ -94,10 +115,10 @@ export function AlertProvider({ children }) {
                                 {alert.onConfirm && (
                                     <button
                                         type="button"
-                                        onClick={closeAlert}
+                                        onClick={handleonCancel}
                                         className="flex-1 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl active:scale-95 transition-transform"
                                     >
-                                        취소
+                                        {alert.cancelText || '취소'}
                                     </button>
                                 )}
                                 {/* [확인] 버튼: 항상 표시. 클릭 시 handleConfirm() 실행 */}
@@ -108,7 +129,7 @@ export function AlertProvider({ children }) {
                                     onClick={handleConfirm}
                                     className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black font-bold rounded-2xl active:scale-95 transition-transform"
                                 >
-                                    확인
+                                    {alert.confirmText || '확인'}
                                 </button>
                             </div>
                         </div>
