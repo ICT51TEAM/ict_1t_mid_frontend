@@ -43,6 +43,7 @@
  *   - useAuth      : AuthContext에 접근하기 위한 커스텀 훅
  */
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '@/api/apiClient';
 
 // ─── Context 생성 ──────────────────────────────────────────────────────────────
 // AuthContext: 인증 상태를 담는 React Context 객체.
@@ -74,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   // ── 파생 상태: 인증 여부 ──────────────────────────────────────────────────
   // user 객체가 존재하면 true, null이면 false.
   // !!를 사용해 불리언으로 변환함. 별도 state가 아닌 파생값이므로 항상 user와 동기화됨.
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const isAuthenticated = !!user;
 
   // ── 함수: login ───────────────────────────────────────────────────────────
   /**
@@ -98,7 +99,7 @@ export const AuthProvider = ({ children }) => {
     //localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
     localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
     setUser(userData); // userdate 갱신
-    setIsAuthenticated(true);
+
   };
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
@@ -108,9 +109,26 @@ export const AuthProvider = ({ children }) => {
    *              user 상태를 null로 초기화한다.
    *              이 함수 호출 후 isAuthenticated는 자동으로 false가 된다.
    */
+<<<<<<< Updated upstream
   const logout = async () => {
     try {
       await apiClient.post('/api/auth/logout');
+=======
+
+
+
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+>>>>>>> Stashed changes
     }
     catch (err) {
       console.error("서버 로그아웃 처리 실패 (무시하고 클라이언트 정리 진행):", err);
@@ -122,8 +140,13 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('notificationEnabled'); // 알림 설정 삭제
 
       setUser(null); // state를 null로 변환
+<<<<<<< Updated upstream
       setIsAuthenticated(false);
     }
+=======
+    }
+
+>>>>>>> Stashed changes
   };
 
   // ── 함수: updateUser ──────────────────────────────────────────────────────
@@ -167,15 +190,21 @@ export const AuthProvider = ({ children }) => {
     const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
     try {
       if (token && storageUser) {
+        // 서버에 토큰 갱신 요청으로 유효성 확인
+        const { data } = await apiClient.post('/auth/refresh', {}, {
+          withCredentials: true
+        });
         // 로그인 상태 복원
-        setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
-        setIsAuthenticated(true);
+        localStorage.setItem('accessToken', data.accessToken);
+        setUser(JSON.parse(storageUser));
       }
     }
     catch (e) {
+      // 갱신 실패 = 완전 만료 → 정리
       console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
+      localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
-      logout();
+      setUser(null);
     }
     finally {
       setIsLoading(false);
