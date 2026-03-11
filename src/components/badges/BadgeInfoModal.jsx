@@ -210,7 +210,7 @@ export default function BadgeInfoModal({ isOpen, onClose }) {
                     <div key={type.id} className="flex gap-4 items-center p-4 bg-gray-50 dark:bg-[#101215] rounded-2xl border border-transparent hover:border-black dark:hover:border-white transition-all group">
                       {/* 달개 이미지 박스 (hover 시 scale 110%) */}
                       <div className="w-14 h-14 bg-white dark:bg-[#1c1f24] rounded-xl flex items-center justify-center shadow-sm border border-[#f3f3f3] dark:border-[#292e35] group-hover:scale-110 transition-transform overflow-hidden">
-                        <img src={type.imageUrl} className="w-full h-full object-cover" alt={type.title} />
+                        <span className="text-3xl">{type.emoji}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         {/* 달개 이름 */}

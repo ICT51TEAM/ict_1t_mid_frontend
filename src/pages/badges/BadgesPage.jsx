@@ -114,6 +114,13 @@ export default function BadgesPage() {
         // TODO: badgeService.getMyStats() 호출 → setStats(s)
         // TODO: badgeService.getAllTypes() 호출 → setAllTypes(t)
         // 힌트: async 함수(load) 내부에서 순차적으로 두 API 호출 후 load() 실행
+        const load = async () => {
+            const stats = await badgeService.getMyStats();
+            const allTypes = await badgeService.getAllTypes();
+            setStats(stats);
+            setAllTypes(allTypes);
+        };
+        load();
     }, []);
 
     // stats가 null이면 아직 데이터 로딩 중 → 로딩 텍스트만 표시
