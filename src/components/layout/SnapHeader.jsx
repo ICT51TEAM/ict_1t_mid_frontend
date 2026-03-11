@@ -62,6 +62,7 @@ import { Bell } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 // 미읽음 알림 수 조회 API 서비스
 import { notificationService } from '@/api/notificationService';
+// 🚩 [추가] 유저 설정 조회 API 서비스 (ReferenceError 해결)
 import { userService } from '@/api/userService';
 
 /**
@@ -116,6 +117,7 @@ export default function SnapHeader() {
         //       fetchUnread 비동기 함수 안에서 try/catch로 data?.count ?? 0 처리
         //       fetchUnread()를 즉시 1회 호출 후 setInterval(fetchUnread, 30000) 등록
         //       return () => clearInterval(interval) 로 클린업
+
         if (!isAuthenticated) {
             setUnreadCount(0);
             return;
@@ -125,6 +127,7 @@ export default function SnapHeader() {
             try {
                 // localStorage에 값이 없으면 서버에서 가져오기
                 let notiEnabled = localStorage.getItem('notificationEnabled');
+
                 if (notiEnabled === null) {
                     const settings = await userService.getSettings();
                     notiEnabled = String(settings.notificationEnabled ?? true);
@@ -138,13 +141,19 @@ export default function SnapHeader() {
 
                 const data = await notificationService.getAll();
                 setUnreadCount(
-                    Array.isArray(data) ? data.filter(n => !(n.isRead ?? n.read)).length : 0
+
+                    Array.isArray(data)
+                        ? data.filter(n => !(n.isRead ?? n.read)).length
+                        : 0
                 );
-            } catch (e) {}
+            } catch (e) {
+                console.error("알림을 가져오는 중 오류 발생:", e);
+            }
         };
 
         fetchUnread();
         const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
+      
         return () => clearInterval(interval);
     }, [isAuthenticated]);
 

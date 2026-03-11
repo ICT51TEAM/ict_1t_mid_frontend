@@ -59,17 +59,16 @@ const apiClient = axios.create({
 // 요청 인터셉터: localStorage 토큰을 Authorization 헤더에 자동 주입
 // ─────────────────────────────────────────────────────────
 // apiClient를 통한 모든 HTTP 요청이 전송되기 직전에 이 함수가 실행된다.
-apiClient.interceptors.request.use(
-  (config) => {
-    // localStorage에서 JWT 액세스 토큰을 읽어온다
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      // Bearer 스킴(scheme)으로 Authorization 헤더에 토큰을 첨부한다
-      // 백엔드의 JWTAuthenticationFilter.java가 이 헤더를 파싱하여 인증을 처리한다
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
+apiClient.interceptors.request.use((config) => {
+  // localStorage에서 JWT 액세스 토큰을 읽어온다
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    // Bearer 스킴(scheme)으로 Authorization 헤더에 토큰을 첨부한다
+    // 백엔드의 JWTAuthenticationFilter.java가 이 헤더를 파싱하여 인증을 처리한다
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+},
   // 요청 설정 단계에서 발생한 에러는 그대로 reject하여 호출부로 전파
   (error) => Promise.reject(error)
 );
@@ -94,28 +93,54 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   // 성공 응답은 그대로 통과
   (response) => response,
-  (error) => {
-    // HTTP 상태 코드 401 (Unauthorized) 일 때만 자동 처리
-    if (error.response && error.response.status === 401) {
-      // 백엔드가 응답 body에 담아준 에러 코드와 메시지를 추출한다
-      const errorCode = error.response.data?.code;
-      const errorMessage = error.response.data?.message;
+  async (error) => {
+    const originalRequest = error.config;
 
-      // 토큰이 만료된 경우에는 사용자에게 친절한 안내 메시지를 표시한다
-      if (errorCode === 'TOKEN_EXPIRED') {
-        console.warn('⚠️ 인증이 만료되어 토큰을 삭제합니다. 사유:', errorCode);
-        alert(errorMessage || '로그인 세션이 만료되었습니다. 다시 로그인해주세요.');
-      }
+    // 🚩 [수정] 로그인/회원가입/리프레시 자체 요청 중 발생한 에러는 갱신 로직을 타지 않음
+    // URL에 'login', 'signup', 'refresh'가 포함되어 있다면 바로 에러 리턴
+    const isAuthPath = originalRequest.url.includes('/auth/login') ||
+      originalRequest.url.includes('/auth/signup') ||
+      originalRequest.url.includes('/auth/refresh');
 
-      // 인증 토큰을 localStorage에서 제거하여 로그아웃 상태로 만든다
-      localStorage.removeItem('authToken');
+    if (isAuthPath || originalRequest._retry) {
+      return Promise.reject(error);
+    }
 
-      // 이미 로그인 페이지에 있다면 다시 이동하지 않는다 (무한 루프 방지)
-      if (!window.location.pathname.includes('/login')) {
-        // 브라우저를 로그인 페이지로 강제 이동시킨다
+    // 401 에러(인증 만료)가 발생하고 재시도한 적이 없을 때
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // 1. 서버에 새로운 액세스 토큰 요청 (쿠키는 자동으로 전송됨)
+        // 🚩 [주의] baseURL이 이미 설정되어 있다면 상대 경로 '/auth/refresh'만 사용하세요.
+        const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {}, {
+          withCredentials: true
+        });
+
+        const newAccessToken = data.accessToken;
+
+        // 2. 새 토큰 저장 및 헤더 업데이트
+        localStorage.setItem('accessToken', newAccessToken);
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+        // 3. 원래 실패했던 요청 재시도
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // 리프레시 토큰도 만료된 경우 -> 로그아웃 처리
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+
+        // showAlert가 정의되어 있는지 확인 후 실행
+        if (typeof showAlert === 'function') {
+          showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
+        }
+
+        // 무한 루프 방지를 위해 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
+
     // 모든 에러를 호출부로 전파하여 개별 try-catch에서 처리할 수 있게 한다
     console.error('❌ [API Error]:', error.message);
     return Promise.reject(error);
