@@ -94,9 +94,11 @@ export const authService = {
     logout: async () => {
         try {
             await apiClient.post('/auth/logout');
+            return response.data;
         }
         finally {
-            localStorage.removeItem('authToken');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
         }
         return response.data;
     },

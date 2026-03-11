@@ -207,17 +207,17 @@ export default function FriendProfilePage() {
         //         찾으면 setRequestStatus('accepted') + setFriendshipId(matched.friendshipId)
         //         못 찾으면 setRequestStatus('none')
         //   실패: 무시 (catch(() => {}))
-            setIsLoading(true);
+        setIsLoading(true);
         setPostsLoading(true);
         // [API 1] userService.getUserProfile(friendId)
         userService.getUserProfile(friendId)
             .then(data => setUser(data))
-            .catch(() => setUser({ 
-                id: friendId, 
-                username: `User ${friendId}`, 
-                profileImageUrl: null, 
-                totalBadges: 0, 
-                friendCount: 0 
+            .catch(() => setUser({
+                id: friendId,
+                username: `User ${friendId}`,
+                profileImageUrl: null,
+                totalBadges: 0,
+                friendCount: 0
             }))
             .finally(() => setIsLoading(false));
         // [API 2] apiClient.get('/albums/feed', ... )
@@ -239,7 +239,7 @@ export default function FriendProfilePage() {
                     setRequestStatus('none');
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }, [friendId]);
 
     /**
@@ -265,7 +265,7 @@ export default function FriendProfilePage() {
      * 에러: "오류가 발생했습니다. 다시 시도해주세요." 알림
      */
     const handleFriendAction = async () => {
-             // [1] setIsRequesting(true) 로 로딩 상태 시작
+        // [1] setIsRequesting(true) 로 로딩 상태 시작
         setIsRequesting(true);
         try {
             // [2] requestStatus === 'accepted' 이면 해제 동작
@@ -273,18 +273,18 @@ export default function FriendProfilePage() {
                 await friendService.removeFriend(friendshipId);
                 setRequestStatus('none');
                 setFriendshipId(null);
-                showAlert('success', '글벗 관계가 해제되었습니다.');
-            } 
+                showAlert('글벗 관계가 해제되었습니다.', '해제 요청 성공', 'success');
+            }
             // [3] requestStatus === 'none' 이면 신청 동작
             else if (requestStatus === 'none') {
                 await friendService.sendRequest(friendId);
                 setRequestStatus('pending');
-                showAlert('success', '글벗 요청을 보냈습니다.');
+                showAlert('글벗 요청을 보냈습니다.', '글벗 요청 성공', 'success');
             }
         } catch (error) {
             // [4] 에러 시 showAlert으로 오류 알림 표시
             console.error('친구 요청 오류:', error);
-            showAlert('error', '오류가 발생했습니다. 다시 시도해주세요.');
+            showAlert('오류가 발생했습니다. 다시 시도해주세요.', '글벗 요청 오류', 'error');
         } finally {
             // [5] finally에서 로딩 상태 종료
             setIsRequesting(false);
@@ -373,8 +373,8 @@ export default function FriendProfilePage() {
                             onClick={handleFriendAction}
                             disabled={isRequesting || requestStatus === 'pending'}
                             className={`flex-1 h-10 rounded-[4px] font-bold text-[13px] flex items-center justify-center gap-1 transition-colors ${requestStatus === 'pending' ? 'bg-gray-200 text-gray-500 border border-gray-300' :
-                                    requestStatus === 'accepted' ? 'bg-white text-black border border-[#e5e5e5] hover:bg-gray-50' :
-                                        'bg-black text-white hover:bg-gray-800'
+                                requestStatus === 'accepted' ? 'bg-white text-black border border-[#e5e5e5] hover:bg-gray-50' :
+                                    'bg-black text-white hover:bg-gray-800'
                                 }`}
                         >
                             {isRequesting ? <Loader2 className="animate-spin" size={16} /> : null}

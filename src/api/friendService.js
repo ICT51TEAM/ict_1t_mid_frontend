@@ -26,7 +26,7 @@
  *   POST   /api/friends/{friendshipId}/reject  → 친구 요청 거절
  *   DELETE /api/friends/{friendId}             → 친구 삭제
  *   GET    /api/friends/search?q={query}       → 사용자 이름으로 검색
- *
+ *   GET    /api/friends/pending/sent           → 내가 보낸 친구 요청 목록 조회 (신규)
  * ─────────────────────────────────────────────────────────
  * [요청/응답 데이터 형태]
  *
@@ -161,6 +161,34 @@ export const friendService = {
         const response = await apiClient.get('/friends/pending');
         return response.data;
     },
+
+    /**
+     * [추가] 내가 보낸 친구 요청(대기 중) 목록 조회
+     *
+     * 내가 다른 사용자에게 보냈지만, 상대방이 아직 수락 또는 거절하지 않은
+     * (PENDING 상태) 친구 요청 목록을 조회한다.
+     * 사용자가 자신이 보낸 요청을 확인하거나 취소하고 싶을 때 사용한다.
+     *
+     * @returns {Promise<Array>} 내가 보낸 친구 요청 목록
+     * [
+     * {
+     * friendshipId     : number,  // 요청 ID (취소 시 이 ID 사용 가능)
+     * userId           : number,  // 요청을 받은 상대방의 ID
+     * username         : string,  // 요청을 받은 상대방의 이름
+     * profileImageUrl  : string,  // 요청을 받은 상대방의 프로필 이미지
+     * status           : string   // 현재 상태 ("PENDING")
+     * }
+     * ]
+     *
+     * HTTP: GET /api/friends/pending/sent
+     * 인증 필요: 예
+     * 성공: 200 OK
+     */
+    listSentPendingRequests: async () => {
+        const response = await apiClient.get('/friends/pending/sent');
+        return response.data;
+    },
+
 
     /**
      * [3] 친구 요청 보내기
