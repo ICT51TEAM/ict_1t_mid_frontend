@@ -43,7 +43,7 @@
  *
  *   VISIBILITY_MAP
  *     private  → 'PRIVATE'
- *     friends  → 'FRIENDS_ONLY'
+ *     friends  → 'FRIENDS'
  *     public   → 'PUBLIC'
  *
  * @state
@@ -103,7 +103,7 @@ const layouts = [
  * @constant VISIBILITY_MAP
  * UI 에서 사용하는 공개범위 문자열 → API 값 매핑.
  *   'private' → 'PRIVATE'      (나만 보기)
- *   'friends' → 'FRIENDS_ONLY' (글벗만 보기)
+ *   'friends' → 'FRIENDS' (글벗만 보기)
  *   'public'  → 'PUBLIC'       (전체 공개)
  */
 const VISIBILITY_MAP = {
@@ -710,7 +710,7 @@ export default function CreatePhotoAlbumPage() {
             미선택 버튼: 흰색 배경 + 회색 텍스트
             VISIBILITY_MAP 을 통해 API 값으로 변환됨:
               'private' → 'PRIVATE'
-              'friends' → 'FRIENDS_ONLY'
+              'friends' → 'FRIENDS'
               'public'  → 'PUBLIC'
         ────────────────────────────────────────────────────── */}
         <div className="pt-6 border-t border-[#e5e5e5] dark:border-[#292e35]">
@@ -718,7 +718,7 @@ export default function CreatePhotoAlbumPage() {
           <div className="flex gap-3 max-w-sm mx-auto">
             {[
               { value: 'private', label: '나만보기' },    // → PRIVATE
-              { value: 'friends', label: '글벗만' },      // → FRIENDS_ONLY
+              { value: 'friends', label: '글벗만' },      // → FRIENDS
               { value: 'public', label: '전체공개' },    // → PUBLIC
             ].map((option) => (
               <button
