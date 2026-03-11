@@ -77,7 +77,10 @@ export default function SnapHeader() {
 
     // ── 컨텍스트: 로그인 여부 ─────────────────────────────────────────────────
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
+
     const { isAuthenticated } = useAuth();
+
+
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
@@ -102,6 +105,11 @@ export default function SnapHeader() {
      *   - 컴포넌트 언마운트 또는 isAuthenticated 변경 시:
      *     clearInterval(interval)로 폴링 타이머를 해제해 메모리 누수 방지
      */
+
+
+
+
+
     useEffect(() => {
         // TODO: setInterval로 30초마다 notificationService.getUnreadCount() 호출해
         //       setUnreadCount() 업데이트, 클린업에서 clearInterval 호출
@@ -133,6 +141,7 @@ export default function SnapHeader() {
 
                 const data = await notificationService.getAll();
                 setUnreadCount(
+
                     Array.isArray(data)
                         ? data.filter(n => !(n.isRead ?? n.read)).length
                         : 0
@@ -144,7 +153,7 @@ export default function SnapHeader() {
 
         fetchUnread();
         const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
-
+      
         return () => clearInterval(interval);
     }, [isAuthenticated]);
 

@@ -54,6 +54,7 @@ import { useAlert } from '@/context/AlertContext';
 import { postService } from '@/api/postService';
 import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
 
+
 // ---------------------------------------------------------
 // [상수] AVAILABLE_BADGES - 달개 시스템에서 사용 가능한 8가지 이모지 목록
 // 사용자가 마음에 드는 스냅에 달개(이모지 반응)를 전달할 수 있다.

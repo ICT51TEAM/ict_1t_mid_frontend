@@ -43,6 +43,7 @@ import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { useAuth } from '@/context/AuthContext';
 import { DEFAULT_AVATAR } from '@/utils/imageUtils';
+import { useAlert } from '@/context/AlertContext';
 
 export default function EditProfilePage() {
     const navigate = useNavigate();
@@ -50,6 +51,7 @@ export default function EditProfilePage() {
     // AuthContext에서 현재 로그인 사용자 정보와 메모리 상태 갱신 함수를 가져온다.
     // updateUser: { key: value } 형태로 authUser의 일부 필드만 업데이트 가능.
     const { user: authUser, updateUser } = useAuth();
+    const { showAlert } = useAlert();
 
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
@@ -232,25 +234,38 @@ export default function EditProfilePage() {
         // TODO: [3] 성공 시 alert('프로필이 성공적으로 수정되었습니다.') → navigate('/profile')
         // TODO: [4] 실패 시 console.error + alert(에러 메시지 또는 기본 메시지)
         // 힌트: finally 블록에서 setIsSaving(false) 호출
-        e.preventDefault(); //form태그의 기본동작 방지(submit때문에)
-        setIsSaving(true); //중복제출 방지용
+        e.preventDefault();
+        setIsSaving(true);
         try {
+            // Step 1: 이미지 업로드 (실패해도 계속 진행)
             if (profileFile) {
-                const formDataImg = new FormData();
-                formDataImg.append('file', profileFile);
-                const data = await userService.uploadProfileImage(formDataImg);
-                if (data.result?.profileImageUrl) {
-                    updateUser({ profileImageUrl: data.profileImageUrl }); // AuthContext 동기화
+                try {
+                    const formDataImg = new FormData();
+                    formDataImg.append('file', profileFile);
+                    if (authUser?.id || authUser?.userId) {
+                        formDataImg.append('userId', String(authUser?.id || authUser?.userId));
+                    }
+                    const data = await userService.uploadProfileImage(formDataImg);
+                    const newImageUrl = data?.result?.profileImageUrl
+                                    || data?.profileImageUrl
+                                    || data?.result;
+                    if (newImageUrl) {
+                        updateUser({ profileImageUrl: newImageUrl });
+                    }
+                } catch (imgError) {
+                    console.warn('이미지 업로드 실패:', imgError);
+                    showAlert('프로필 사진 변경에 실패했습니다. 나머지 정보는 저장됩니다.');
                 }
             }
+
+            // Step 2: 닉네임/공개여부 업데이트
             await userService.updateProfile({
                 username: formData.username,
                 visibility: formData.visibility
             });
             updateUser({ username: formData.username, visibility: formData.visibility });
-            showConfirm('프로필이 성공적으로 수정되었습니다.', () => {
-                navigate('/profile');
-            });
+            showAlert('프로필이 수정되었습니다.', '프로필', 'success');
+            setTimeout(() => navigate('/profile'), 1000);
         } catch (error) {
             console.error(error);
             showAlert(error.message || '프로필 수정에 실패했습니다.');

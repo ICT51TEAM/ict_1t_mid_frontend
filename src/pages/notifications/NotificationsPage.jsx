@@ -62,6 +62,7 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Bell, Heart, MessageCircle, UserPlus } from 'lucide-react';
 import { notificationService } from '@/api/notificationService';
 import { useAlert } from '@/context/AlertContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function NotificationsPage() {
     const navigate = useNavigate();
@@ -102,7 +103,11 @@ export default function NotificationsPage() {
         // 힌트: try-catch 구조 사용
         try {
             const data = await notificationService.getAll();
-            setNotifications(data);
+            const mapped = Array.isArray(data) ? data.map(n => ({
+                ...n,
+                isRead: n.isRead ?? n.read ?? false
+            })) : [];
+            setNotifications(mapped);
         } catch (error) {
             console.error(error);
         }
@@ -140,6 +145,8 @@ export default function NotificationsPage() {
      *      c. showAlert('모든 알림이 읽음 처리되었습니다.', '알림')
      *   3. 실패 시: showAlert('알림 처리에 실패했습니다.')
      */
+    const { triggerNotiRefresh } = useAuth();
+
     const handleReadAll = () => {
         // TODO: [1] showConfirm 호출: ('모든 알림을 읽음 처리하시겠습니까?', callback, '모두 읽음')
         // TODO: [2] callback(async 함수) 내에서:
@@ -151,10 +158,14 @@ export default function NotificationsPage() {
         // 힌트: showConfirm(message, async () => { ... }, confirmButtonText) 형태로 호출
         showConfirm('모든 알림을 읽음 처리하시겠습니까?', async () => {
             try {
+                console.log('1. markAllRead 시작');
                 await notificationService.markAllRead();
-                loadNotifications();
-                showConfirm('모든 알림이 읽음 처리되었습니다.', '알림');
-            } catch (error) {
+                console.log('2. markAllRead 성공');
+                await loadNotifications();
+                console.log('3. loadNotifications 성공');
+                showAlert('모든 알림이 읽음 처리되었습니다.', '알림', 'success');
+            } catch (e) {
+                console.error('어디서 실패:', e);
                 showAlert('알림 처리에 실패했습니다.');
             }
         }, '모두 읽음');
