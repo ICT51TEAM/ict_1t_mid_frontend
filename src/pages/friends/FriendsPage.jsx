@@ -57,7 +57,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { UserPlus, UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
+import { UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
 import { friendService } from '@/api/friendService';
 import { useAlert } from '@/context/AlertContext';
 import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
@@ -100,6 +100,8 @@ export default function FriendsPage() {
      * 'LIST'    → ALL FRIENDS: 내 글벗 목록 표시
      * 'PENDING' → REQUESTS: 받은 글벗 요청 목록 표시
      */
+    const [receivedRequests, setReceivedRequests] = useState([]); // 받은 요청
+    const [sentRequests, setSentRequests] = useState([]);         // 보낸 요청
     const [activeTab, setActiveTab] = useState('LIST');
 
     /**
@@ -137,25 +139,47 @@ export default function FriendsPage() {
      *   두 호출은 순차(await) 실행됨
      * 에러 시 콘솔에 출력하고 상태는 빈 배열로 유지
      */
+    const fetchAllData = async () => {
+        try {
+            const [friendsData, receiveData, sentData] = await Promise.all([
+                friendService.listFriends(),
+                friendService.listPendingRequests(),
+                friendService.listSentPendingRequests()
+            ]);
+            setFriends(friendsData || []);
+            setReceivedRequests(receiveData || []);
+            setSentRequests(sentData || []);
+        }
+        catch (error) {
+            console.error('데이터 로딩 실패:', error);
+        }
+    }
+
     useEffect(() => {
         // TODO: friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
         // 힌트: Promise.all([...]) 또는 순차 await로 두 API를 호출하고
         //       각 결과를 setFriends(), setPending()에 저장하세요.
         //       에러 발생 시 console.error로 출력합니다.
-         // friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
+        // friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
         const fetchFriendsData = async () => {
             try {
-                const [friendsData, pendingData] = await Promise.all([
+                const [friendsData, receiveData, sentData] = await Promise.all([
                     friendService.listFriends(),
-                    friendService.listPendingRequests()
+                    friendService.listPendingRequests(),
+                    friendService.listSentPendingRequests()
                 ]);
                 setFriends(friendsData || []);
-                setPending(pendingData || []);
-            } catch (error) {
-                console.error('글벗 목록 로딩 실패:', error);
+                setReceivedRequests(receiveData || []);
+                setSentRequests(sentData || []);
             }
-        };
-        fetchFriendsData();
+            catch (error) {
+                console.error('데이터 로딩 실패:', error);
+            }
+        }
+    })
+
+    useEffect(() => {
+        fetchAllData(); // 페이지가 열리자마자 이 함수를 실행해라!
     }, []);
 
     /**
@@ -224,20 +248,33 @@ export default function FriendsPage() {
         // TODO: [2] 확인 시 friendService.removeFriend(friendshipId) 호출
         // TODO: [3] 성공 시 setFriends()로 해당 friendshipId 항목을 배열에서 제거
         // TODO: [4] showAlert으로 성공/실패 알림 표시
-          // [1] showConfirm으로 다이얼로그 띄우기
+        // [1] showConfirm으로 다이얼로그 띄우기
         showConfirm('정말로 이 글벗을 삭제하시겠습니까?', async () => {
             try {
                 // [2] 확인 시 friendService.removeFriend(friendshipId) 호출
                 await friendService.removeFriend(friendshipId);
-                
+
                 // [3] 성공 시 setFriends()로 해당 항목 제거
                 setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
-                
+
                 // [4] showAlert 알림
-                showAlert('success', '글벗이 삭제되었습니다.');
+                showAlert('글벗이 삭제되었습니다.', '완료', 'success');
             } catch (error) {
                 console.error('삭제 오류:', error);
-                showAlert('error', '삭제에 실패했습니다.');
+                showAlert('삭제에 실패했습니다.', '오류', 'alert');
+            }
+        });
+    };
+
+    // [함수] 보낸 요청 취소 (기존 removeFriend API 재사용)
+    const handleCancelSentRequest = async (targetUserId) => {
+        showConfirm('보낸 요청을 취소하시겠습니까?', async () => {
+            try {
+                await friendService.removeFriend(targetUserId);
+                setSentRequests(prev => prev.filter(req => req.userId !== targetUserId));
+                showAlert('요청이 취소되었습니다.', '완료', 'success');
+            } catch (error) {
+                showAlert('취소 중 오류가 발생했습니다.', '오류', 'alert');
             }
         });
     };
@@ -264,25 +301,25 @@ export default function FriendsPage() {
         // TODO: [3] setFriends()로 friends 배열 끝에 acceptedUser 추가 (낙관적 UI 업데이트)
         // TODO: [4] setPending()으로 해당 항목을 pending 배열에서 제거
         // TODO: [5] showAlert으로 성공 알림 표시
-         try {
+        try {
             // [1] friendService.acceptRequest 호출
             await friendService.acceptRequest(friendshipId);
-            
+
             // [2] pending 에서 사용자 찾기
             const acceptedUser = pending.find(req => req.friendshipId === friendshipId);
-            
+
             if (acceptedUser) {
                 // [3] setFriends로 배열에 추가
                 setFriends(prev => [...prev, acceptedUser]);
             }
             // [4] setPending 으로 목록에서 제거
             setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
-            
+
             // [5] 성공 알림 표시
-            showAlert('success', `${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`);
+            showAlert(`${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`, '완료', 'success');
         } catch (error) {
             console.error('요청 수락 오류:', error);
-            showAlert('error', '요청 승인 중 오류가 발생했습니다.');
+            showAlert('요청 승인 중 오류가 발생했습니다.', '오류', 'alert');
         }
     };
 
@@ -302,10 +339,10 @@ export default function FriendsPage() {
         // TODO: [1] friendService.rejectRequest(friendshipId) 호출
         // TODO: [2] 성공 시 setPending()으로 해당 항목을 목록에서 제거
         // 힌트: 실패 시 console.error만 출력합니다 (사용자 알림 없음)
-         try {
+        try {
             // [1] friendService.rejectRequest 호출
             await friendService.rejectRequest(friendshipId);
-            
+
             // [2] 성공 시 setPending 으로 목록에서 즉시 제거
             setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
         } catch (error) {
@@ -314,16 +351,10 @@ export default function FriendsPage() {
     };
 
     return (
-        // showTabs={true}: 하단 내비게이션 탭 표시
         <ResponsiveLayout showTabs={true}>
             <div className="flex flex-col min-h-screen bg-white dark:bg-[#101215] text-black dark:text-[#e5e5e5]">
 
-                {/* ──────────────────────────────────────────────────────
-                    Section Title (페이지 상단 히어로 영역)
-                    - Users 아이콘 (검정 박스, -rotate-3 → hover 시 0)
-                    - "MY FRIENDS" 대형 이탤릭 제목
-                    - "Connect with your style crew" 서브텍스트
-                ────────────────────────────────────────────────────── */}
+                {/* 헤더 섹션 */}
                 <div className="px-6 py-10 flex flex-col items-center border-b border-[#f3f3f3] dark:border-[#292e35] bg-[#fafafa] dark:bg-[#1c1f24]">
                     <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-xl transform -rotate-3 hover:rotate-0 transition-all">
                         <Users size={32} />
@@ -332,19 +363,9 @@ export default function FriendsPage() {
                     <p className="text-[14px] text-[#a3b0c1] font-bold tracking-widest uppercase">Connect with your style crew</p>
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Search & Add Bar (sticky, top-[110px])
-                    - 검색 입력창: searchQuery 상태와 연결
-                      입력 시 onChange → setSearchQuery → 디바운스 useEffect 실행
-                    - UserPlus 버튼: /add-friend 페이지로 이동
-                    - 실시간 검색 결과 드롭다운:
-                        searchQuery 가 있고 searchResults.length > 0 일 때만 표시
-                        각 결과 클릭 → /friend/{user.id|user.userId} 로 이동
-                        프로필 이미지: getImageUrl 로 변환, 실패 시 DEFAULT_AVATAR
-                ────────────────────────────────────────────────────── */}
+                {/* 검색 바 */}
                 <div className="px-4 py-6 flex flex-col gap-3 sticky top-[110px] bg-white dark:bg-[#1c1f24] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     <div className="flex gap-3">
-                        {/* 검색 입력창 (Search 아이콘 포함) */}
                         <div className="relative flex-1 group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ccd3db] group-hover:text-black transition-colors" size={18} />
                             <input
@@ -352,38 +373,31 @@ export default function FriendsPage() {
                                 placeholder="SEARCH FRIENDS"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full h-12 pl-12 pr-4 bg-[#f3f3f3] dark:bg-[#292e35] text-black dark:text-[#e5e5e5] rounded-[8px] text-[13px] font-black italic tracking-widest placeholder:text-[#ccd3db] outline-none hover:bg-[#eef1f4] dark:hover:bg-[#424a54] focus:ring-1 focus:ring-black dark:focus:ring-[#e5e5e5] transition-all"
+                                className="w-full h-12 pl-12 pr-4 bg-[#f3f3f3] dark:bg-[#292e35] rounded-[8px] text-[13px] font-black italic tracking-widest outline-none focus:ring-1 focus:ring-black transition-all"
                             />
                         </div>
+
                         {/* UserPlus 버튼: /add-friend 페이지 이동 */}
-                        <button
+                        {/* {/* <button                ------------------depricated--------------------
                             onClick={() => navigate('/add-friend')}
                             className="w-12 h-12 bg-black text-white rounded-[8px] flex items-center justify-center hover:scale-105 transition-all shadow-md"
                         >
                             <UserPlus size={22} />
-                        </button>
-                    </div>
+                        </button> */}
+                    </div> 
 
                     {/* 실시간 검색 결과 드롭다운
                         조건: searchQuery 비지 않음 AND searchResults.length > 0
                         각 항목: 프로필 이미지 + 유저명 + #ID → 클릭 시 프로필 페이지 이동 */}
+
                     {searchQuery && searchResults.length > 0 && (
                         <div className="bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35] rounded-xl shadow-2xl mt-1 overflow-hidden">
                             {searchResults.map(user => (
-                                <div
-                                    key={user.id}
-                                    onClick={() => navigate(`/friend/${user.id || user.userId}`)}
-                                    className="flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#292e35] border-b border-[#fafafa] dark:border-[#292e35] last:border-0 cursor-pointer"
-                                >
-                                    {/* 검색 결과 프로필 이미지 (실패 시 DEFAULT_AVATAR) */}
-                                    <img
-                                        src={getImageUrl(user.profileImageUrl || user.profileImage) || DEFAULT_AVATAR}
-                                        className="w-10 h-10 rounded-full object-cover"
-                                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
-                                    />
+                                <div key={user.userId} onClick={() => navigate(`/friend/${user.userId}`)} className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer">
+                                    <img src={getImageUrl(user.profileImageUrl) || DEFAULT_AVATAR} className="w-10 h-10 rounded-full object-cover" />
                                     <div className="flex flex-col">
                                         <span className="font-bold">{user.username}</span>
-                                        <span className="text-[11px] text-[#7b8b9e]">#{user.id || user.userId}</span>
+                                        <span className="text-[11px] text-[#7b8b9e]">#{user.userId}</span>
                                     </div>
                                 </div>
                             ))}
@@ -391,144 +405,104 @@ export default function FriendsPage() {
                     )}
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Tabs (sticky, top-[154px])
-                    - ALL FRIENDS: friends.length 표시, 클릭 시 activeTab = 'LIST'
-                    - REQUESTS   : pending.length 표시, 클릭 시 activeTab = 'PENDING'
-                    - 활성 탭: 검정 텍스트 + 하단 2.5px 검정 밑줄
-                    - 비활성 탭: 회색 텍스트 (#ccd3db)
-                ────────────────────────────────────────────────────── */}
+                {/* 탭 메뉴 */}
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
                         { id: 'LIST', label: 'ALL FRIENDS', count: friends.length },
-                        { id: 'PENDING', label: 'REQUESTS', count: pending.length }
+                        { id: 'PENDING', label: 'REQUESTS', count: receivedRequests.length + sentRequests.length }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 py-4 text-[12px] font-black tracking-[1px] relative transition-colors ${activeTab === tab.id ? 'text-black' : 'text-[#ccd3db] hover:text-[#a3b0c1]'}`}
+                            className={`flex-1 py-4 text-[12px] font-black tracking-[1px] relative transition-colors ${activeTab === tab.id ? 'text-black' : 'text-[#ccd3db]'}`}
                         >
                             {tab.label} <span className="ml-1 opacity-50">[{tab.count}]</span>
-                            {/* 활성 탭 하단 인디케이터 */}
                             {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-black" />}
                         </button>
                     ))}
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Content 영역 (탭에 따라 분기)
-
-                    [LIST 탭 - activeTab === 'LIST']
-                    friends 배열을 순서대로 렌더링:
-                      - 각 항목 클릭: /friend/{id|userId} 로 이동
-                      - 프로필 이미지 (rounded-2xl, 실패 시 DEFAULT_AVATAR)
-                      - isCertified 이면 ShieldCheck 뱃지 표시 (우측 하단)
-                      - 유저명 (이탤릭 대문자) + #ID
-                      - UserMinus 버튼: hover 시만 표시 (group-hover:opacity-100)
-                        클릭: e.stopPropagation() + handleRemoveFriend(friendshipId)
-                    friends 비어있으면: Users 아이콘 + "Empty Crew" 메시지
-
-                    [PENDING 탭 - activeTab === 'PENDING']
-                    pending 배열을 순서대로 렌더링:
-                      - 각 항목 클릭: /friend/{id|userId} 로 이동
-                      - 프로필 이미지 + 유저명 + #ID
-                      - ACCEPT  버튼: handleAcceptRequest(friendshipId)
-                      - DECLINE 버튼: handleDeclineRequest(friendshipId)
-                    pending 비어있으면: Mail 아이콘 + "No Inbox" 메시지
-                ────────────────────────────────────────────────────── */}
-                <div className="flex flex-col flex-1 divide-y divide-[#f3f3f3]">
+                {/* 콘텐츠 영역 */}
+                <div className="flex flex-col flex-1">
                     {activeTab === 'LIST' ? (
+                        /* --- 내 친구 목록 --- */
                         friends.length > 0 ? (
                             friends.map(friend => (
-                                <div key={friend.id || friend.userId} className="flex items-center justify-between px-6 py-5 group hover:bg-[#fafafa] dark:hover:bg-[#292e35] transition-colors cursor-pointer" onClick={() => navigate(`/friend/${friend.id || friend.userId}`)}>
+                                <div key={friend.friendshipId} className="flex items-center justify-between px-6 py-5 group hover:bg-[#fafafa] cursor-pointer" onClick={() => navigate(`/friend/${friend.friendId}`)}>
                                     <div className="flex items-center gap-5">
-                                        {/* 프로필 이미지 + isCertified ShieldCheck 뱃지 */}
                                         <div className="relative">
-                                            <img
-                                                src={getImageUrl(friend.profileImageUrl || friend.profileImage) || DEFAULT_AVATAR}
-                                                alt="p"
-                                                className="w-14 h-14 rounded-2xl border border-[#f3f3f3] object-cover"
-                                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
-                                            />
-                                            {/* 인증 사용자(isCertified)에게만 표시하는 ShieldCheck 뱃지 */}
+                                            <img src={getImageUrl(friend.profileImageUrl) || DEFAULT_AVATAR} className="w-14 h-14 rounded-2xl object-cover" />
                                             {friend.isCertified && (
-                                                <div className="absolute -bottom-1 -right-1 bg-black text-[#e5e5e5] rounded-full p-1 border-2 border-white dark:border-[#1c1f24]">
+                                                <div className="absolute -bottom-1 -right-1 bg-black text-[#e5e5e5] rounded-full p-1 border-2 border-white">
                                                     <ShieldCheck size={10} />
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-black italic text-[16px] tracking-tighter uppercase">{friend.username}</span>
-                                            <span className="text-[13px] text-[#7b8b9e] font-bold">#{friend.id || friend.userId}</span>
+                                            <span className="text-[13px] text-[#7b8b9e] font-bold">#{friend.friendId}</span>
                                         </div>
                                     </div>
-                                    {/* UserMinus 삭제 버튼: hover 시에만 보임 */}
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend.friendshipId); }}
-                                        className="w-10 h-10 rounded-full flex items-center justify-center text-[#ccd3db] hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                    >
+                                    <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend.friendshipId); }} className="w-10 h-10 text-[#ccd3db] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
                                         <UserMinus size={18} />
                                     </button>
                                 </div>
                             ))
                         ) : (
-                            /* 글벗이 없을 때 빈 상태 표시 */
-                            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-20">
-                                <Users size={64} className="mb-4" />
-                                <p className="text-[14px] font-black italic tracking-widest uppercase">Empty Crew</p>
-                            </div>
+                            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-20"><Users size={64} className="mb-4" /><p>Empty Crew</p></div>
                         )
                     ) : (
-                        pending.length > 0 ? (
-                            pending.map(req => (
-                                <div key={req.id || req.userId} className="flex items-center justify-between px-6 py-6 border-b border-[#f3f3f3] dark:border-[#292e35]">
-                                    {/* 요청자 프로필 (클릭 시 프로필 페이지 이동) */}
-                                    <div className="flex items-center gap-5 cursor-pointer" onClick={() => navigate(`/friend/${req.id || req.userId}`)}>
-                                        <img
-                                            src={getImageUrl(req.profileImageUrl || req.profileImage) || DEFAULT_AVATAR}
-                                            alt="p"
-                                            className="w-14 h-14 rounded-2xl border border-[#f3f3f3] object-cover"
-                                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
-                                        />
-                                        <div className="flex flex-col">
-                                            <span className="font-black italic text-[16px] tracking-tighter uppercase">{req.username}</span>
-                                            <span className="text-[11px] text-[#a3b0c1] font-bold">#{req.id || req.userId}</span>
+                        /* --- 요청 관리 (RECEIVED & SENT) --- */
+                        <div className="flex flex-col divide-y divide-[#f3f3f3]">
+                            {/* 1. 받은 요청 섹션 */}
+                            <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3">
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Received ({receivedRequests.length})</span>
+                            </div>
+                            {receivedRequests.length > 0 ? (
+                                receivedRequests.map(req => (
+                                    <div key={req.friendshipId} className="flex items-center justify-between px-6 py-6 bg-white dark:bg-[#101215]">
+                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => navigate(`/friend/${req.requesterId}`)}>
+                                            <img src={getImageUrl(req.requesterProfileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover" />
+                                            <div className="flex flex-col">
+                                                <span className="font-black italic text-[15px] tracking-tighter uppercase">{req.requesterName}</span>
+                                                <span className="text-[11px] text-[#a3b0c1]">Incoming Request</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleAcceptRequest(req.friendshipId)} className="h-9 px-4 bg-black text-white text-[11px] font-black rounded">ACCEPT</button>
+                                            <button onClick={() => handleDeclineRequest(req.friendshipId)} className="h-9 px-4 border border-[#e5e5e5] text-[11px] font-black rounded">DECLINE</button>
                                         </div>
                                     </div>
-                                    {/* 수락/거절 버튼 */}
-                                    <div className="flex gap-2">
-                                        {/* ACCEPT: handleAcceptRequest 호출 */}
-                                        <button
-                                            onClick={() => handleAcceptRequest(req.friendshipId)}
-                                            className="h-10 px-5 bg-black text-white text-[12px] font-bold rounded hover:bg-gray-800 transition-all"
-                                        >
-                                            ACCEPT
-                                        </button>
-                                        {/* DECLINE: handleDeclineRequest 호출 */}
-                                        <button
-                                            onClick={() => handleDeclineRequest(req.friendshipId)}
-                                            className="h-10 px-5 border border-[#e5e5e5] dark:border-[#292e35] text-[12px] font-bold rounded hover:bg-gray-50 dark:hover:bg-[#292e35] transition-all"
-                                        >
-                                            DECLINE
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            /* 받은 요청이 없을 때 빈 상태 표시 */
-                            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-20">
-                                <Mail size={64} className="mb-4" />
-                                <p className="text-[14px] font-black italic tracking-widest uppercase">No Inbox</p>
+                                ))
+                            ) : (
+                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">No incoming requests</div>
+                            )}
+
+                            {/* 2. 보낸 요청 섹션 */}
+                            <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3 border-t">
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Sent ({sentRequests.length})</span>
                             </div>
-                        )
+                            {sentRequests.length > 0 ? (
+                                sentRequests.map(req => (
+                                    <div key={req.friendshipId} className="flex items-center justify-between px-6 py-6 bg-white dark:bg-[#101215]">
+                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => navigate(`/friend/${req.userId}`)}>
+                                            <img src={getImageUrl(req.profileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover opacity-60" />
+                                            <div className="flex flex-col">
+                                                <span className="font-black italic text-[15px] tracking-tighter uppercase text-[#a3b0c1]">{req.username}</span>
+                                                <span className="text-[11px] text-[#ccd3db]">Waiting for approval...</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleCancelSentRequest(req.userId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">CANCEL</button>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">No sent requests</div>
+                            )}
+                        </div>
                     )}
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Footer Guide
-                    페이지 최하단의 서비스 슬로건 텍스트.
-                    "SNAP 스타일의 새로운 글벗 문화"
-                ────────────────────────────────────────────────────── */}
+                {/* 푸터 */}
                 <div className="p-10 text-center bg-[#fafafa] dark:bg-[#1c1f24]">
                     <p className="text-[11px] font-bold text-[#ccd3db] tracking-[2px] uppercase">SNAP 스타일의 새로운 글벗 문화</p>
                 </div>
@@ -536,3 +510,4 @@ export default function FriendsPage() {
         </ResponsiveLayout>
     );
 }
+

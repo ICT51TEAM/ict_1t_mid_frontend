@@ -71,27 +71,40 @@ import { AlertProvider } from './context/AlertContext';
 // createRoot(container): 해당 DOM 노드를 React 18 동시성 모드 루트로 등록.
 // .render(<JSX>): Provider 계층 구조를 포함한 전체 앱 트리를 렌더링.
 createRoot(document.getElementById('root')).render(
-  // StrictMode: 개발 환경 전용 추가 검사 활성화.
-  // 하위 컴포넌트를 두 번 렌더링해 부작용(side effects) 감지.
-  // 프로덕션 빌드에서는 아무런 추가 동작 없음.
+  /**
+ * [Provider 중첩 순서 및 이유 - 수정본]
+ *
+ * <StrictMode>
+ *  <BrowserRouter>      ← URL 라우팅 (최상단 배치: 하위 모든 곳에서 navigate 사용 가능)
+ *   <AuthProvider>      ← 인증 상태 (BrowserRouter 내부이므로 인증 실패 시 바로 navigate 가능)
+ *     <AlertProvider>   ← 전역 알림/확인 모달
+ *        <App />        ← 실제 앱 컴포넌트 트리
+ *      </AlertProvider>
+ *    </AuthProvider>
+ *  </BrowserRouter>
+ * </StrictMode>
+ *
+ * 순서가 중요한 이유:
+ * 1. BrowserRouter가 최상단인 이유:
+ * - AuthProvider 내부의 checkAuth()나 logout()에서 비인증 사용자를 
+ * /login으로 보내기 위해 useNavigate()를 사용하므로 가장 먼저 초기화되어야 함.
+ * 2. AuthProvider가 AlertProvider보다 위에 있는 이유:
+ * - 알림창(Alert)을 띄우기 전에 인증 체크가 먼저 선행되어야 하며,
+ * 인증 만료 알림 등을 처리할 때 Auth 상태에 의존할 수 있음.
+ * 3. AlertProvider가 App 위에 있는 이유:
+ * - App 내부의 모든 페이지 컴포넌트에서 useAlert()를 호출하여 
+ * 어느 경로에서든 일관된 모달 UI를 띄우기 위함.
+ */
   <StrictMode>
-    {/* AuthProvider: 인증 상태(user, isAuthenticated, isLoading)와
-        login/logout/updateUser/checkAuth 함수를 앱 전체에 제공.
-        가장 바깥에 위치해 모든 하위 Provider와 컴포넌트가 auth에 접근 가능. */}
-    <AuthProvider>
-      {/* AlertProvider: 전역 커스텀 알림(showAlert)·확인(showConfirm) 모달 제공.
-          BrowserRouter보다 바깥에 위치해 라우트 내 페이지 컴포넌트에서도
-          useAlert() 사용 가능. 모달 UI를 이 Provider 내부에서 직접 렌더링. */}
-      <AlertProvider>
-        {/* BrowserRouter: HTML5 History API 기반 URL 라우팅 컨텍스트 제공.
-            App.jsx 내부의 <Routes>, <Link>, useNavigate(), useLocation() 등이
-            이 Provider의 컨텍스트에 의존하므로 App의 직접 부모로 위치해야 함. */}
-        <BrowserRouter>
-          {/* App: 실제 라우트 구조(<Routes>/<Route>)와 레이아웃(ResponsiveLayout)이
-              정의된 최상위 앱 컴포넌트. 모든 페이지 컴포넌트가 여기서 라우팅됨. */}
+    <BrowserRouter>
+      {/* 중요: AuthProvider 내부에서 useNavigate()를 사용하므로 
+          반드시 BrowserRouter의 자식으로 위치해야 합니다. 
+      */}
+      <AuthProvider>
+        <AlertProvider>
           <App />
-        </BrowserRouter>
-      </AlertProvider>
-    </AuthProvider>
+        </AlertProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 );

@@ -42,9 +42,12 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 
 export default function DeleteAccountPage() {
     const navigate = useNavigate();
+
+    const {showAlert, showConfirm} = useAlert();
 
     const {logout} = useAuth();
     // -------------------------------------------------------------------------
@@ -87,17 +90,19 @@ export default function DeleteAccountPage() {
      */
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const isConfirmed = await showAlert(
-        '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
-        '회원 탈퇴 확인',
-        'confirm' // 프로젝트의 Alert 종류에 따라 'warning' 또는 'confirm' 사용
-    );
-        if (isConfirmed) {
-            await userService.deleteAccount({ password });
-            showAlert('탈퇴 처리가 완료되었습니다.','탈퇴 완료','success');
-            logout();
-            navigate('/login');
-        }
+        showConfirm({
+            message: '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
+            title: '회원 탈퇴 확인',
+            type: 'alert',
+            confirmText: '탈퇴하기',
+            cancelText: '취소',
+            onConfirm: async () => {
+                await userService.deleteAccount({ password });
+                showAlert('탈퇴 처리가 완료되었습니다.', '탈퇴 완료', 'success');
+                logout();
+                navigate('/login');
+            }
+        });
     };
 
     // -------------------------------------------------------------------------

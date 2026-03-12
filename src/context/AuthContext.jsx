@@ -1,226 +1,250 @@
 /**
  * @file AuthContext.jsx
- * @description 앱 전역 인증(Authentication) 상태를 관리하는 React Context 모듈.
+ * @description 앱 전역 인증(Authentication) 상태 및 보안 가드를 관리하는 React Context 모듈.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * [역할 및 아키텍처에서의 위치]
- *   - 이 모듈은 앱의 최상위 Provider 계층(main.jsx)에서 <AuthProvider>로 감싸져,
- *     모든 하위 컴포넌트가 인증 상태(로그인 여부, 유저 정보)에 접근할 수 있도록 한다.
- *   - Provider 순서: AuthProvider > AlertProvider > BrowserRouter > App
- *     (AuthProvider가 가장 바깥에 위치해야 라우터·알림 컨텍스트를 포함한
- *      모든 하위 트리에서 auth 상태를 사용할 수 있다.)
+ * - 앱의 최상위 계층에서 인증 상태를 유지하고, 새로고침 시 세션을 복원한다.
+ * - Provider 순서: BrowserRouter > AuthProvider > AlertProvider > App
+ * ※ 중요: AuthContext 내부에서 navigate()를 사용하기 위해 반드시 
+ * BrowserRouter가 AuthProvider를 감싸는 구조여야 한다.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * [제공하는 Context 값 (value shape)]
- *   {
- *     user          : object | null  — 현재 로그인된 사용자 객체. 로그아웃 시 null.
- *     isAuthenticated: boolean       — user가 존재하면 true, 아니면 false. (!!user)
- *     isLoading     : boolean        — 앱 최초 진입 시 localStorage 복원 작업 완료 전까지 true.
- *     login         : function       — 로그인 처리 함수. 토큰·유저 정보를 저장소에 저장.
- *     logout        : function       — 로그아웃 처리 함수. 저장소에서 인증 데이터 삭제.
- *     updateUser    : function       — 유저 정보를 부분 업데이트하는 함수.
- *     checkAuth     : function       — localStorage에서 세션을 복원하는 함수.
- *   }
+ * {
+ * user           : object | null  — 현재 로그인된 사용자 객체.
+ * isAuthenticated : boolean       — 현재 로그인 여부 (!!user).
+ * isLoading      : boolean        — 세션 복원 및 토큰 갱신 프로세스 진행 중 여부.
+ * login          : function       — 로그인 성공 시 호출. 토큰/유저 정보를 저장 및 상태 업데이트.
+ * logout         : function       — 로그아웃 처리. 스토리지 클리어 및 세션 종료.
+ * updateUser     : function       — 유저 프로필 등 상태 부분 업데이트.
+ * checkAuth      : function       — 새로고침 시 서버와 통신하여 세션 유효성을 검증하고 복원.
+ * }
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * [State 변수]
- *   - user      : 현재 로그인된 사용자 정보 객체(예: { id, username, email, ... }).
- *                 로그인 전·로그아웃 후에는 null.
- *   - isLoading : 앱 최초 마운트 시 localStorage에서 세션 복원을 시도하는 동안 true.
- *                 복원 완료(성공/실패 모두) 후 false로 전환됨.
- *                 이 값이 true인 동안 라우트 가드가 페이지 렌더링을 보류해야 한다.
+ * [보안 및 가드 동작]
+ * 1. 새로고침 대응: 앱 진입 시 `useEffect`가 `checkAuth()`를 실행하여 로컬 정보를 기반으로 
+ * 서버에 `/auth/refresh` 요청을 보냄.
+ * 2. 로딩 가드: `isLoading`이 true인 동안은 하위 트리의 렌더링을 차단하여, 
+ * 비인증 사용자가 찰나의 순간에 보호된 컨텐츠를 보는 것을 방지함.
+ * 3. 직접 접근 방어: 유효하지 않은 토큰으로 보호된 경로 접근 시, `checkAuth`에서 예외를 
+ * 캐치하여 `replace: true` 옵션으로 로그인 페이지로 강제 리다이렉트.
+ * 4. 백버튼 무력화: 로그아웃 및 세션 만료 시 히스토리 스택을 교체하여 뒤로가기로 
+ * 인증 페이지 재진입을 차단함.
  *
+ * ────────────────────────────────────────────────────────────────────────────
+ * [보안 전략: Hybrid Storage]
+ * - Access Token: localStorage에 저장 (클라이언트 요청 헤더 부착용)
+ * - Refresh Token: HTTP Only 쿠키에 저장 (CSRF 방어 및 XSS 탈취 차단)
+ * - 동작: 새로고침 시 쿠키의 Refresh Token을 이용해 서버로부터 새 Access Token을 발급받음.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * [역할 및 아키텍처]
+ * - Provider 순서: BrowserRouter > AuthProvider > App
+ * ※ navigate() 사용을 위해 BrowserRouter가 반드시 AuthProvider를 감싸야 함.
+ *
+ * [제공하는 Context 값]
+ * - user: 유저 정보 객체 / isAuthenticated: 로그인 여부 / isLoading: 인증 복구 중 여부
+ * - login/logout: 세션 시작 및 종료 / checkAuth: 토큰 갱신 및 유효성 검증
+ * 
  * ─────────────────────────────────────────────────────────────────────────────
  * [주요 동작 흐름]
- *   1. 앱 최초 실행 → useEffect가 checkAuth()를 호출
- *   2. checkAuth()가 localStorage에서 'authToken'과 'user'를 읽어옴
- *   3. 두 값이 모두 존재하면 user 상태를 복원하고 isLoading = false
- *   4. 이후 login()/logout()으로 상태를 갱신하고 localStorage와 동기화
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * [Export]
- *   - AuthProvider : 인증 상태를 제공하는 Context Provider 컴포넌트
- *   - useAuth      : AuthContext에 접근하기 위한 커스텀 훅
+ * 1. 앱 마운트 → checkAuth() 실행 → isLoading = true
+ * 2. localStorage 확인 → 서버 API 호출 (토큰 갱신 및 유효성 검증)
+ * 3. 검증 성공 시: user 상태 복원 / 검증 실패 시: 스토리지 정리 및 로그인 이동
+ * 4. 작업 완료 → isLoading = false → 앱 컨텐츠 노출
  */
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import apiClient from '@/api/apiClient';
 
 // ─── Context 생성 ──────────────────────────────────────────────────────────────
-// AuthContext: 인증 상태를 담는 React Context 객체.
-// 초기값을 undefined로 설정해두면, Provider 없이 useAuth()를 호출했을 때
-// 아래 useAuth 훅에서 명확한 에러를 던질 수 있다.
 const AuthContext = createContext(undefined);
-
 
 // ─── AuthProvider 컴포넌트 ─────────────────────────────────────────────────────
 /**
  * @component AuthProvider
  * @description 인증 상태(user, isLoading)와 관련 함수들을 하위 트리 전체에 제공한다.
- *              반드시 앱의 최상위(main.jsx)에서 모든 컴포넌트를 감싸야 한다.
- *
  * @param {React.ReactNode} children - Provider가 감쌀 자식 컴포넌트 트리
  */
 export const AuthProvider = ({ children }) => {
   // ── State: 현재 로그인된 사용자 객체 ──────────────────────────────────────
-  // null이면 비로그인 상태, 객체이면 로그인된 사용자 정보.
-  // login()으로 설정, logout()으로 null로 초기화됨.
   const [user, setUser] = useState(null);
 
+
   // ── State: 초기 인증 복원 중 여부 ─────────────────────────────────────────
-  // 앱 진입 시 localStorage에서 세션을 복원하는 동안 true.
-  // checkAuth() 완료 후 항상 false로 설정됨.
-  // 라우트 가드(PrivateRoute 등)는 이 값이 false가 될 때까지 렌더링을 대기해야 함.
   const [isLoading, setIsLoading] = useState(true);
+  const isVerifying = useRef(false);
 
-  // ── 파생 상태: 인증 여부 ──────────────────────────────────────────────────
-  // user 객체가 존재하면 true, null이면 false.
-  // !!를 사용해 불리언으로 변환함. 별도 state가 아닌 파생값이므로 항상 user와 동기화됨.
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // ── 페이지 전환 처리를 위한 navigate 함수 ──────────────────────────────────
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // ── 함수: login ───────────────────────────────────────────────────────────
+  // ── 파생 상태: 로그인 인증 여부 (T/F)───────────────────────────────────────
+  const isAuthenticated = !!user;
+
+  // ── 함수: login ─────────────────────────────────────────────────────────
   /**
    * @function login
    * @description 로그인 성공 시 호출. JWT 토큰과 사용자 정보를 localStorage에 저장하고
-   *              user 상태를 갱신한다.
-   *
-   * @param {string} token    - 서버에서 발급받은 JWT 액세스 토큰
-   * @param {object} userData - 로그인한 사용자의 정보 객체 (예: { id, username, email })
-   *
-   * 저장 구조:
-   *   localStorage['authToken'] = token (문자열)
-   *   localStorage['user']      = JSON.stringify(userData) (직렬화된 객체)
+   * user 상태를 갱신한다.
    */
-  const login = (accessToken, refreshToken, userData) => {
+  const login = (accessToken, userData) => {
     if (!accessToken || !userData) {
       console.error("로그인 데이터가 부족합니다:", { accessToken, userData });
       return;
     }
-    localStorage.setItem('accessToken', accessToken); // 로컬스토리지에 accessToken 저장
-    localStorage.setItem('refreshToken', refreshToken); // 로컬스토리지에 refreshToken 저장
-    localStorage.setItem('user', JSON.stringify(userData)); // 로컬스토리지에 사용자 정보도 저장
-    setUser(userData); // userdate 갱신
-    setIsAuthenticated(true);
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
   };
+
+  // ── 로컬 스토리지 정리 ──────────────────────────────────────────────────────────
+  const handleLogoutCleanUp = useCallback(() => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    setUser(null);
+  }, []);
+
+
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
   /**
    * @function logout
    * @description 로그아웃 처리. localStorage에서 인증 관련 데이터를 모두 삭제하고
-   *              user 상태를 null로 초기화한다.
-   *              이 함수 호출 후 isAuthenticated는 자동으로 false가 된다.
+   * user 상태를 null로 초기화한다.
    */
-  const logout = () => {
-    // TODO: localStorage에서 'authToken', 'user' 제거 후 setUser(null) 호출
-    localStorage.removeItem('accessToken'); // accessToken 삭제
-    localStorage.removeItem('refreshToken'); // refreshToken 삭제
-    localStorage.removeItem('user'); //사용자 정보 삭제
-    localStorage.removeItem('notificationEnabled'); // 알림 설정 삭제
-    setUser(null); // state를 null로 변환
+  const logout = async () => {
+    try {
+      await apiClient.post('/auth/logout', {}, { withCredentials: true });
+    } catch (err) {
+      console.error("서버 로그아웃 처리 실패 (무시하고 클라이언트 정리 진행):", err);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('notificationEnabled');
+      handleLogoutCleanUp();
+      window.location.replace('/login'); // 백버튼 무력화
+    }
   };
 
   // ── 함수: updateUser ──────────────────────────────────────────────────────
   /**
    * @function updateUser
    * @description 현재 로그인된 사용자의 정보를 부분 업데이트(patch)한다.
-   *              기존 user 객체에 새 데이터를 스프레드(...)로 병합하므로,
-   *              변경된 필드만 전달해도 된다.
-   *              변경된 정보는 localStorage['user']에도 반영된다.
-   *
-   * @param {object} data - 업데이트할 사용자 정보의 일부 (예: { profileImage: '...' })
-   *
-   * 주의: 로그인되지 않은 상태(user === null)에서 호출하면 아무 변경 없이 null을 반환.
    */
-  const updateUser = (data) => {
-    // TODO: setUser(prev => ({...prev, ...data})) 로 사용자 정보 부분 업데이트
+  const updateUser = useCallback((data) => {
     setUser((prev) => {
       if (!prev) return null;
-      const updateUser = { ...prev, ...data };
-      //변경된 정보를 localStorage에도 저장하여 새로고침 유지
-      localStorage.setItem('user', JSON.stringify(updateUser));
-      return updateUser;
+      const updatedData = { ...prev, ...data }; // 변수명 충돌 방지를 위해 updatedData로 변경
+      localStorage.setItem('user', JSON.stringify(updatedData));
+      return updatedData;
     });
-  };
+  }, []);
 
   // ── 함수: checkAuth ───────────────────────────────────────────────────────
   /**
    * @function checkAuth
    * @description 앱 최초 실행 시 localStorage에 저장된 인증 정보로 세션을 복원한다.
-   *              비동기 함수(async)이지만 현재 구현은 네트워크 요청 없이 로컬 스토리지만 읽음.
-   *              (향후 서버에 토큰 유효성 검증 요청을 추가할 수 있는 구조)
-   *
-   * 동작 흐름:
-   *   1. localStorage에서 'authToken'과 'user' 읽기
-   *   2. 둘 다 존재하면 'user' 문자열을 JSON.parse로 파싱하여 user 상태 복원
-   *   3. JSON 파싱 실패(손상된 데이터)면 logout()으로 저장소를 정리
-   *   4. 항상 마지막에 isLoading = false로 설정 (성공/실패 무관)
    */
-  const checkAuth = async () => {
-    const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
-    const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
+  const checkAuth = useCallback(async () => {
+    if (isVerifying.current) {
+      console.log("이미 인증 확인 중입니다. 중복 요청을 차단합니다.");
+      return;
+    }
+
+    const token = localStorage.getItem('accessToken');
+    const storageUser = localStorage.getItem('user');
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      /*
       if (token && storageUser) {
-        // 로그인 상태 복원
-        setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
-        setIsAuthenticated(true);
+        const { data } = await apiClient.post('/auth/refresh', {}, {
+          withCredentials: true
+        });
+        localStorage.setItem('accessToken', data.accessToken);
+        setUser(JSON.parse(storageUser));
+*/
+      isVerifying.current = true; // 요청 시작 잠금
+
+      // 2. Refresh Token을 이용한 세션 복구 요청
+      const response = await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+
+      const data = response.data;
+      console.log("서버 응답 데이터:", data); // 디버깅용 로그
+
+      const newAccessToken = data.accessToken;
+
+      const userData = data.user || JSON.parse(localStorage.getItem('user'));
+
+      if (newAccessToken && userData) {
+        localStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        console.log("✅ 세션 복구 성공");
+      } else {
+        throw new Error(`데이터 부족 - 토큰: ${!!newAccessToken}, 유저: ${!!userData}`);
       }
-    }
-    catch (e) {
-      console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
-      localStorage.removeItem('user');
-      logout();
-    }
-    finally {
+    } catch (error) {
+      console.log('세션이 만료되었습니다. 로그인 페이지로 이동합니다.', error);
+      handleLogoutCleanUp();
+      // 보호된 경로(로그인 제외)에서 접근 시 로그인으로 튕겨냄
+      if (location.pathname !== '/login' && location.pathname !== '/signup') {
+        navigate('/login', { replace: true });
+      } else {
+        console.error('인증 복구 중 알 수 없는 에러 발생:', error);
+      }
+    } finally {
+      isVerifying.current = false;
       setIsLoading(false);
     }
-  };
+
+  }, [navigate, location.pathname, handleLogoutCleanUp]);
 
   // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────
-  // [실행 시점] 컴포넌트가 처음 DOM에 마운트될 때 단 1회 실행 (의존성 배열 = [])
-  // [하는 일]   checkAuth()를 호출해 localStorage에서 이전 세션의 인증 정보를 복원
-  // [정리(cleanup)] 없음. 단순 1회성 초기화 작업이므로 정리 함수 불필요.
   useEffect(() => {
-    // checkAuth() 호출
     checkAuth();
-  }, []); // 빈 배열: 마운트 1회만 실행, 의존성 없음
+  }, []);
 
   // ─── JSX: Context Provider 렌더링 ─────────────────────────────────────────
-  // AuthContext.Provider로 하위 트리를 감싸고 value에 공개할 상태·함수를 전달.
-  // {children}은 <AuthProvider>로 감싸인 모든 하위 컴포넌트 트리를 의미함.
+
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    setUser,
+    login,
+    logout,
+    checkAuth,
+    updateUser,
+  }
+
+  // isLoading이 true일 때 실제 App 내용을 숨김 (보안 가드)
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="spinner">인증 확인 중...</div>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,           // 현재 로그인 사용자 객체 (null이면 비로그인)
-        isAuthenticated, // 로그인 여부 boolean
-        isLoading,      // 초기 세션 복원 중 여부 boolean
-        login,          // 로그인 처리 함수
-        logout,         // 로그아웃 처리 함수
-        checkAuth,      // 세션 재확인 함수 (외부에서 필요 시 호출 가능)
-        updateUser,     // 사용자 정보 부분 업데이트 함수
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
-
 // ─── 커스텀 훅: useAuth ────────────────────────────────────────────────────────
 /**
  * @hook useAuth
  * @description AuthContext에 접근하기 위한 커스텀 훅.
- *              반드시 <AuthProvider> 내부의 컴포넌트에서만 호출해야 한다.
- *
- * @returns {{ user, isAuthenticated, isLoading, login, logout, checkAuth, updateUser }}
- *          AuthContext에서 제공하는 모든 상태값과 함수
- *
- * @throws {Error} <AuthProvider> 외부에서 호출 시 에러를 던져 개발 중 실수를 방지함
- *
- * @example
- *   const { user, isAuthenticated, logout } = useAuth();
- *   if (!isAuthenticated) return <LoginPage />;
  */
 export const useAuth = () => {
-  // useContext로 AuthContext의 현재 값을 가져옴
   const context = useContext(AuthContext);
-  // context가 undefined이면 AuthProvider 밖에서 사용된 것이므로 에러 throw
   if (context === undefined) {
     throw new Error('useAuth는 반드시 AuthProvider 안에서 사용해야 합니다.');
   }
