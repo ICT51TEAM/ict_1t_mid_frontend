@@ -238,7 +238,6 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
 // ─── 커스텀 훅: useAuth ────────────────────────────────────────────────────────
 /**
  * @hook useAuth

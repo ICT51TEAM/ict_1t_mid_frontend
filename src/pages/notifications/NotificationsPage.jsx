@@ -156,19 +156,19 @@ export default function NotificationsPage() {
         //           c. showAlert('모든 알림이 읽음 처리되었습니다.', '알림')
         // TODO: [3] catch 블록에서 showAlert('알림 처리에 실패했습니다.')
         // 힌트: showConfirm(message, async () => { ... }, confirmButtonText) 형태로 호출
-        showConfirm('모든 알림을 읽음 처리하시겠습니까?', async () => {
-            try {
-                console.log('1. markAllRead 시작');
-                await notificationService.markAllRead();
-                console.log('2. markAllRead 성공');
-                await loadNotifications();
-                console.log('3. loadNotifications 성공');
-                showAlert('모든 알림이 읽음 처리되었습니다.', '알림', 'success');
-            } catch (e) {
-                console.error('어디서 실패:', e);
-                showAlert('알림 처리에 실패했습니다.');
+        showConfirm({
+            message: '모든 알림을 읽음 처리하시겠습니까?',
+            confirmText: '모두 읽음',
+            onConfirm: async () => {
+                try {
+                    await notificationService.markAllRead();
+                    await loadNotifications();
+                    showAlert('모든 알림이 읽음 처리되었습니다.', '알림', 'success');
+                } catch (e) {
+                    showAlert('알림 처리에 실패했습니다.');
+                }
             }
-        }, '모두 읽음');
+        });
     };
 
     // -------------------------------------------------------------------------

@@ -57,7 +57,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { UserPlus, UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
+import { UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
 import { friendService } from '@/api/friendService';
 import { useAlert } from '@/context/AlertContext';
 import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
@@ -376,11 +376,20 @@ export default function FriendsPage() {
                                 className="w-full h-12 pl-12 pr-4 bg-[#f3f3f3] dark:bg-[#292e35] rounded-[8px] text-[13px] font-black italic tracking-widest outline-none focus:ring-1 focus:ring-black transition-all"
                             />
                         </div>
-                        <button onClick={() => navigate('/add-friend')} className="w-12 h-12 bg-black text-white rounded-[8px] flex items-center justify-center shadow-md">
+
+                        {/* UserPlus 버튼: /add-friend 페이지 이동 */}
+                        {/* {/* <button                ------------------depricated--------------------
+                            onClick={() => navigate('/add-friend')}
+                            className="w-12 h-12 bg-black text-white rounded-[8px] flex items-center justify-center hover:scale-105 transition-all shadow-md"
+                        >
                             <UserPlus size={22} />
-                        </button>
-                    </div>
-                    {/* 검색 결과 드롭다운 */}
+                        </button> */}
+                    </div> 
+
+                    {/* 실시간 검색 결과 드롭다운
+                        조건: searchQuery 비지 않음 AND searchResults.length > 0
+                        각 항목: 프로필 이미지 + 유저명 + #ID → 클릭 시 프로필 페이지 이동 */}
+
                     {searchQuery && searchResults.length > 0 && (
                         <div className="bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35] rounded-xl shadow-2xl mt-1 overflow-hidden">
                             {searchResults.map(user => (

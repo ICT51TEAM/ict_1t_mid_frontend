@@ -68,6 +68,18 @@ export default function SnapFeedPage() {
     //   'following' → 팔로잉 사용자 스냅만 표시 (friendsOnly=true)
     const [filter, setFilter] = useState('all');
 
+
+
+    // API 파라미터 매핑
+    const getVisibility = () => {
+        if (filter === 'following') return 'FRIENDS';
+        if (filter === 'mine') return 'PRIVATE';
+        return undefined; // 전체
+    };
+
+
+
+
     // allItems: 백엔드 API에서 받아온 스냅 전체 배열.
     // 클라이언트 페이지네이션을 위해 전체 데이터를 한 번에 메모리에 저장.
     // API 오류 시 빈 배열([])로 초기화.
@@ -119,7 +131,7 @@ export default function SnapFeedPage() {
             try {
                 const tagParam = searchQuery || undefined;
                 const response = await apiClient.get('/albums/feed', {
-                    params: { type: 'photo', friendsOnly: filter === 'following', tag: tagParam }
+                    params: { type: 'photo', visibility: getVisibility(), tag: tagParam }
                 });
                 if (!cancelled) {
                     setAllItems(response.data || []);
@@ -208,7 +220,7 @@ export default function SnapFeedPage() {
                             </div>
                         ) : (
                             /* 일반 모드: 현재 필터 이름 표시 */
-                            filter === 'all' ? 'All Snaps' : 'Following'
+                            filter === 'all' ? 'All Snaps' : filter === 'following' ? 'Following' : 'Private'
                         )}
                     </span>
                 </div>
@@ -228,6 +240,13 @@ export default function SnapFeedPage() {
                         className={`px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 ${filter === 'following' ? 'bg-black text-white shadow-md' : 'text-[#a3b0c1] hover:text-black dark:hover:text-white'}`}
                     >
                         글벗
+                    </button>
+                    {/* "내 스냅" 버튼: 클릭 시 filter = 'mine' → visibility=PRIVATE */}
+                    <button
+                        onClick={() => setFilter('mine')}
+                        className={`px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 ${filter === 'mine' ? 'bg-black text-white shadow-md' : 'text-[#a3b0c1] hover:text-black dark:hover:text-white'}`}
+                    >
+                        나만
                     </button>
                 </div>
             </div>
