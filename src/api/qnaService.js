@@ -192,8 +192,8 @@ export const qnaService = {
    */
   // [3] QnA 수정 — { title, content }
   updateQna: async (id, data) => {
-    // TODO: PUT /qna/{id} 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.put(`/qna/${id}`, data) → response.data
+    const response = await apiClient.put(`/qna/${id}`, data);
+    return response.data;
   },
 
   /**
