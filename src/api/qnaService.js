@@ -215,7 +215,7 @@ export const qnaService = {
    */
   // [4] QnA 삭제
   deleteQna: async (id) => {
-    // TODO: DELETE /qna/{id} 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.delete(`/qna/${id}`) → response.data
+    const response = await apiClient.delete(`/qna/${id}`);
+    return response.data;
   },
 };
