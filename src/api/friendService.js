@@ -212,7 +212,9 @@ export const friendService = {
      *   - 400 Bad Request: 자기 자신에게 요청 시
      */
     sendRequest: async (targetUserId) => {
+        console.log(`[친구 동작] 친구 요청 전송 시도 - 대상 targetUserId: ${targetUserId}`);
         const response = await apiClient.post('/friends/request', { targetUserId });
+        console.log(`[친구 동작] 친구 요청 전송 완료 - 응답:`, response.data);
         return response.data;
     },
 
@@ -238,7 +240,9 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendshipId 요청 없음
      */
     acceptRequest: async (friendshipId) => {
+        console.log(`[친구 동작] 친구 요청 수락 시도 - friendshipId: ${friendshipId}`);
         const response = await apiClient.post(`/friends/${friendshipId}/accept`);
+        console.log(`[친구 동작] 친구 요청 수락 완료 - 응답:`, response.data);
         return response.data;
     },
 
@@ -263,7 +267,9 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendshipId 요청 없음
      */
     rejectRequest: async (friendshipId) => {
+        console.log(`[친구 동작] 친구 요청 거절 시도 - friendshipId: ${friendshipId}`);
         const response = await apiClient.post(`/friends/${friendshipId}/reject`);
+        console.log(`[친구 동작] 친구 요청 거절 완료 - 응답:`, response.data);
         return response.data;
     },
 
@@ -290,7 +296,9 @@ export const friendService = {
      *   - 404 Not Found: 해당 friendId와 친구 관계 없음
      */
     removeFriend: async (friendId) => {
+        console.log(`[친구 동작] 친구 관계/요청 삭제(취소) 시도 - friendId(또는 friendshipId): ${friendId}`);
         const response = await apiClient.delete(`/friends/${friendId}`);
+        console.log(`[친구 동작] 친구 관계/요청 삭제(취소) 완료 - 응답:`, response.data);
         return response.data;
     },
 
