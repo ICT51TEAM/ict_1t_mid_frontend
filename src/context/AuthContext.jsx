@@ -147,7 +147,6 @@ export const AuthProvider = ({ children }) => {
    * @function checkAuth
    * @description 앱 최초 실행 시 localStorage에 저장된 인증 정보로 세션을 복원한다.
    */
-<<<<<<< Updated upstream
   const checkAuth = useCallback(async () => {
     if (isVerifying.current) {
       console.log("이미 인증 확인 중입니다. 중복 요청을 차단합니다.");
@@ -205,27 +204,6 @@ export const AuthProvider = ({ children }) => {
     }
 
   }, [navigate, location.pathname, handleLogoutCleanUp]);
-=======
-  const checkAuth = async () => {
-    // TODO: localStorage에서 'authToken'과 'user'를 읽어 파싱 후 setUser() 호출, 완료 후 setIsLoading(false)
-
-    const token = localStorage.getItem('accessToken'); // 저장된 accessToken 불러오기
-
-    const storageUser = localStorage.getItem('user'); // 저장된 사용자 정보 불러오기
-    if (token && storageUser) {
-      // 로그인 상태 복원
-      try {
-        setUser(JSON.parse(storageUser)); // JSON 문자열 -> 객체로 변환
-      }
-      catch (e) {
-        console.log('로컬스토리지의 사용자 정보 파싱 실패', e);
-        logout();
-      }
-      
-    }
-    setIsLoading(false);
-  };
->>>>>>> Stashed changes
 
   // ── useEffect: 앱 최초 마운트 시 세션 복원 ────────────────────────────────
   useEffect(() => {
@@ -260,6 +238,7 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
 // ─── 커스텀 훅: useAuth ────────────────────────────────────────────────────────
 /**
  * @hook useAuth
