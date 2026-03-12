@@ -196,13 +196,28 @@ export default function QnaPage() {
      *   6. finally: newTitle='', newContent='', isWriting=false (폼 초기화 및 숨김)
      */
     const handleCreate = async () => {
-        // TODO: [1] 유효성 검사: !newTitle || !newContent이면 즉시 return
-        // TODO: [2] qnaService.createQna({ title: newTitle, content: newContent }) 호출
-        // TODO: [3] 응답 데이터를 qna 객체 형식으로 변환:
-        //           { id, userId(authorId), userName(authorName 대문자), title, content, date, isExpanded: false, comments: [] }
-        // TODO: [4] setQnas([newQna, ...qnas]): 새 항목을 목록 맨 앞에 추가
-        // TODO: [5] 실패 시: console.error + alert('질문 등록에 실패했습니다.')
-        // 힌트: finally 블록에서 setNewTitle(''), setNewContent(''), setIsWriting(false) 호출
+        if (!newTitle || !newContent) return;
+        try {
+            const created = await qnaService.createQna({ title: newTitle, content: newContent });
+            const newQna = {
+                id: created.id,
+                userId: created.authorId ?? '',
+                userName: (created.authorName ?? 'ME').toString().toUpperCase(),
+                title: created.title,
+                content: created.content,
+                date: created.createdAt ? created.createdAt.slice(0, 10).replace(/-/g, '.') : '',
+                isExpanded: false,
+                comments: [],
+            };
+            setQnas([newQna, ...qnas]);
+        } catch (e) {
+            console.error('QnA 생성 실패', e);
+            alert('질문 등록에 실패했습니다.');
+        } finally {
+            setNewTitle('');
+            setNewContent('');
+            setIsWriting(false);
+        }
     };
 
     // -------------------------------------------------------------------------
