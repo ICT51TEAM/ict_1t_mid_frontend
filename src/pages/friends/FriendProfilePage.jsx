@@ -277,8 +277,6 @@ export default function FriendProfilePage() {
             }
             // [3] 친구 신청 동작 (아무 관계가 없는 경우)
             else if (requestStatus === 'none') {
-                const response = await friendService.sendRequest(friendId);
-
                 await friendService.sendRequest(friendId);
                 // 성공 시 상태를 즉시 pending으로 변경하여 중복 클릭 방지
                 setRequestStatus('pending');
@@ -288,15 +286,13 @@ export default function FriendProfilePage() {
             console.error('친구 요청 오류:', error);
 
             // [4] 서버에서 보낸 구체적인 에러 메시지 추출
-            // java.lang.IllegalArgumentException 메시지가 error.response.data에 담겨 옵니다.
-            const errorMessage = error.response?.data || '오류가 발생했습니다. 다시 시도해주세요.';
-            const serverMessage = error.response?.data;
+            const errorData = error.response?.data;
+            const errorMessage = typeof errorData === 'string' ? errorData : (errorData?.message || '');
+
             // 만약 이미 요청된 상태라는 에러라면 화면 상태를 갱신해주는 것이 좋습니다.
-            if (errorMessage.includes("이미 친구이거나 요청이 진행 중")) {
-                showAlert(serverMessage || '이미 처리된 요청입니다.', '알림', 'info');
-                if (serverMessage?.includes("이미")) {
-                    setRequestStatus('pending');
-                }
+            if (errorMessage && errorMessage.includes("이미 친구이거나 요청이 진행 중")) {
+                showAlert(errorMessage || '이미 처리된 요청입니다.', '알림', 'info');
+                setRequestStatus('pending');
             } else {
                 showAlert('오류가 발생했습니다. 잠시 후 다시 시도해주세요.', '오류', 'alert');
             }
