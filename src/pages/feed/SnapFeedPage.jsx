@@ -224,7 +224,7 @@ export default function SnapFeedPage() {
                             </div>
                         ) : (
                             /* 일반 모드: 현재 필터 이름 표시 */
-                            filter === 'all' ? 'All Snaps' : filter === 'following' ? 'Following' : 'Private'
+                            filter === 'all' ? '전체' : filter === 'following' ? '글벗' : '나만'
                         )}
                     </span>
                 </div>

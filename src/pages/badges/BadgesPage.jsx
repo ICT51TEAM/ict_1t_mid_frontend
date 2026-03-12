@@ -187,7 +187,7 @@ export default function BadgesPage() {
                             onClick={() => navigate('/badges/ranking')}
                             className="flex items-center gap-2 px-6 py-2 bg-white/10 border border-white/20 rounded-full text-[12px] font-black italic tracking-widest uppercase hover:bg-white/20 transition-all"
                         >
-                            <Trophy size={14} /> Global Ranking
+                            <Trophy size={14} /> 전체 통계 보기
                         </button>
 
                         {/* [?] 버튼 → BadgeInfoModal 열기 (isInfoModalOpen = true) */}
@@ -209,9 +209,9 @@ export default function BadgesPage() {
                 <div className="flex bg-[#fafafa] dark:bg-[#1c1f24] border-b border-[#f3f3f3] dark:border-[#292e35] py-4 px-6 justify-between items-center transition-colors">
                     <div className="flex items-center gap-2">
                         <Zap size={18} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-[12px] font-black italic tracking-widest uppercase dark:text-white">My Collection</span>
+                        <span className="text-[12px] font-black italic tracking-widest uppercase dark:text-white">나의 달개들</span>
                     </div>
-                    <span className="text-[11px] font-bold text-[#ccd3db] dark:text-gray-500 uppercase tracking-[2px]">Musinsa Awards</span>
+                    <span className="text-[11px] font-bold text-[#ccd3db] dark:text-gray-500 uppercase tracking-[2px]">MyMoRy Awards</span>
                 </div>
 
                 {/* ──────────────────────────────────────────────────────

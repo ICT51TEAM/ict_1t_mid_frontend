@@ -71,6 +71,8 @@ export default function NotificationsPage() {
     // showAlert(message, title): 단순 알림 다이얼로그 표시
     // showConfirm(message, callback, confirmText): 확인/취소 다이얼로그 표시
     const { showAlert, showConfirm } = useAlert();
+    const { triggerNotiRefresh } = useAuth();
+
 
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
@@ -83,6 +85,7 @@ export default function NotificationsPage() {
      * handleReadAll 후 loadNotifications() 재호출로 isRead 값이 갱신됨.
      */
     const [notifications, setNotifications] = useState([]);
+
 
     // -------------------------------------------------------------------------
     // [데이터 로드 함수]
@@ -127,6 +130,39 @@ export default function NotificationsPage() {
     }, []);
 
     // -------------------------------------------------------------------------
+    // [추가된 핸들러 함수: 개별 알림 읽음 처리]
+    // -------------------------------------------------------------------------
+    /**
+     * handleReadOne: 특정 알림 하나를 클릭했을 때 읽음 처리하는 함수.
+     * * @param {number|string} notiId - 클릭한 알림의 고유 ID
+     * @param {boolean} isRead - 현재 읽음 상태
+     * * 동작:
+     * 1. 이미 읽은(isRead === true) 상태라면 함수 종료.
+     * 2. notificationService.markAsRead(notiId) 호출 (PUT /api/notifications/{id}/read)
+     * 3. 성공 시: 
+     * - UI에서 해당 알림의 isRead를 true로 즉시 업데이트 (setNotifications)
+     * - 전역 알림 상태 갱신을 위해 triggerNotiRefresh() 호출 (선택 사항)
+     */
+    const handleReadOne = async (notiId, isRead) => {
+        if (isRead) return; // 이미 읽은 알림은 요청하지 않음
+
+        try {
+            // 서버에 개별 읽음 처리 요청 (서비스 메서드명은 프로젝트 구조에 따라 markAsRead 등으로 상정)
+            await notificationService.markAsRead(notiId);
+
+            // 로컬 상태 업데이트: 목록을 순회하며 클릭한 ID만 isRead를 true로 변경
+            setNotifications(prev =>
+                prev.map(noti => noti.id === notiId ? { ...noti, isRead: true } : noti)
+            );
+
+            // 전역 알림 배지 숫자 등을 갱신하기 위해 AuthContext 등의 함수 호출
+            if (triggerNotiRefresh) triggerNotiRefresh();
+        } catch (error) {
+            console.error('알림 읽음 처리 실패:', error);
+        }
+    };
+
+    // -------------------------------------------------------------------------
     // [핸들러 함수]
     // -------------------------------------------------------------------------
 
@@ -145,8 +181,6 @@ export default function NotificationsPage() {
      *      c. showAlert('모든 알림이 읽음 처리되었습니다.', '알림')
      *   3. 실패 시: showAlert('알림 처리에 실패했습니다.')
      */
-    const { triggerNotiRefresh } = useAuth();
-
     const handleReadAll = () => {
         // TODO: [1] showConfirm 호출: ('모든 알림을 읽음 처리하시겠습니까?', callback, '모두 읽음')
         // TODO: [2] callback(async 함수) 내에서:
@@ -163,6 +197,7 @@ export default function NotificationsPage() {
                 try {
                     await notificationService.markAllRead();
                     await loadNotifications();
+                    if (triggerNotiRefresh) triggerNotiRefresh();
                     showAlert('모든 알림이 읽음 처리되었습니다.', '알림', 'success');
                 } catch (e) {
                     showAlert('알림 처리에 실패했습니다.');
@@ -245,25 +280,25 @@ export default function NotificationsPage() {
                         notifications.map(noti => (
                             <div
                                 key={noti.id}
-                                // 미읽음 항목: 파란 배경 강조, 읽음 항목: 기본 배경
-                                className={`flex items-start gap-4 px-6 py-5 border-b border-[#f3f3f3] dark:border-[#292e35] ${!noti.isRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}
+                                // [수정] 클릭 시 handleReadOne 호출 이벤트 추가
+                                onClick={() => handleReadOne(noti.id, noti.isRead)}
+                                // 미읽음 항목: 파란 배경 강조 및 cursor-pointer 적용
+                                className={`flex items-start gap-4 px-6 py-5 border-b border-[#f3f3f3] dark:border-[#292e35] transition-colors ${!noti.isRead
+                                        ? 'bg-blue-50/30 dark:bg-blue-900/10 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+                                        : 'bg-transparent'
+                                    }`}
                             >
-                                {/* 알림 타입별 아이콘 (mt-1: 메시지 텍스트 상단에 정렬) */}
                                 <div className="mt-1">{getIcon(noti.type)}</div>
                                 <div className="flex-1 flex flex-col gap-1">
-                                    {/* 알림 메시지 텍스트 */}
                                     <p className="text-[14px] leading-relaxed">
                                         {noti.message}
                                     </p>
-                                    {/* 알림 생성 시각 */}
                                     <span className="text-[11px] text-[#a3b0c1] font-bold uppercase tracking-tight">{noti.createdAt}</span>
                                 </div>
-                                {/* 미읽음 표시: 파란 점 (isRead=false일 때만 렌더링) */}
                                 {!noti.isRead && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2"></div>}
                             </div>
                         ))
                     ) : (
-                        // 빈 상태: 알림 없음 안내
                         <div className="py-20 text-center text-[#a3b0c1] text-[14px]">알림이 없습니다.</div>
                     )}
                 </div>

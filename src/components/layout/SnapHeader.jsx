@@ -175,7 +175,7 @@ export default function SnapHeader() {
                 클릭 시 "/" 경로(피드 페이지)로 이동.
                 스타일: 3xl 크기, 최대 굵기(font-black), 이탤릭, 자간 좁음(tracking-tighter) */}
             <Link to="/" className="text-3xl font-black tracking-tighter text-black dark:text-[#e5e5e5] italic">
-                SNAP
+                MYMORY
             </Link>
 
             {/* ── 우측: 알림 버튼 or 더미 공간 (로그인 상태에 따라 분기) ─────── */}
