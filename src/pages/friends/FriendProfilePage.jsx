@@ -268,25 +268,40 @@ export default function FriendProfilePage() {
         // [1] setIsRequesting(true) 로 로딩 상태 시작
         setIsRequesting(true);
         try {
-            // [2] requestStatus === 'accepted' 이면 해제 동작
+            // [2] 친구 해제 동작 (이미 친구인 경우)
             if (requestStatus === 'accepted') {
                 await friendService.removeFriend(friendshipId);
                 setRequestStatus('none');
                 setFriendshipId(null);
-                showAlert('글벗 관계가 해제되었습니다.', '해제 요청 성공', 'success');
+                showAlert('글벗 관계가 해제되었습니다.', '해제 성공', 'success');
             }
-            // [3] requestStatus === 'none' 이면 신청 동작
+            // [3] 친구 신청 동작 (아무 관계가 없는 경우)
             else if (requestStatus === 'none') {
+                const response = await friendService.sendRequest(friendId);
+
                 await friendService.sendRequest(friendId);
+                // 성공 시 상태를 즉시 pending으로 변경하여 중복 클릭 방지
                 setRequestStatus('pending');
-                showAlert('글벗 요청을 보냈습니다.', '글벗 요청 성공', 'success');
+                showAlert('글벗 요청을 보냈습니다.', '요청 성공', 'success');
             }
         } catch (error) {
-            // [4] 에러 시 showAlert으로 오류 알림 표시
             console.error('친구 요청 오류:', error);
-            showAlert('오류가 발생했습니다. 다시 시도해주세요.', '글벗 요청 오류', 'error');
+
+            // [4] 서버에서 보낸 구체적인 에러 메시지 추출
+            // java.lang.IllegalArgumentException 메시지가 error.response.data에 담겨 옵니다.
+            const errorMessage = error.response?.data || '오류가 발생했습니다. 다시 시도해주세요.';
+            const serverMessage = error.response?.data;
+            // 만약 이미 요청된 상태라는 에러라면 화면 상태를 갱신해주는 것이 좋습니다.
+            if (errorMessage.includes("이미 친구이거나 요청이 진행 중")) {
+                showAlert(serverMessage || '이미 처리된 요청입니다.', '알림', 'info');
+                if (serverMessage?.includes("이미")) {
+                    setRequestStatus('pending');
+                }
+            } else {
+                showAlert('오류가 발생했습니다. 잠시 후 다시 시도해주세요.', '오류', 'alert');
+            }
         } finally {
-            // [5] finally에서 로딩 상태 종료
+            // [5] 로딩 상태 종료
             setIsRequesting(false);
         }
     };
