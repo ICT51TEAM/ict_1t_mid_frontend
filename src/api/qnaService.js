@@ -131,13 +131,15 @@ export const qnaService = {
    */
   // [1] QnA 목록 조회 (페이징, page는 1부터 시작)
   getQnas: async (page = 1, pageSize = 10) => {
-    // TODO: GET /qna 를 호출하고 response.data를 반환하세요.
-    // 주의: 프론트엔드의 1-indexed page를 Spring의 0-indexed로 변환해야 합니다 (page - 1).
-    // 힌트:
-    //   try {
-    //     response = await apiClient.get(`/qna?page=${page - 1}&size=${pageSize}&sort=createdAt,desc`)
-    //     return response.data
-    //   } catch(error) { console.error('QnA 목록 조회 실패', error); throw error; }
+    try {
+      const response = await apiClient.get(
+        `/qna?page=${page - 1}&size=${pageSize}&sort=createdAt,desc`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('QnA 목록 조회 실패', error);
+      throw error;
+    }
   },
 
   /**
