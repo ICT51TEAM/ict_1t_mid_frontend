@@ -244,37 +244,39 @@ export default function FriendsPage() {
      * 버튼 클릭 시 e.stopPropagation() 으로 부모(프로필 이동) 이벤트 차단.
      */
     const handleRemoveFriend = (friendshipId) => {
-        // TODO: [1] showConfirm으로 글벗 삭제 확인 다이얼로그 표시
-        // TODO: [2] 확인 시 friendService.removeFriend(friendshipId) 호출
-        // TODO: [3] 성공 시 setFriends()로 해당 friendshipId 항목을 배열에서 제거
-        // TODO: [4] showAlert으로 성공/실패 알림 표시
         // [1] showConfirm으로 다이얼로그 띄우기
-        showConfirm('정말로 이 글벗을 삭제하시겠습니까?', async () => {
-            try {
-                // [2] 확인 시 friendService.removeFriend(friendshipId) 호출
-                await friendService.removeFriend(friendshipId);
+        showConfirm({
+            message: '정말로 이 글벗을 삭제하시겠습니까?',
+            onConfirm: async () => {
+                try {
+                    // [2] 확인 시 friendService.removeFriend(friendshipId) 호출
+                    await friendService.removeFriend(friendshipId);
 
-                // [3] 성공 시 setFriends()로 해당 항목 제거
-                setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
+                    // [3] 성공 시 setFriends()로 해당 항목 제거
+                    setFriends(prev => prev.filter(f => f.friendshipId !== friendshipId));
 
-                // [4] showAlert 알림
-                showAlert('글벗이 삭제되었습니다.', '완료', 'success');
-            } catch (error) {
-                console.error('삭제 오류:', error);
-                showAlert('삭제에 실패했습니다.', '오류', 'alert');
+                    // [4] showAlert 알림
+                    showAlert('글벗이 삭제되었습니다.', '완료', 'success');
+                } catch (error) {
+                    console.error('삭제 오류:', error);
+                    showAlert('삭제에 실패했습니다.', '오류', 'alert');
+                }
             }
         });
     };
 
     // [함수] 보낸 요청 취소 (기존 removeFriend API 재사용)
-    const handleCancelSentRequest = async (targetUserId) => {
-        showConfirm('보낸 요청을 취소하시겠습니까?', async () => {
-            try {
-                await friendService.removeFriend(targetUserId);
-                setSentRequests(prev => prev.filter(req => req.userId !== targetUserId));
-                showAlert('요청이 취소되었습니다.', '완료', 'success');
-            } catch (error) {
-                showAlert('취소 중 오류가 발생했습니다.', '오류', 'alert');
+    const handleCancelSentRequest = async (friendshipId) => {
+        showConfirm({
+            message: '보낸 요청을 취소하시겠습니까?',
+            onConfirm: async () => {
+                try {
+                    await friendService.removeFriend(friendshipId);
+                    setSentRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
+                    showAlert('요청이 취소되었습니다.', '완료', 'success');
+                } catch (error) {
+                    showAlert('취소 중 오류가 발생했습니다.', '오류', 'alert');
+                }
             }
         });
     };
@@ -305,15 +307,15 @@ export default function FriendsPage() {
             // [1] friendService.acceptRequest 호출
             await friendService.acceptRequest(friendshipId);
 
-            // [2] pending 에서 사용자 찾기
-            const acceptedUser = pending.find(req => req.friendshipId === friendshipId);
+            // [2] receivedRequests 에서 사용자 찾기
+            const acceptedUser = receivedRequests.find(req => req.friendshipId === friendshipId);
 
             if (acceptedUser) {
                 // [3] setFriends로 배열에 추가
                 setFriends(prev => [...prev, acceptedUser]);
             }
-            // [4] setPending 으로 목록에서 제거
-            setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
+            // [4] setReceivedRequests 으로 목록에서 제거
+            setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
 
             // [5] 성공 알림 표시
             showAlert(`${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`, '완료', 'success');
@@ -336,18 +338,20 @@ export default function FriendsPage() {
      * PENDING 탭의 각 요청 항목의 DECLINE 버튼에 연결됨.
      */
     const handleDeclineRequest = async (friendshipId) => {
-        // TODO: [1] friendService.rejectRequest(friendshipId) 호출
-        // TODO: [2] 성공 시 setPending()으로 해당 항목을 목록에서 제거
-        // 힌트: 실패 시 console.error만 출력합니다 (사용자 알림 없음)
-        try {
-            // [1] friendService.rejectRequest 호출
-            await friendService.rejectRequest(friendshipId);
+        showConfirm({
+            message: '받은 요청을 거절하시겠습니까?',
+            onConfirm: async () => {
+                try {
+                    // [1] friendService.rejectRequest 호출
+                    await friendService.rejectRequest(friendshipId);
 
-            // [2] 성공 시 setPending 으로 목록에서 즉시 제거
-            setPending(prev => prev.filter(req => req.friendshipId !== friendshipId));
-        } catch (error) {
-            console.error('요청 거절 중 오류 발생:', error);
-        }
+                    // [2] 성공 시 setReceivedRequests 으로 목록에서 즉시 제거
+                    setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
+                } catch (error) {
+                    console.error('요청 거절 중 오류 발생:', error);
+                }
+            }
+        });
     };
 
     return (
@@ -428,7 +432,7 @@ export default function FriendsPage() {
                         /* --- 내 친구 목록 --- */
                         friends.length > 0 ? (
                             friends.map(friend => (
-                                <div key={friend.friendshipId} className="flex items-center justify-between px-6 py-5 group hover:bg-[#fafafa] cursor-pointer" onClick={() => navigate(`/friend/${friend.friendId}`)}>
+                                <div key={friend.friendshipId} className="flex items-center justify-between px-6 py-5 group hover:bg-[#fafafa] cursor-pointer" onClick={() => navigate(`/friend/${friend.userId}`)}>
                                     <div className="flex items-center gap-5">
                                         <div className="relative">
                                             <img src={getImageUrl(friend.profileImageUrl) || DEFAULT_AVATAR} className="w-14 h-14 rounded-2xl object-cover" />
@@ -440,7 +444,7 @@ export default function FriendsPage() {
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-black italic text-[16px] tracking-tighter uppercase">{friend.username}</span>
-                                            <span className="text-[13px] text-[#7b8b9e] font-bold">#{friend.friendId}</span>
+                                            <span className="text-[13px] text-[#7b8b9e] font-bold">#{friend.userId}</span>
                                         </div>
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend.friendshipId); }} className="w-10 h-10 text-[#ccd3db] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
@@ -461,10 +465,10 @@ export default function FriendsPage() {
                             {receivedRequests.length > 0 ? (
                                 receivedRequests.map(req => (
                                     <div key={req.friendshipId} className="flex items-center justify-between px-6 py-6 bg-white dark:bg-[#101215]">
-                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => navigate(`/friend/${req.requesterId}`)}>
-                                            <img src={getImageUrl(req.requesterProfileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover" />
+                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => navigate(`/friend/${req.userId}`)}>
+                                            <img src={getImageUrl(req.profileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover" />
                                             <div className="flex flex-col">
-                                                <span className="font-black italic text-[15px] tracking-tighter uppercase">{req.requesterName}</span>
+                                                <span className="font-black italic text-[15px] tracking-tighter uppercase">{req.username}</span>
                                                 <span className="text-[11px] text-[#a3b0c1]">Incoming Request</span>
                                             </div>
                                         </div>
@@ -492,7 +496,7 @@ export default function FriendsPage() {
                                                 <span className="text-[11px] text-[#ccd3db]">Waiting for approval...</span>
                                             </div>
                                         </div>
-                                        <button onClick={() => handleCancelSentRequest(req.userId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">CANCEL</button>
+                                        <button onClick={() => handleCancelSentRequest(req.friendshipId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">CANCEL</button>
                                     </div>
                                 ))
                             ) : (
