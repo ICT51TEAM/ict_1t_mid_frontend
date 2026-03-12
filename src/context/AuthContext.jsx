@@ -134,12 +134,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user'); //사용자 정보 삭제
       localStorage.removeItem('notificationEnabled'); // 알림 설정 삭제
 
-      setUser(null); // state를 null로 변환
-
-    }
-
+      setUser(null);
   }
-};
+};  // logout 함수만 닫기
 
 // ── 함수: updateUser ──────────────────────────────────────────────────────
 /**
@@ -231,7 +228,7 @@ return (
   </AuthContext.Provider>
 );
 
-
+};
 // ─── 커스텀 훅: useAuth ────────────────────────────────────────────────────────
 /**
  * @hook useAuth

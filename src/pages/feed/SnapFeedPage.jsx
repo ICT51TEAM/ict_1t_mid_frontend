@@ -131,7 +131,7 @@ export default function SnapFeedPage() {
             try {
                 const tagParam = searchQuery || undefined;
                 const response = await apiClient.get('/albums/feed', {
-                    params: { type: 'photo', visibility: getVisibility() }
+                    params: { type: 'photo', visibility: getVisibility(), tag: tagParam }
                 });
                 if (!cancelled) {
                     setAllItems(response.data || []);
@@ -220,7 +220,7 @@ export default function SnapFeedPage() {
                             </div>
                         ) : (
                             /* 일반 모드: 현재 필터 이름 표시 */
-                            filter === 'all' ? 'All Snaps' : 'Following'
+                            filter === 'all' ? 'All Snaps' : filter === 'following' ? 'Following' : 'Private'
                         )}
                     </span>
                 </div>
