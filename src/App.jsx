@@ -98,6 +98,7 @@ import KakaoCallback from '@/pages/auth/KakaoCallback';
 import CreatePhotoAlbumPage from '@/pages/write/CreatePhotoAlbumPage';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 
 
 export default function App() {
@@ -130,6 +131,15 @@ export default function App() {
         }
     }, []);
 
+    // 로그인한 사용자만 접근 가능한 컴포넌트
+    const ProtectedRoute = ({ children }) => {
+        const { isAuthenticated, isLoading } = useAuth();
+        // 인증 체크중일때는 아무것도 하지 않음
+        if (isLoading) return null;
+
+        return isAuthenticated ? children : <Navigate to="/login" replace />;
+    };
+
     // -------------------------------------------------------------------------
     // [JSX 렌더링: 라우트 정의]
     // -------------------------------------------------------------------------
@@ -145,6 +155,10 @@ export default function App() {
 
             {/* 이메일 인증: 회원가입 후 이메일 링크로 접근하는 페이지 */}
             <Route path="/verify-email" element={<EmailVerificationPage />} />
+
+            {/* 카카오 OAuth2 콜백: 카카오 로그인 완료 후 리다이렉트되는 URL
+                카카오 인증 서버가 code 파라미터와 함께 이 경로로 리다이렉트함 */}
+            <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
             {/* 오늘의 스냅 / 랭킹 / 팔로잉 피드: ProtectedRoute로 보호 */}
             <Route path="/today" element={<ProtectedRoute><TodayPage /></ProtectedRoute>} />
@@ -204,10 +218,6 @@ export default function App() {
 
             {/* 금융 정보 페이지 (FssPage): ProtectedRoute 없음 (로그인 불필요) */}
             <Route path="/finance" element={<FssPage />} />
-
-            {/* 카카오 OAuth2 콜백: 카카오 로그인 완료 후 리다이렉트되는 URL
-                카카오 인증 서버가 code 파라미터와 함께 이 경로로 리다이렉트함 */}
-            <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
             {/* ================================================================
                 [폴백 라우트]
