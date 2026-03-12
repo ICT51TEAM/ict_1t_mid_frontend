@@ -114,6 +114,7 @@ export const notificationService = {
         // TODO: GET /notifications 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.get('/notifications') → response.data
         const response = await apiClient.get('/notifications');
+        console.log('[notifications] 응답:', response.data?.length, '개');
         return response.data;
     },
 
@@ -137,6 +138,7 @@ export const notificationService = {
         // TODO: GET /notifications/unread 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.get('/notifications/unread') → response.data  (결과: { count: n })
         const response = await apiClient.get('/notifications/unread');
+        console.log('[unreadCount] 응답:', response.data);
         return response.data;
     },
 
@@ -163,6 +165,7 @@ export const notificationService = {
         // TODO: PUT /notifications/{id}/read 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.put(`/notifications/${id}/read`) → response.data
         const response = await apiClient.put(`/notifications/${id}/read`); //알림자체의 id번호
+        console.log('[markAsRead] id:', id);
         return response.data;
     },
 
@@ -185,6 +188,7 @@ export const notificationService = {
         // TODO: PUT /notifications/read-all 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.put('/notifications/read-all') → response.data
         const response = await apiClient.put('/notifications/read-all');
+        console.log('[markAllRead] 완료');
         return response.data;
     },
 
@@ -210,6 +214,7 @@ export const notificationService = {
         // TODO: DELETE /notifications/{id} 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.delete(`/notifications/${id}`) → response.data
         const response = await apiClient.delete(`/notifications/${id}`);
+        console.log('[notification] 삭제 id:', id);
         return response.data;
     },
 
@@ -232,6 +237,7 @@ export const notificationService = {
         // TODO: DELETE /notifications 를 호출하고 response.data를 반환하세요.
         // 힌트: apiClient.delete('/notifications') → response.data
         const response = await apiClient.delete('/notifications');
+        console.log('[notification] 전체 삭제 완료');
         return response.data;
     }
 };

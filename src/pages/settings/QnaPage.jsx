@@ -143,21 +143,24 @@ export default function QnaPage() {
     // 백엔드에서 QnA 목록 로드
     useEffect(() => {
         const loadQnas = async () => {
-            // TODO: [1] qnaService.getQnas(1, 20) 호출
-            //           → GET /api/qna?page=0&size=20&sort=createdAt,desc
-            // TODO: [2] Spring Page 응답 처리:
-            //           items = (data?.content ?? data ?? []).map((q) => ({...}))
-            //           - q.id → id
-            //           - q.authorId ?? '' → userId
-            //           - (q.authorName ?? q.authorId ?? 'USER').toString().toUpperCase() → userName
-            //           - q.title → title
-            //           - q.content → content
-            //           - q.createdAt?.slice(0,10).replace(/-/g, '.') → date
-            //           - false → isExpanded (기본 접힘)
-            //           - [] → comments (로컬 전용 답변 배열)
-            // TODO: [3] setQnas(items) 호출
-            // TODO: [4] catch 블록에서 console.error('QnA 목록 로드 실패', e)
-            // 힌트: finally 블록에서 setIsLoading(false) 호출
+            try {
+                const data = await qnaService.getQnas(1, 20);
+                const items = (data?.content ?? data ?? []).map((q) => ({
+                    id: q.id,
+                    userId: q.authorId ?? '',
+                    userName: (q.authorName ?? q.authorId ?? 'USER').toString().toUpperCase(),
+                    title: q.title,
+                    content: q.content,
+                    date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
+                    isExpanded: false,
+                    comments: [],
+                }));
+                setQnas(items);
+            } catch (e) {
+                console.error('QnA 목록 로드 실패', e);
+            } finally {
+                setIsLoading(false);
+            }
         };
         loadQnas();
     }, []);
@@ -193,13 +196,28 @@ export default function QnaPage() {
      *   6. finally: newTitle='', newContent='', isWriting=false (폼 초기화 및 숨김)
      */
     const handleCreate = async () => {
-        // TODO: [1] 유효성 검사: !newTitle || !newContent이면 즉시 return
-        // TODO: [2] qnaService.createQna({ title: newTitle, content: newContent }) 호출
-        // TODO: [3] 응답 데이터를 qna 객체 형식으로 변환:
-        //           { id, userId(authorId), userName(authorName 대문자), title, content, date, isExpanded: false, comments: [] }
-        // TODO: [4] setQnas([newQna, ...qnas]): 새 항목을 목록 맨 앞에 추가
-        // TODO: [5] 실패 시: console.error + alert('질문 등록에 실패했습니다.')
-        // 힌트: finally 블록에서 setNewTitle(''), setNewContent(''), setIsWriting(false) 호출
+        if (!newTitle || !newContent) return;
+        try {
+            const created = await qnaService.createQna({ title: newTitle, content: newContent });
+            const newQna = {
+                id: created.id,
+                userId: created.authorId ?? '',
+                userName: (created.authorName ?? 'ME').toString().toUpperCase(),
+                title: created.title,
+                content: created.content,
+                date: created.createdAt ? created.createdAt.slice(0, 10).replace(/-/g, '.') : '',
+                isExpanded: false,
+                comments: [],
+            };
+            setQnas([newQna, ...qnas]);
+        } catch (e) {
+            console.error('QnA 생성 실패', e);
+            alert('질문 등록에 실패했습니다.');
+        } finally {
+            setNewTitle('');
+            setNewContent('');
+            setIsWriting(false);
+        }
     };
 
     // -------------------------------------------------------------------------

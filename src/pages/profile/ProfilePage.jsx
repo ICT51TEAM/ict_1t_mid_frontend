@@ -63,11 +63,16 @@ export default function ProfilePage() {
      * API 응답 후 getMyProfile() 성공 시 최신 데이터로 교체됨.
      */
     const [user, setUser] = useState(() => {
-        if (!authUser) return null;
-        return {
+        if (!authUser) {
+            console.log('[user] authUser 없음 → null');
+            return null;
+        }
+        const initialUser = {
             ...authUser,
             level: Math.floor((authUser.totalBadges || 0) / 5) + 1,
         };
+        console.log('[user] 초기값:', initialUser);
+        return initialUser;
     });
 
     /**
@@ -263,7 +268,7 @@ export default function ProfilePage() {
                             {/* 게시글 수: 로딩 중이면 '-' 표시, 완료 후 실제 개수 표시 */}
                             <div className="flex flex-col items-center md:items-start cursor-pointer" onClick={() => navigate('/profile')}>
                                 <span className="text-[18px] font-black italic tracking-tighter">{postsLoading ? '-' : posts.length}</span>
-                                <span className="text-[11px] font-black text-[#ccd3db] uppercase tracking-widest">Posts</span>
+                                <span className="text-[11px] font-black text-[#ccd3db] uppercase tracking-widest">게시글수</span>
                             </div>
                             {/* 레벨: 클릭 시 /badges 이동, user.level이 없으면 1 기본값 */}
                             <div className="flex flex-col items-center md:items-start cursor-pointer" onClick={() => navigate('/badges')}>

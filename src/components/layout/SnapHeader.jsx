@@ -140,19 +140,18 @@ export default function SnapHeader() {
                 }
 
                 const data = await notificationService.getAll();
-                setUnreadCount(
-
-                    Array.isArray(data)
-                        ? data.filter(n => !(n.isRead ?? n.read)).length
-                        : 0
-                );
+                const count = Array.isArray(data)
+                    ? data.filter(n => !(n.isRead ?? n.read)).length
+                    : 0;
+                console.log('[unread] 미읽음:', count, '개');
+                setUnreadCount(count);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
             }
         };
 
         fetchUnread();
-        const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
+        const interval = setInterval(fetchUnread, 30000); //30초마다 fetch
       
         return () => clearInterval(interval);
     }, [isAuthenticated]);
@@ -175,7 +174,7 @@ export default function SnapHeader() {
                 클릭 시 "/" 경로(피드 페이지)로 이동.
                 스타일: 3xl 크기, 최대 굵기(font-black), 이탤릭, 자간 좁음(tracking-tighter) */}
             <Link to="/" className="text-3xl font-black tracking-tighter text-black dark:text-[#e5e5e5] italic">
-                SNAP
+                MYMORY
             </Link>
 
             {/* ── 우측: 알림 버튼 or 더미 공간 (로그인 상태에 따라 분기) ─────── */}

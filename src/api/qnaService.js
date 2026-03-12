@@ -131,13 +131,15 @@ export const qnaService = {
    */
   // [1] QnA 목록 조회 (페이징, page는 1부터 시작)
   getQnas: async (page = 1, pageSize = 10) => {
-    // TODO: GET /qna 를 호출하고 response.data를 반환하세요.
-    // 주의: 프론트엔드의 1-indexed page를 Spring의 0-indexed로 변환해야 합니다 (page - 1).
-    // 힌트:
-    //   try {
-    //     response = await apiClient.get(`/qna?page=${page - 1}&size=${pageSize}&sort=createdAt,desc`)
-    //     return response.data
-    //   } catch(error) { console.error('QnA 목록 조회 실패', error); throw error; }
+    try {
+      const response = await apiClient.get(
+        `/qna?page=${page - 1}&size=${pageSize}&sort=createdAt,desc`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('QnA 목록 조회 실패', error);
+      throw error;
+    }
   },
 
   /**
@@ -162,8 +164,8 @@ export const qnaService = {
    */
   // [2] QnA 생성 — { title, content }
   createQna: async (data) => {
-    // TODO: POST /qna 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.post('/qna', data) → response.data
+    const response = await apiClient.post('/qna', data);
+    return response.data;
   },
 
   /**
@@ -190,8 +192,8 @@ export const qnaService = {
    */
   // [3] QnA 수정 — { title, content }
   updateQna: async (id, data) => {
-    // TODO: PUT /qna/{id} 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.put(`/qna/${id}`, data) → response.data
+    const response = await apiClient.put(`/qna/${id}`, data);
+    return response.data;
   },
 
   /**
@@ -213,7 +215,7 @@ export const qnaService = {
    */
   // [4] QnA 삭제
   deleteQna: async (id) => {
-    // TODO: DELETE /qna/{id} 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.delete(`/qna/${id}`) → response.data
+    const response = await apiClient.delete(`/qna/${id}`);
+    return response.data;
   },
 };

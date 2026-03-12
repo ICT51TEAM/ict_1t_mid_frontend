@@ -89,7 +89,7 @@ export default function CreatePage() {
     const creationTypes = [
         {
             id: 'photo',
-            title: '사진첩 스냅',
+            title: '사진첩 만들기',
             description: '최대 4장의 사진으로 당신의 스타일을 기록하세요.',
             icon: Image,
             path: '/create-photo-album',  // 활성: 이 경로로 이동
@@ -98,7 +98,7 @@ export default function CreatePage() {
         },
         {
             id: 'canvas',
-            title: '글 캔버스',
+            title: '이미지  캔버스',
             description: '나만의 디자인 스냅을 만들어 사진첩에 추가하세요.',
             icon: BookOpen,
             path: '/create-canvas',        // Konva 라이브러리 활용 페이지로 이동
@@ -142,7 +142,7 @@ export default function CreatePage() {
                         {/* 메인 헤드라인 */}
                         <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-tight">
                             Create Your <br />
-                            Unique Style Snap
+                            Unique Style Memory
                         </h2>
                     </div>
 

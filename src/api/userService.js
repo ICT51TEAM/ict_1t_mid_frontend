@@ -153,6 +153,7 @@ export const userService = {
             const response = await apiClient.get('/users/me');
             const data = response.data;
             const calculatedLevel = Math.floor((data.totalBadges || 0) / 5) + 1; // ?. 쓸수없다. undefined를 채우고자 하는게 아니니까
+            console.log('[getMyProfile] 응답:', data);
             return { ...data, level: calculatedLevel }; // 언제나 계산
         } catch (error) {
             console.error('Error fetching my profile:', error);
@@ -191,6 +192,7 @@ export const userService = {
 
     getUserProfile: async (userId) => {
         const response = await apiClient.get(`/users/${userId}`);
+        console.log('[getUserProfile]', userId, '응답:', response.data);
         return response.data;
     },
 
@@ -218,6 +220,7 @@ export const userService = {
      * 실패: 400 (유효성 오류, 중복 닉네임 등), 401 Unauthorized
      */
     updateProfile: async (profileData) => {
+        console.log('[updateProfile] 요청:', profileData);
         const response = await apiClient.put('/users/me', profileData);
         return response.data;
     },
@@ -252,6 +255,7 @@ export const userService = {
         // 힌트: Content-Type을 'multipart/form-data'로 오버라이드해야 합니다.
         //       apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } }) → response.data
         const response = await apiClient.post('/users/me/profile-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        console.log('[uploadProfileImage] 응답:', response.data);
         return response.data; //파일 업로드는 application/json(기본값)이 아니라 multipart/form-data
     },
 
@@ -276,6 +280,7 @@ export const userService = {
      * 실패: 400/401 (현재 비밀번호 불일치), 400 (새 비밀번호 유효성 오류)
      */
     changePassword: async (passwordData) => {
+        console.log('[changePassword] 요청');
         const response = await apiClient.put('/users/me/password', passwordData);
         return response.data;
     },
@@ -328,6 +333,7 @@ export const userService = {
      */
     getSettings: async () => {
         const response = await apiClient.get('/users/me/settings');
+        console.log('[getSettings] 응답:', response.data);
         return response.data;
     },
 
@@ -355,6 +361,7 @@ export const userService = {
      * 실패: 400 Bad Request (유효하지 않은 설정 값)
      */
     updateSettings: async (settings) => {
+        console.log('[updateSettings] 요청:', settings);
         const response = await apiClient.put('/users/me/settings', settings);
         return response.data;
     }

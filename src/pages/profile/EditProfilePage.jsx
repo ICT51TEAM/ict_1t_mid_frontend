@@ -145,10 +145,11 @@ export default function EditProfilePage() {
             setIsLoading(true);
             try {
                 const data = await userService.getMyProfile();
+                console.log('[profile] 불러오기:', data);
                 setUser(data);
                 setFormData({ username: data.username, visibility: data.visibility });
             } catch (error) {
-                console.warn(error);
+                console.warn('[profile] 불러오기 실패, fallback 사용:', error);
                 const fallbackUser = {
                     ...authUser,
                     profileImage: authUser?.profileImageUrl || DEFAULT_AVATAR // ?. null이나 undefined면 undefined 반환
@@ -188,6 +189,7 @@ export default function EditProfilePage() {
         //서버에 파일을 올리지는 않고 미리보기만 보여줌
         const file = e.target.files?.[0];
         if (!file) return;
+        console.log('[profileImage] 선택:', file.name);
         setProfileFile(file);
         setPreviewUrl(URL.createObjectURL(file));
     };
@@ -246,6 +248,7 @@ export default function EditProfilePage() {
                         formDataImg.append('userId', String(authUser?.id || authUser?.userId));
                     }
                     const data = await userService.uploadProfileImage(formDataImg);
+                    console.log('[profileImage] 업로드 응답:', data);
                     const newImageUrl = data?.result?.profileImageUrl
                                     || data?.profileImageUrl
                                     || data?.result;
@@ -263,6 +266,7 @@ export default function EditProfilePage() {
                 username: formData.username,
                 visibility: formData.visibility
             });
+            console.log('[profile] 수정 성공');
             updateUser({ username: formData.username, visibility: formData.visibility });
             showAlert('프로필이 수정되었습니다.', '프로필', 'success');
             setTimeout(() => navigate('/profile'), 1000);
@@ -290,14 +294,17 @@ export default function EditProfilePage() {
     // -------------------------------------------------------------------------
 
     // isLoading=true 또는 user=null인 경우: 전체 화면 스피너 표시
-    if (isLoading || !user) return (
-        <ResponsiveLayout showTabs={false}>
-            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-60px)] gap-4">
-                <Loader2 className="animate-spin text-gray-400" size={40} />
-                <div className="text-[13px] uppercase font-black italic tracking-widest text-[#ccd3db] animate-pulse">Loading SNAP...</div>
-            </div>
-        </ResponsiveLayout>
-    );
+    if (isLoading || !user) {
+        console.log('[profile] 로딩 중 - isLoading:', isLoading, '/ user:', user);
+        return (
+            <ResponsiveLayout showTabs={false}>
+                <div className="flex flex-col items-center justify-center min-h-[calc(100vh-60px)] gap-4">
+                    <Loader2 className="animate-spin text-gray-400" size={40} />
+                    <div className="text-[13px] uppercase font-black italic tracking-widest text-[#ccd3db] animate-pulse">Loading SNAP...</div>
+                </div>
+            </ResponsiveLayout>
+        );
+    }
 
     // -------------------------------------------------------------------------
     // [JSX 렌더링]

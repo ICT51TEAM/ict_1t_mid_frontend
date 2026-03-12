@@ -122,10 +122,12 @@ export default function ChangePasswordPage() {
             return;
         }
         setLoading(true); //로딩 시작
+        console.log('[changePassword] 요청시작');
         await userService.changePassword({
             currentPassword: formData.currentPassword,
             newPassword: formData.newPassword
         });
+        console.log('[changePassword] 성공');
         showAlert('비밀번호가 변경되었습니다.', '성공', 'success');
         navigate('/settings');
     };

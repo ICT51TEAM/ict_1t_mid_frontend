@@ -301,10 +301,10 @@ export default function SnapDetailPage() {
         } catch (e) {
             console.log('[handleFriendRequest] sendRequest 실패, e =', e);
             if (e?.response?.status === 409) {
-                showAlert('이미 요청했거나 글벗입니다.', '알림');
+                showAlert('이미 요청했거나 글벗입니다.', '알림', 'alert');
                 setFriendStatus('pending');
             } else {
-                showAlert('글벗 요청에 실패했습니다.', '알림');
+                showAlert('글벗 요청에 실패했습니다.', '알림', 'alert');
             }
         } finally {
             console.log('[handleFriendRequest] 요청 종료');
@@ -357,9 +357,9 @@ export default function SnapDetailPage() {
         console.log('[handleGiveBadge] 현재 togglingBadge =', togglingBadge);
         console.log('[handleGiveBadge] 현재 id =', id);
 
-        // 이미 다른 달개를 토글 중이면 무시 (중복 요청 방지)
-        if (togglingBadge) {
-            console.log('[handleGiveBadge] 이미 토글 중이라 return');
+        // 같은 달개를 연속으로 누를 때만 무시 (다른 달개는 동시 가능)
+        if (togglingBadge === badgeTypeId) {
+            console.log('[handleGiveBadge] 이미 해당 달개 토글 중이라 return');
             return;
         }
         setTogglingBadge(badgeTypeId);
@@ -374,7 +374,7 @@ export default function SnapDetailPage() {
             setMyBadges(result.myBadges || []);
         } catch (e) {
             console.log('[handleGiveBadge] toggleAlbumDalgae 실패, e =', e);
-            showAlert('달개 전달에 실패했습니다.', '알림');
+            showAlert('달개 전달에 실패했습니다.', '알림', 'alert');
         } finally {
             // 토글 완료 후 로딩 상태 해제
             console.log('[handleGiveBadge] 토글 종료, togglingBadge 초기화');
@@ -387,17 +387,24 @@ export default function SnapDetailPage() {
     // ---------------------------------------------------------
     const handleDelete = () => {
         console.log('[handleDelete] 삭제 버튼 클릭, id =', id);
-        showConfirm('정말로 이 스냅을 삭제하시겠습니까?', async () => {
-            try {
-                await postService.deletePost(id);
-                console.log('[handleDelete] deletePost 성공');
-                showAlert('삭제되었습니다.', '완료', 'success');
-                navigate('/');
-            } catch (e) {
-                console.log('[handleDelete] deletePost 실패, e =', e);
-                showAlert('삭제에 실패했습니다.');
-            }
-        }, '스냅 삭제');
+        showConfirm({
+            message: '정말로 이 게시글을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+            title: '게시글 삭제',
+            type: 'alert',
+            confirmText: '삭제',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    await postService.deletePost(id);
+                    console.log('[handleDelete] deletePost 성공');
+                    showAlert('게시글이 삭제되었습니다.', '완료', 'success');
+                    navigate('/');
+                } catch (e) {
+                    console.log('[handleDelete] deletePost 실패, e =', e);
+                    showAlert('게시글 삭제에 실패했습니다.', '오류', 'alert',);
+                }
+            },
+        });
     };
 
     // ---------------------------------------------------------
@@ -422,7 +429,7 @@ export default function SnapDetailPage() {
     // ---------------------------------------------------------
     // [파생 값 계산]
     // ---------------------------------------------------------
-    const isAuthor = authUser?.id === snap?.user?.id;
+    const isAuthor = String(authUser?.id) === String(snap?.user?.id);
     // totalBadges: badges 배열의 모든 count를 합산 → "TOTAL N" 표시에 사용
     const totalBadges = badges.reduce((acc, curr) => acc + (curr.count || 0), 0);
 
@@ -434,7 +441,7 @@ export default function SnapDetailPage() {
             <div className="bg-white dark:bg-[#101215] min-h-screen">
 
 
-{/* ── 작성자 정보 헤더 ── */}
+                {/* ── 작성자 정보 헤더 ── */}
                 <div className="flex justify-between items-center px-4 py-4 sticky top-[60px] bg-white dark:bg-[#1c1f24] z-20 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     <Link to={`/friend/${snap?.user?.id || snap?.user?.userId}`} className="flex items-center gap-3 hover:opacity-70 transition-opacity">
                         <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#f3f3f3]">
@@ -465,8 +472,8 @@ export default function SnapDetailPage() {
                                         <button onClick={() => {
                                             console.log('[UI] EDIT 클릭, 이동 경로 =', `/snap/${id}/edit`);
                                             navigate(`/snap/${id}/edit`);
-                                        }} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 hover:bg-[#fafafa] dark:hover:bg-[#292e35]"><Edit2 size={14} /> EDIT</button>
-                                        <button onClick={handleDelete} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} /> DELETE</button>
+                                        }} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 hover:bg-[#fafafa] dark:hover:bg-[#292e35]"><Edit2 size={14} /> 수정</button>
+                                        <button onClick={handleDelete} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} /> 삭제</button>
                                     </div>
                                 )}
                             </div>
@@ -491,10 +498,10 @@ export default function SnapDetailPage() {
                 </div>
 
                 {/* ── 이미지 캐러셀 ── */}
-                <div className="relative w-full bg-[#f9f9f9] dark:bg-[#101215]">
+                <div className="relative w-full bg-[#f9f9f9] dark:bg-[#101215]" style={{ height: '60vh' }}>
                     <img
                         src={snap.images[imgIndex] || DEFAULT_POST_IMAGE}
-                        className="w-full h-auto object-contain"
+                        className="w-full h-full object-contain"
                         onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
                     />
                     {snap.images.length > 1 && (
@@ -550,67 +557,119 @@ export default function SnapDetailPage() {
                     </div>
 
                     {/* ── 달개(Badge) 시스템 섹션 ──────────────────────────
-                        이 섹션은 두 영역으로 구성된다:
+        이 섹션은 두 영역으로 구성된다:
 
-                        [1] Badges Collected (수집된 달개 목록)
-                            - badges 배열을 순회하며 각 달개의 이모지와 개수를 표시
-                            - badges가 빈 배열이면 "No Badges Yet" 메시지 표시
-                            - totalBadges: 모든 달개의 count 합산 → "TOTAL N" 표시
+        [1] Badges Collected (수집된 달개 목록)
+            - badges 배열을 순회하며 각 달개의 이모지와 개수를 표시
+            - badges가 빈 배열이면 "No Badges Yet" 메시지 표시
+            - totalBadges: 모든 달개의 count 합산 → "TOTAL N" 표시
 
-                        [2] Give a badge (달개 부여 버튼 그리드)
-                            - badgeTypes 배열(백엔드 BADGE_TYPES)을 4열 그리드로 표시
-                            - 각 버튼: 이모지 + 유형명(title)
-                            - myBadges.includes(bt.emoji)가 true이면:
-                              → 내가 이미 이 달개를 남긴 상태 → bg-black 강조 스타일
-                            - 클릭 시 handleGiveBadge(bt.id) 호출
-                              → 토글: 이미 있으면 삭제(REMOVED), 없으면 생성(ADDED)
-                            - togglingBadge === bt.id 이면 opacity-50으로 로딩 표시
-                    ─────────────────────────────────────────────────────── */}
+        [2] Give a badge (달개 부여 버튼 그리드)
+            - badgeTypes 배열(백엔드 BADGE_TYPES)을 4열 그리드로 표시
+            - 각 버튼: 이모지 + 유형명(title)
+            - myBadges.includes(bt.emoji)가 true이면:
+              → 내가 이미 이 달개를 남긴 상태 → bg-black 강조 스타일
+            - 클릭 시 handleGiveBadge(bt.id) 호출
+              → 토글: 이미 있으면 삭제(REMOVED), 없으면 생성(ADDED)
+            - togglingBadge === bt.id 이면 opacity-50으로 로딩 표시
+
+        [작성자 본인 제한]
+            - isAuthor === true 이면 달개 부여 영역 전체를 opacity-40으로 흐리게 표시
+            - 클릭 차단 오버레이(z-10)로 버튼 클릭을 물리적으로 막음
+            - 버튼에 disabled 처리 추가 (이중 차단)
+            - isSelected 강조 스타일 적용 안 함 (본인은 선택 상태 없음)
+            - "본인 게시글에는 달개를 부여할 수 없습니다" 안내 문구 표시
+    ─────────────────────────────────────────────────────── */}
                     <div className="bg-[#fafafa] dark:bg-[#1c1f24] rounded-2xl p-6 border border-[#f3f3f3] dark:border-[#292e35]">
-                        {/* 달개 헤더: Award 아이콘 + "Badges Collected" + 총 개수 */}
+
+                        {/* 달개 헤더: Award 아이콘 + "달개 부여하기" + 총 개수 */}
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
-                                <Award className="text-black" size={20} />
-                                <h3 className="text-[15px] font-black italic tracking-widest uppercase">Badges Collected</h3>
+                                <Award className="text-black dark:text-white" size={20} />
+                                <h3 className="text-[15px] font-black italic tracking-widest uppercase">달개 부여하기</h3>
                             </div>
-                            <span className="text-[13px] font-black italic tracking-tighter text-black">TOTAL {totalBadges}</span>
+                            <span className="text-[13px] font-black italic tracking-tighter text-black dark:text-white">총계 {totalBadges}</span>
                         </div>
 
-                        {/* 수집된 달개 목록: badges 배열의 각 항목을 이모지 + 개수로 표시 */}
+                        {/* 수집된 달개 목록: badges 배열의 각 항목을 이모지 + 개수로 표시
+            badges가 빈 배열이면 "No Badges Yet" 텍스트 표시 */}
                         <div className="flex flex-wrap gap-3 mb-8">
                             {badges.length > 0 ? badges.map(b => (
                                 <div key={b.emoji} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#292e35] rounded-lg border border-[#f3f3f3] dark:border-[#424a54] shadow-sm">
                                     <span className="text-xl">{b.emoji}</span>
                                     <span className="text-[12px] font-black italic tracking-tighter">{b.count}</span>
                                 </div>
-                            )) : <p className="text-[12px] text-[#ccd3db] font-bold italic tracking-widest text-center w-full py-4 uppercase">No Badges Yet</p>}
+                            )) : (
+                                <p className="text-[12px] text-[#ccd3db] font-bold italic tracking-widest text-center w-full py-4 uppercase">
+                                    No Badges Yet
+                                </p>
+                            )}
                         </div>
 
                         {/* 달개 부여 섹션:
-                            badgeTypes(백엔드에서 로드한 달개 유형 목록)를 4열 그리드로 표시.
-                            각 버튼 클릭 → handleGiveBadge(bt.id) → 토글 API 호출.
-                            myBadges에 포함된 이모지는 강조 스타일(bg-black)로 표시. */}
-                        <p className="text-[12px] font-black italic tracking-widest uppercase text-[#ccd3db] mb-4 text-center">Give a badge</p>
-                        <div className="grid grid-cols-4 gap-3 max-w-[360px] mx-auto">
-                            {badgeTypes.map(bt => {
-                                // myBadges 배열에 이 달개의 이모지가 포함되어 있으면 내가 이미 선택한 달개
-                                const isSelected = myBadges.includes(bt.emoji);
-                                return (
-                                    <button
-                                        key={bt.id}
-                                        onClick={() => handleGiveBadge(bt.id)}
-                                        disabled={togglingBadge !== null}
-                                        className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${
-                                            isSelected
-                                                ? 'bg-black text-[#e5e5e5] shadow-xl scale-110'
-                                                : 'bg-white dark:bg-[#292e35] border border-[#f3f3f3] dark:border-[#424a54] text-[#ccd3db] hover:border-black dark:hover:border-[#e5e5e5] hover:text-black dark:hover:text-[#e5e5e5]'
-                                        } ${togglingBadge === bt.id ? 'opacity-50' : ''}`}
-                                    >
-                                        <span className="text-2xl">{bt.emoji}</span>
-                                        <span className="text-[10px] font-bold uppercase tracking-tighter">{bt.title || bt.name}</span>
-                                    </button>
-                                );
-                            })}
+            isAuthor일 때:
+              - 래퍼 div에 opacity-40 + cursor-not-allowed 로 흐리게 표시
+              - 절대 위치 오버레이(z-10)로 버튼 클릭을 물리적으로 차단
+              - "본인 게시글에는 달개를 부여할 수 없습니다" 안내 문구 노출
+            isAuthor가 아닐 때:
+              - 정상 동작, myBadges 기반 isSelected 강조 스타일 적용
+              - handleGiveBadge(bt.id) 호출로 토글 API 실행 */}
+                        <div className={`relative ${isAuthor ? 'opacity-40 cursor-not-allowed' : ''}`}>
+
+                            {/* 작성자 본인일 때만 렌더링되는 클릭 차단 오버레이.
+                z-10으로 버튼 그리드 위에 올라가 모든 클릭 이벤트를 흡수.
+                중앙에 안내 문구를 표시하여 왜 비활성화됐는지 사용자에게 알림. */}
+                            {isAuthor && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center">
+                                    <span className="text-[11px] font-black italic tracking-widest uppercase text-[#424a54] dark:text-[#a3b0c1] bg-white/80 dark:bg-[#1c1f24]/80 px-4 py-2 rounded-full border border-[#f3f3f3] dark:border-[#292e35]">
+                                        본인 게시글에는 달개를 부여할 수 없습니다
+                                    </span>
+                                </div>
+                            )}
+
+                            <p className="text-[12px] font-black italic tracking-widest uppercase text-[#ccd3db] mb-4 text-center">
+                                부여할 달개를 선택하세요
+                            </p>
+
+                            {/* 달개 유형 버튼 그리드 (4열)
+                - isAuthor가 아닐 때: myBadges.includes(bt.emoji)로 isSelected 판별
+                - isAuthor일 때: isSelected 항상 false (강조 스타일 미적용)
+                - disabled 조건: togglingBadge 진행 중 OR 작성자 본인 (이중 차단)
+                - togglingBadge === bt.id: 해당 버튼만 opacity-50 로딩 표시 */}
+                            <div className="grid grid-cols-4 gap-3 max-w-[360px] mx-auto">
+                                {badgeTypes.map(bt => {
+                                    // myBadges 배열에 이 달개의 이모지가 포함되어 있으면 내가 이미 선택한 달개
+                                    // isAuthor이면 본인 게시글이므로 선택 상태를 표시하지 않음
+                                    const isSelected = !isAuthor && myBadges.includes(bt.emoji);
+                                    return (
+                                        <button
+                                            key={bt.id}
+                                            onClick={() => {
+                                                // 작성자 본인이면 클릭 무시 (오버레이가 막지만 이중 방어)
+                                                if (isAuthor) return;
+                                                handleGiveBadge(bt.id);
+                                            }}
+                                            // togglingBadge 진행 중이거나 작성자 본인이면 버튼 비활성화
+                                            disabled={togglingBadge === bt.id || isAuthor}
+                                            className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isSelected
+                                                    ? 'bg-black text-[#e5e5e5] shadow-xl scale-110'
+                                                    : 'bg-white dark:bg-[#292e35] border border-[#f3f3f3] dark:border-[#424a54] text-[#ccd3db]'
+                                                } ${
+                                                // 비작성자일 때만 hover 스타일 적용
+                                                !isAuthor
+                                                    ? 'hover:border-black dark:hover:border-[#e5e5e5] hover:text-black dark:hover:text-[#e5e5e5]'
+                                                    : ''
+                                                } ${
+                                                // 현재 토글 중인 달개 버튼만 흐리게 표시
+                                                togglingBadge === bt.id ? 'opacity-50' : ''
+                                                }`}
+                                        >
+                                            <span className="text-2xl">{bt.emoji}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-tighter">{bt.title || bt.name}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
