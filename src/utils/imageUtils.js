@@ -101,5 +101,7 @@ export const getImageUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('/')) return url;
   if (url.startsWith('data:')) return url;
-  return '/' + url;
+  const result = '/' + url;
+  console.log('[getImageUrl] 상대경로 변환:', url, '→', result);
+  return result;
 };

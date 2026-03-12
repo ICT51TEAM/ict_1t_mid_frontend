@@ -63,11 +63,16 @@ export default function ProfilePage() {
      * API 응답 후 getMyProfile() 성공 시 최신 데이터로 교체됨.
      */
     const [user, setUser] = useState(() => {
-        if (!authUser) return null;
-        return {
+        if (!authUser) {
+            console.log('[user] authUser 없음 → null');
+            return null;
+        }
+        const initialUser = {
             ...authUser,
             level: Math.floor((authUser.totalBadges || 0) / 5) + 1,
         };
+        console.log('[user] 초기값:', initialUser);
+        return initialUser;
     });
 
     /**
