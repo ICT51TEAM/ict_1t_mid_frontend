@@ -164,8 +164,8 @@ export const qnaService = {
    */
   // [2] QnA 생성 — { title, content }
   createQna: async (data) => {
-    // TODO: POST /qna 를 호출하고 response.data를 반환하세요.
-    // 힌트: apiClient.post('/qna', data) → response.data
+    const response = await apiClient.post('/qna', data);
+    return response.data;
   },
 
   /**
