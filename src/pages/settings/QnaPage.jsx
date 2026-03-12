@@ -143,21 +143,24 @@ export default function QnaPage() {
     // 백엔드에서 QnA 목록 로드
     useEffect(() => {
         const loadQnas = async () => {
-            // TODO: [1] qnaService.getQnas(1, 20) 호출
-            //           → GET /api/qna?page=0&size=20&sort=createdAt,desc
-            // TODO: [2] Spring Page 응답 처리:
-            //           items = (data?.content ?? data ?? []).map((q) => ({...}))
-            //           - q.id → id
-            //           - q.authorId ?? '' → userId
-            //           - (q.authorName ?? q.authorId ?? 'USER').toString().toUpperCase() → userName
-            //           - q.title → title
-            //           - q.content → content
-            //           - q.createdAt?.slice(0,10).replace(/-/g, '.') → date
-            //           - false → isExpanded (기본 접힘)
-            //           - [] → comments (로컬 전용 답변 배열)
-            // TODO: [3] setQnas(items) 호출
-            // TODO: [4] catch 블록에서 console.error('QnA 목록 로드 실패', e)
-            // 힌트: finally 블록에서 setIsLoading(false) 호출
+            try {
+                const data = await qnaService.getQnas(1, 20);
+                const items = (data?.content ?? data ?? []).map((q) => ({
+                    id: q.id,
+                    userId: q.authorId ?? '',
+                    userName: (q.authorName ?? q.authorId ?? 'USER').toString().toUpperCase(),
+                    title: q.title,
+                    content: q.content,
+                    date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
+                    isExpanded: false,
+                    comments: [],
+                }));
+                setQnas(items);
+            } catch (e) {
+                console.error('QnA 목록 로드 실패', e);
+            } finally {
+                setIsLoading(false);
+            }
         };
         loadQnas();
     }, []);
