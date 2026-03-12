@@ -122,20 +122,34 @@ export const photoService = {
    */
   // { files: File[], userId: number }
   uploadPhotos: async ({ files, userId }) => {
+    console.log('[photoService.uploadPhotos] 호출');
+    console.log('[photoService.uploadPhotos] files =', files);
+    console.log('[photoService.uploadPhotos] userId =', userId);
+
     // TODO: FormData를 구성한 뒤 POST /photos/upload 를 호출하고 data를 반환하세요.
     // 힌트:
     //   1. const formData = new FormData()
     const formData = new FormData();
+    console.log('[photoService.uploadPhotos] formData 생성 완료');
+
     //   2. files.forEach(file => formData.append('files', file))  // 같은 키 'files'로 여러 번 append
-    files.forEach((file) => formData.append('files', file));
+    files.forEach((file, index) => {
+      console.log(`[photoService.uploadPhotos] files append index=${index}`, file);
+      formData.append('files', file);
+    });
+
     //   3. formData.append('userId', String(userId))              // 숫자를 문자열로 변환
     formData.append('userId', String(userId));
+    console.log('[photoService.uploadPhotos] userId append 완료 =', String(userId));
+
     //   4. const { data } = await apiClient.post('/photos/upload', formData, {
     //        headers: { 'Content-Type': 'multipart/form-data' }   // Content-Type 오버라이드
     //      })
     const { data } = await apiClient.post('/photos/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    console.log('[photoService.uploadPhotos] POST /photos/upload 성공, data =', data);
+
     //   5. return data
      return data;
   },

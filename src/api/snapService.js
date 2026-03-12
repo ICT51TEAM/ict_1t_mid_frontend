@@ -95,10 +95,12 @@
  * ─────────────────────────────────────────────────────────
  * [관련 파일]
  *   - src/api/apiClient.js           : axios 인스턴스
+ *   - src/api/albumService.js        : 앨범 생성/상세 조회 서비스
  *   - src/pages/feed/FeedPage.jsx    : useInfiniteQuery + fetchSnaps() 사용
  *   - src/pages/feed/PostDetailPage.jsx: fetchSnapDetail() 사용
  */
 import apiClient from './apiClient';
+import { albumService } from './albumService';
 
 /**
  * fetchSnaps - 무한 스크롤 피드를 위한 스냅 목록 조회 함수
@@ -145,9 +147,14 @@ import apiClient from './apiClient';
  * - GET /api/albums/{albumId}                                  → 상세 조회 (AlbumDetailResponse)
  */
 export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) => {
+    console.log('[fetchSnaps] 호출');
+    console.log('[fetchSnaps] pageParam =', pageParam);
+    console.log('[fetchSnaps] filter =', filter);
+    console.log('[fetchSnaps] tag =', tag);
+
     // TODO: 클라이언트 사이드 페이징을 포함한 피드 목록 조회를 구현하세요.
     // 힌트:
-    
+    //
     //   try {
     //     1. GET /albums/feed 호출: type='photo', friendsOnly=(filter==='following'), tag=(tag||undefined)
     try {
@@ -161,37 +168,50 @@ export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) =>
                 tag: tag || undefined,
             }
         });
-    //     2. const items = response.data || []
-    const items = response.data || [];
-    
-    //     3. pageSize = 20, start = (pageParam - 1) * pageSize
-    const pageSize = 20;
-    const start = (pageParam - 1) * pageSize;
-    //     4. const sliced = items.slice(start, start + pageSize)
-    
-    const sliced = items.slice(start, start + pageSize);
-    //     5. return { data: sliced, nextPage: pageParam + 1, hasNextPage: start + pageSize < items.length }
-   return {
+
+        console.log('[fetchSnaps] /albums/feed response =', response);
+
+        //     2. const items = response.data || []
+        const items = response.data || [];
+        console.log('[fetchSnaps] items =', items);
+
+        //     3. pageSize = 20, start = (pageParam - 1) * pageSize
+        const pageSize = 20;
+        const start = (pageParam - 1) * pageSize;
+        console.log('[fetchSnaps] pageSize =', pageSize);
+        console.log('[fetchSnaps] start =', start);
+
+        //     4. const sliced = items.slice(start, start + pageSize)
+        const sliced = items.slice(start, start + pageSize);
+        console.log('[fetchSnaps] sliced =', sliced);
+
+        //     5. return { data: sliced, nextPage: pageParam + 1, hasNextPage: start + pageSize < items.length }
+        const result = {
             data: sliced,
             // 다음 번 useInfiniteQuery 호출 시 pageParam으로 전달될 값
             nextPage: pageParam + 1,
             // 현재 페이지 끝 인덱스(start + pageSize)가 전체 길이보다 작으면 다음 페이지 있음
             hasNextPage: start + pageSize < items.length,
         };
-    } catch (error) {
-     // 피드 로드 실패 시 앱을 중단시키지 않고 빈 결과를 반환한다
-     // React Query가 hasNextPage=false를 보고 무한 스크롤을 종료한다
-     console.warn('스냅 피드 로드 실패:', error);
-     return { data: [], nextPage: undefined, hasNextPage: false };
-    }
-    
-};
 
+        console.log('[fetchSnaps] result =', result);
+        return result;
+    } catch (error) {
+        // 피드 로드 실패 시 앱을 중단시키지 않고 빈 결과를 반환한다
+        // React Query가 hasNextPage=false를 보고 무한 스크롤을 종료한다
+        console.warn('스냅 피드 로드 실패:', error);
+        return { data: [], nextPage: undefined, hasNextPage: false };
+    }
+};
 /**
  * fetchSnapDetail - 특정 스냅(앨범) 상세 정보 조회 함수
  *
  * 피드에서 스냅을 클릭했을 때 해당 스냅의 모든 상세 정보를 가져온다.
  * 포함된 모든 사진, 레이아웃 정보, 태그, 본문 등이 반환된다.
+ *
+ * 기존에는 snapService가 직접 GET /api/albums/{id}를 호출했지만,
+ * 현재는 albumService.getAlbumDetail(id)를 재사용하여
+ * 상세 조회 책임을 albumService로 일원화한다.
  *
  * @param {number|string} id - 조회할 앨범의 고유 ID
  *   피드 목록(fetchSnaps)의 응답 아이템에서 albumId 필드 값을 사용
@@ -217,7 +237,7 @@ export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) =>
  *     createdAt   : string      // 생성 시각 (ISO 8601)
  *   }
  *
- * HTTP: GET /api/albums/{id}
+ * HTTP: 내부적으로 albumService.getAlbumDetail(id) 호출
  * 인증 필요: 예
  * 성공: 200 OK
  * 실패: 404 Not Found (앨범 없음), 403 Forbidden (비공개 앨범 접근 불가)
@@ -225,8 +245,13 @@ export const fetchSnaps = async ({ pageParam = 1, filter = 'all', tag = '' }) =>
  */
 // AlbumDetailResponse: { albumId, userId, username, title, bodyText, recordDate, layoutType, photos, tags }
 export const fetchSnapDetail = async (id) => {
-    // TODO: GET /albums/{id} 를 호출하고 response.data를 반환하세요.
-    const response = await apiClient.get(`/albums/${id}`);
-    // 힌트: apiClient.get(`/albums/${id}`) → response.data
-    return response.data;
+    console.log('[fetchSnapDetail] 호출');
+    console.log('[fetchSnapDetail] id =', id);
+
+    // TODO: albumService.getAlbumDetail(id)를 호출하고 결과를 반환하세요.
+    const data = await albumService.getAlbumDetail(id);
+    console.log('[fetchSnapDetail] albumService.getAlbumDetail 결과 =', data);
+
+    return data;
+    // 힌트: const data = await albumService.getAlbumDetail(id); return data;
 };

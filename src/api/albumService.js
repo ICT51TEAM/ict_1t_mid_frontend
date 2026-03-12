@@ -114,14 +114,20 @@ export const albumService = {
    */
   // payload: { userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }
   createAlbum: async (payload) => {
+    console.log('[albumService.createAlbum] 호출');
+    console.log('[albumService.createAlbum] payload =', payload);
+
     // TODO: POST /albums 를 호출하고 data를 반환하세요.
     const response = await apiClient.post('/albums', payload);
-    const data=response.data;
+    console.log('[albumService.createAlbum] response =', response);
+
+    const data = response.data;
+    console.log('[albumService.createAlbum] data =', data);
+
     return data;
     // 힌트: const { data } = await apiClient.post('/albums', payload); return data;
   },
-
-  /**
+    /**
    * [2] 앨범 상세 조회
    *
    * 특정 앨범 ID로 해당 앨범의 모든 상세 정보를 가져온다.
@@ -152,9 +158,17 @@ export const albumService = {
    * 실패: 401 (미인증), 403 (접근 권한 없음), 404 (앨범 없음)
    */
   getAlbumDetail: async (albumId) => {
+    console.log('[albumService.getAlbumDetail] 호출');
+    console.log('[albumService.getAlbumDetail] albumId =', albumId);
+
     // TODO: GET /albums/{albumId} 를 호출하고 data를 반환하세요.
-    const response = await apiClient.get(`/albums/${albumId}`)
-    return response.data;
+    const response = await apiClient.get(`/albums/${albumId}`);
+    console.log('[albumService.getAlbumDetail] response =', response);
+
+    const data = response.data;
+    console.log('[albumService.getAlbumDetail] data =', data);
+
+    return data;
     // 힌트: const { data } = await apiClient.get(`/albums/${albumId}`); return data;
   },
 };
