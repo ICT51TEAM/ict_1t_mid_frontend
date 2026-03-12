@@ -110,9 +110,10 @@ export default function NotificationsPage() {
                 ...n,
                 isRead: n.isRead ?? n.read ?? false
             })) : [];
+            console.log('[notifications] 불러오기:', mapped.length, '개');
             setNotifications(mapped);
         } catch (error) {
-            console.error(error);
+            console.error('[notifications] 불러오기 실패:', error);
         }
     };
 
@@ -196,6 +197,7 @@ export default function NotificationsPage() {
             onConfirm: async () => {
                 try {
                     await notificationService.markAllRead();
+                    console.log('[notifications] 전체 읽음 처리 성공');
                     await loadNotifications();
                     if (triggerNotiRefresh) triggerNotiRefresh();
                     showAlert('모든 알림이 읽음 처리되었습니다.', '알림', 'success');

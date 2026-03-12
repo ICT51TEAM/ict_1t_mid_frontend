@@ -113,6 +113,7 @@ export default function SettingsPage() {
         } else {
             document.documentElement.classList.remove('dark');
         }
+        console.log('[darkMode] 전환:', isDarkMode, '→', newMode);
     };
 
     /**
@@ -138,7 +139,9 @@ export default function SettingsPage() {
         if (window.confirm('로그아웃 하시겠습니까?')) {
             // TODO: 실제 서비스 운영 시 AuthContext의 logout() 함수를 호출하여 
             //       localStorage의 토큰을 삭제하고 전역 인증 상태를 null로 초기화해야 함.
+            console.log('[logout] 실행전');
             logout();
+            console.log('[logout] 실행후');
             navigate('/login');
         }
     };
@@ -183,6 +186,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         userService.getSettings().then(data => {
+            console.log('[settings] 불러오기:', data);
             setIsNotificationEnabled(data.notificationEnabled ?? true);
         }).catch(() => {});
     }, []);
@@ -199,6 +203,7 @@ export default function SettingsPage() {
                 bgmUrl: null,
                 themeColor: null,
             });
+            console.log('[notification] 저장 성공:', newVal);
         } catch(e) {
             console.warn('알림 설정 저장 실패', e);
         }

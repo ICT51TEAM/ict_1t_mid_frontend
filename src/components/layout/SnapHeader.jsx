@@ -140,19 +140,18 @@ export default function SnapHeader() {
                 }
 
                 const data = await notificationService.getAll();
-                setUnreadCount(
-
-                    Array.isArray(data)
-                        ? data.filter(n => !(n.isRead ?? n.read)).length
-                        : 0
-                );
+                const count = Array.isArray(data)
+                    ? data.filter(n => !(n.isRead ?? n.read)).length
+                    : 0;
+                console.log('[unread] 미읽음:', count, '개');
+                setUnreadCount(count);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
             }
         };
 
         fetchUnread();
-        const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
+        const interval = setInterval(fetchUnread, 30000); //30초마다 fetch
       
         return () => clearInterval(interval);
     }, [isAuthenticated]);

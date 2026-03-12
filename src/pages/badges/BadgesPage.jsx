@@ -117,6 +117,7 @@ export default function BadgesPage() {
         const load = async () => {
             const stats = await badgeService.getMyStats();
             const allTypes = await badgeService.getAllTypes();
+            console.log('[badge] stats:', stats, '/ allTypes:', allTypes?.length, '개');
             setStats(stats);
             setAllTypes(allTypes);
         };

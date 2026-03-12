@@ -106,10 +106,14 @@ export default function BadgeRankingPage() {
                 // BadgeRankingPage useEffect 수정
                 if (activeTab === 'GLOBAL') {
                     const data = await badgeService.getGlobalRanking();
-                    setRanking(Array.isArray(data?.content) ? data.content : []);
+                    const ranking = Array.isArray(data?.content) ? data.content : [];
+                    console.log('[ranking] GLOBAL:', ranking.length, '명');
+                    setRanking(ranking);
                 } else {
                     const data = await badgeService.getFriendsRanking();
-                    setRanking(Array.isArray(data?.content) ? data.content : []);
+                    const ranking = Array.isArray(data?.content) ? data.content : [];
+                    console.log('[ranking] FRIENDS:', ranking.length, '명');
+                    setRanking(ranking);
                 }
             } catch (error) {
                 console.error('랭킹 로드 실패:', error);
