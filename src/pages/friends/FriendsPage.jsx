@@ -359,8 +359,8 @@ export default function FriendsPage() {
                     <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-xl transform -rotate-3 hover:rotate-0 transition-all">
                         <Users size={32} />
                     </div>
-                    <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">MY FRIENDS</h2>
-                    <p className="text-[14px] text-[#a3b0c1] font-bold tracking-widest uppercase">Connect with your style crew</p>
+                    <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">나의 글벗들</h2>
+                    <p className="text-[14px] text-[#a3b0c1] font-bold tracking-widest uppercase">나의 스토리를 공유할 글벗들을 찾아보세요</p>
                 </div>
 
                 {/* 검색 바 */}
@@ -370,7 +370,7 @@ export default function FriendsPage() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#ccd3db] group-hover:text-black transition-colors" size={18} />
                             <input
                                 type="text"
-                                placeholder="SEARCH FRIENDS"
+                                placeholder="글벗 찾기"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full h-12 pl-12 pr-4 bg-[#f3f3f3] dark:bg-[#292e35] rounded-[8px] text-[13px] font-black italic tracking-widest outline-none focus:ring-1 focus:ring-black transition-all"
@@ -408,8 +408,8 @@ export default function FriendsPage() {
                 {/* 탭 메뉴 */}
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
-                        { id: 'LIST', label: 'ALL FRIENDS', count: friends.length },
-                        { id: 'PENDING', label: 'REQUESTS', count: receivedRequests.length + sentRequests.length }
+                        { id: 'LIST', label: '모든 글벗들', count: friends.length },
+                        { id: '받은 요청', label: '보낸 요청', count: receivedRequests.length + sentRequests.length }
                     ].map(tab => (
                         <button
                             key={tab.id}

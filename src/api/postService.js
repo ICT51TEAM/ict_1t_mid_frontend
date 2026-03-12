@@ -70,14 +70,14 @@
  *
  * ─────────────────────────────────────────────────────────
  * [미구현 기능 처리 방식]
- *   updatePost(_id, _postData):
+ *   updatePost(id, _postData):
  *     → throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.')
  *     → 파라미터에 _ prefix를 붙여 미사용 파라미터임을 명시
  *
- *   deletePost(_id):
+ *   deletePost(id):
  *     → throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.')
  *
- *   toggleLike(_id):
+ *   toggleLike(id):
  *     → console.warn 출력 후 반환 (에러 throw 없음, UI 응답성 유지)
  *
  * ─────────────────────────────────────────────────────────
@@ -216,31 +216,33 @@ export const postService = {
         return response.data;
         // 힌트: apiClient.post('/albums', postData) → response.data
     },
-        /**
-     * [4] 스냅(앨범) 수정 — 현재 백엔드 미구현
-     *
-     * 기존 앨범의 내용(제목, 본문, 태그 등)을 수정하는 기능이지만,
-     * 백엔드 앨범 수정 엔드포인트(PUT /api/albums/{id})가 아직 구현되지 않았다.
-     * 이 함수를 호출하면 항상 Error를 throw한다.
-     * 호출하는 컴포넌트는 반드시 try-catch로 에러를 처리해야 한다.
-     *
-     * @param {number|string} _id       - 수정할 앨범의 ID (미사용, _ prefix)
-     * @param {Object}        _postData - 수정할 데이터 객체 (미사용, _ prefix)
-     *
-     * @returns {never} 항상 Error를 throw
-     * @throws {Error} '스냅 수정 기능은 아직 지원되지 않습니다.'
-     *
-     * HTTP: 미구현 (PUT /api/albums/{id} 엔드포인트 없음)
-     */
+    /**
+ * [4] 스냅(앨범) 수정 — 현재 백엔드 미구현
+ *
+ * 기존 앨범의 내용(제목, 본문, 태그 등)을 수정하는 기능이지만,
+ * 백엔드 앨범 수정 엔드포인트(PUT /api/albums/{id})가 아직 구현되지 않았다.
+ * 이 함수를 호출하면 항상 Error를 throw한다.
+ * 호출하는 컴포넌트는 반드시 try-catch로 에러를 처리해야 한다.
+ *
+ * @param {number|string} id       - 수정할 앨범의 ID (미사용, _ prefix)
+ * @param {Object}        _postData - 수정할 데이터 객체 (미사용, _ prefix)
+ *
+ * @returns {never} 항상 Error를 throw
+ * @throws {Error} '스냅 수정 기능은 아직 지원되지 않습니다.'
+ *
+ * HTTP: 미구현 (PUT /api/albums/{id} 엔드포인트 없음)
+ */
     // [4] 스냅 수정 — 백엔드 앨범 수정 엔드포인트 미구현
-    updatePost: async (_id, _postData) => {
+    updatePost: async (id, _postData) => {
         console.log('[postService.updatePost] 호출');
-        console.log('[postService.updatePost] _id =', _id);
+        console.log('[postService.updatePost] id =', id);
         console.log('[postService.updatePost] _postData =', _postData);
 
-        // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
-        // 힌트: throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.')
-        throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.');
+        const response = await apiClient.put(`/albums/${id}`, postData);
+        console.log('[postService.updatePost] response =', response);
+        console.log('[postService.updatePost] response.data =', response.data);
+
+        return response.data;
     },
 
     /**
@@ -250,7 +252,7 @@ export const postService = {
      * 백엔드 앨범 삭제 엔드포인트(DELETE /api/albums/{id})가 아직 구현되지 않았다.
      * 이 함수를 호출하면 항상 Error를 throw한다.
      *
-     * @param {number|string} _id - 삭제할 앨범의 ID (미사용, _ prefix)
+     * @param {number|string} id - 삭제할 앨범의 ID (미사용, _ prefix)
      *
      * @returns {never} 항상 Error를 throw
      * @throws {Error} '스냅 삭제 기능은 아직 지원되지 않습니다.'
@@ -258,13 +260,15 @@ export const postService = {
      * HTTP: 미구현 (DELETE /api/albums/{id} 엔드포인트 없음)
      */
     // [5] 스냅 삭제 — 백엔드 앨범 삭제 엔드포인트 미구현
-    deletePost: async (_id) => {
+    deletePost: async (id) => {
         console.log('[postService.deletePost] 호출');
-        console.log('[postService.deletePost] _id =', _id);
+        console.log('[postService.deletePost] id =', id);
 
-        // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
-        // 힌트: throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.')
-        throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.');
+        const response = await apiClient.delete(`/albums/${id}`);
+        console.log('[postService.deletePost] response =', response);
+        console.log('[postService.deletePost] response.data =', response.data);
+
+        return response.data;
     },
 
     /**
@@ -276,16 +280,16 @@ export const postService = {
      * console.warn만 출력한 후 조용히 반환한다.
      * → UI 응답성을 유지하면서 미구현 상태를 알린다.
      *
-     * @param {number|string} _id - 좋아요를 토글할 앨범의 ID (미사용, _ prefix)
+     * @param {number|string} id - 좋아요를 토글할 앨범의 ID (미사용, _ prefix)
      *
      * @returns {Promise<void>} undefined (에러 없이 반환)
      *
      * HTTP: 미구현 (POST /api/albums/{id}/like 등의 엔드포인트 없음)
      */
     // [6] 좋아요 토글 — 백엔드 미구현
-    toggleLike: async (_id) => {
+    toggleLike: async (id) => {
         console.log('[postService.toggleLike] 호출');
-        console.log('[postService.toggleLike] _id =', _id);
+        console.log('[postService.toggleLike] id =', id);
 
         // TODO: 미구현 상태를 개발자에게 알리되 에러는 throw하지 마세요.
         console.warn('toggleLike: 백엔드 미구현 기능입니다.');
