@@ -122,7 +122,7 @@ export default function ProfilePage() {
      *       성공: setUser(최신 프로필 데이터) - level 필드도 응답에 포함되어야 함
      *       실패: authUser 기반 초기값 유지 (lazy initializer에서 설정한 값)
      *
-     *   [1] postService.getPosts({ type: 'photo' }) → GET /api/posts?type=photo
+     *   [1] postService.getPosts({ type: 'photo', visibility: 'MINE' }) → GET /api/albums/feed?type=photo&visibility=MINE
      *       성공: 응답 배열에서 authorId === authUser.id인 게시글만 필터링하여 저장
      *       실패: 빈 배열([]) 유지
      *
@@ -146,7 +146,7 @@ export default function ProfilePage() {
             // TODO: [1] setPostsLoading(true) 호출
             // TODO: [2] Promise.allSettled([
             //             userService.getMyProfile(),
-            //             postService.getPosts({ type: 'photo' }),
+            //             postService.getPosts({ type: 'photo', visibility: 'MINE' }),
             //             friendService.listFriends()
             //           ]) 병렬 호출
             // TODO: [3] profileResult.status === 'fulfilled'이면 setUser(profileResult.value)
@@ -166,7 +166,7 @@ export default function ProfilePage() {
             try{
                 const [profileResult, postsResult, friendsResult] = await Promise.allSettled([ //결과다 받아 끝날때까지 기다릴테니까
                 withTimeout(userService.getMyProfile(), 'profile'), //내거 가져오는 API 일까? 아니면 수정필요
-                withTimeout(postService.getPosts({ type: 'photo' }), 'posts'), //전체 가져오는 API 일까? 아니면 수정필요
+                withTimeout(postService.getPosts({ type: 'photo', visibility: 'MINE' }), 'posts'), //내 프로필에서는 내 공개범위 전체 글을 가져오도록 명시
                 withTimeout(friendService.listFriends(), 'friends') //내거 가져오는 API 일까? 아니면 수정필요
                 ]);
 
