@@ -218,4 +218,29 @@ export const qnaService = {
     const response = await apiClient.delete(`/qna/${id}`);
     return response.data;
   },
+
+
+  // 댓글 목록 조회
+  getComments: async (qnaId) => {
+    const response = await apiClient.get(`/qna/${qnaId}/comments`);
+    return response.data;
+  },
+
+  // 댓글 생성
+  createComment: async (qnaId, content) => {
+    const response = await apiClient.post(`/qna/${qnaId}/comments`, { content });
+    return response.data;
+  },
+
+  // 댓글 삭제
+  deleteComment: async (commentId) => {
+    const response = await apiClient.delete(`/qna/comments/${commentId}`);
+    return response.data;
+  },
+
+
+
+
+
+
 };
