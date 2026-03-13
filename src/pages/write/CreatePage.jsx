@@ -98,11 +98,11 @@ export default function CreatePage() {
         },
         {
             id: 'canvas',
-            title: '이미지  캔버스',
+            title: '이미지 캔버스',
             description: '나만의 디자인 스냅을 만들어 사진첩에 추가하세요.',
             icon: BookOpen,
             path: '/create-canvas',        // Konva 라이브러리 활용 페이지로 이동
-            theme: 'bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35]',
+            theme: 'bg-black text-white',
             //isComingSoon: true            // 비활성: disabled + opacity-50
             badge: 'NEW STYLE'          // 노란색 뱃지 표시
         }
