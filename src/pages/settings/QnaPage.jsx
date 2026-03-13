@@ -159,6 +159,7 @@ export default function QnaPage() {
                     content: q.content,
                     date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
                     isExpanded: false,
+                    comments: [],
                 }));
                 setQnas(items);
                 const commentsMap = {};
@@ -582,7 +583,7 @@ export default function QnaPage() {
                                             {/* 답변 섹션 헤더: MessageCircle 아이콘 + 답변 수 */}
                                             <div className="flex items-center gap-2 mb-4">
                                                 <MessageCircle size={14} className="text-black" />
-                                                <span className="text-[12px] font-black italic tracking-widest uppercase">답변 ({q.comments.length})</span>
+                                                <span className="text-[12px] font-black italic tracking-widest uppercase">답변 ({(comments[q.id] ?? []).length})</span>
                                             </div>
 
                                             {/* 답변 목록 */}
