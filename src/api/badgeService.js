@@ -404,6 +404,24 @@ export const badgeService = {
     //     //   try { response = await apiClient.get('/albums/latest-friend'); return response.data }
     //     //   catch(error) { console.warn(...); return null }
 
+    getGlobalStats: async () => {
+        try {
+            const response = await apiClient.get('/badges/stats/global');
+            const data = response.data || {};
+            const badgesCount = data.totalCount || data.totalBadges || 0;
+            const recentBadges = (data.typeCounts || []).map((tc, idx) => ({
+                id: idx + 1,
+                name: tc.typeName || tc.name || '달개',
+                emoji: tc.emoji || '🏅',
+                count: tc.count || 0
+            }));
+            return { totalBadges: badgesCount, recentBadges, typeCounts: data.typeCounts || [] };
+        } catch (error) {
+            console.warn('[뱃지 getGlobalStats] 실패:', error);
+            return { totalBadges: 0, recentBadges: [], typeCounts: [] };
+        }
+    },
+
     toggleAlbumDalgae: async (albumId, badgeTypeId) => {
         const response = await apiClient.post(
             `/badges/albums/${albumId}/toggle`,
