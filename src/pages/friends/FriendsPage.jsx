@@ -309,7 +309,7 @@ export default function FriendsPage() {
             // [3] UI 업데이트: 요청 목록에서 제거
             setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
 
-            // [4] UI 업데이트: 친구 목록에 추가
+// [4] UI 업데이트: 친구 목록에 추가
             // 주의: acceptedRequest 내부의 유저 정보 구조가 friends 배열과 맞는지 확인 필요
             setFriends(prev => [...prev, acceptedRequest]);
 
