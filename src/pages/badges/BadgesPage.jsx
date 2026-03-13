@@ -61,8 +61,8 @@ function BarChartCard({ title, total, badges, barColor }) {
 /* ── 비교 카드 1개 ── */
 function CompareCard({ emoji, name, myCount, globalCount }) {
     const percentage = globalCount > 0
-        ? ((myCount / globalCount) * 100).toFixed(3)
-        : '0.000';
+        ? ((myCount / globalCount) * 100).toFixed(2)
+        : '0.00';
 
     return (
         <div className="bg-white dark:bg-[#101215] rounded-2xl p-4 border border-[#f3f3f3] dark:border-[#292e35] flex flex-col items-center text-center">
