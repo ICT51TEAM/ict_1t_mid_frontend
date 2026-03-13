@@ -153,9 +153,16 @@ export default function QnaPage() {
                     content: q.content,
                     date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
                     isExpanded: false,
-                    comments: [],
                 }));
                 setQnas(items);
+                const commentsMap = {};
+                await Promise.all(
+                    items.map(async (q) => {
+                        const data = await qnaService.getComments(q.id);
+                        commentsMap[q.id] = data;
+                    })
+                );
+                setComments(commentsMap);
             } catch (e) {
                 console.error('QnA 목록 로드 실패', e);
             } finally {
@@ -207,7 +214,6 @@ export default function QnaPage() {
                 content: created.content,
                 date: created.createdAt ? created.createdAt.slice(0, 10).replace(/-/g, '.') : '',
                 isExpanded: false,
-                comments: [],
             };
             setQnas([newQna, ...qnas]);
         } catch (e) {
@@ -249,15 +255,23 @@ export default function QnaPage() {
      *      - date: 현재 날짜를 ISO 형식에서 'YYYY.MM.DD'로 변환
      *   3. setCommentText: 해당 qnaId 입력값을 '' 로 초기화
      */
-    const handleAddComment = (qnaId) => {
-        // TODO: [1] text = commentText[qnaId]로 해당 Q&A의 입력값 취득
-        // TODO: [2] text가 비어있으면 즉시 return
-        // TODO: [3] setQnas()로 해당 qnaId 항목의 comments 배열에 새 댓글 객체 추가:
-        //           { id: Date.now(), userName: 'ME', content: text,
-        //             date: new Date().toISOString().slice(0, 10).replace(/-/g, '.') }
-        //           힌트: qnas.map(q => q.id === qnaId ? { ...q, comments: [...] } : q)
-        // TODO: [4] setCommentText({ ...commentText, [qnaId]: '' })로 해당 입력값 초기화
-        // 주의: 백엔드 답변 API가 미구현 상태 → 서버 저장 없이 로컬 상태에만 반영됨
+
+    const [comments, setComments] = useState({});
+
+        const handleAddComment = async (qnaId) => {
+            const text = commentText[qnaId]?.trim();
+        if (!text) return;
+
+        try {
+            const created = await qnaService.createComment(qnaId, text);
+            setComments(prev => ({
+                ...prev,
+                [qnaId]: [...(prev[qnaId] ?? []), created]
+            }));
+            setCommentText(prev => ({ ...prev, [qnaId]: '' }));
+        } catch (e) {
+            console.error('댓글 등록 실패', e);
+        }
     };
 
     // -------------------------------------------------------------------------
@@ -402,19 +416,20 @@ export default function QnaPage() {
                                             {/* 답변 섹션 헤더: MessageCircle 아이콘 + 답변 수 */}
                                             <div className="flex items-center gap-2 mb-4">
                                                 <MessageCircle size={14} className="text-black" />
-                                                <span className="text-[12px] font-black italic tracking-widest uppercase">Answers ({q.comments.length})</span>
+                                                <span className="text-[12px] font-black italic tracking-widest uppercase">Answers ({(comments[q.id] ?? []).length})</span>
                                             </div>
 
                                             {/* 답변 목록 */}
                                             <div className="flex flex-col gap-4 mb-6">
-                                                {q.comments.length > 0 ? q.comments.map(c => (
+                                            {(comments[q.id] ?? []).length > 0 
+                                                ? (comments[q.id] ?? []).map((c) => (
                                                     <div key={c.id} className="bg-[#f9f9fa] dark:bg-[#101215] p-4 rounded-xl border border-[#f3f3f3] dark:border-[#292e35]">
                                                         <div className="flex justify-between items-center mb-1">
                                                             {/* 답변 작성자: ADMIN이면 파란색, 그 외 검정 */}
-                                                            <span className={`text-[11px] font-black italic tracking-tighter uppercase ${c.userName === 'ADMIN' ? 'text-blue-600' : 'text-black'}`}>
-                                                                {c.userName}
+                                                            <span className={`text-[11px] font-black italic tracking-tighter uppercase ${c.username === 'ADMIN' ? 'text-blue-600' : 'text-black'}`}>
+                                                                {c.username}
                                                             </span>
-                                                            <span className="text-[10px] text-[#ccd3db] font-bold">{c.date}</span>
+                                                            <span className="text-[10px] text-[#ccd3db] font-bold">{c.createdAt?.slice(0, 10).replace(/-/g, '.')}</span>
                                                         </div>
                                                         <p className="text-[13px] font-medium text-[#424a54]">{c.content}</p>
                                                     </div>
