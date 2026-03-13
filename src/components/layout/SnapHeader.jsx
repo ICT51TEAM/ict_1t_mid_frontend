@@ -198,7 +198,7 @@ export default function SnapHeader() {
             console.log("🛑 폴링 중단");
             clearInterval(interval);
         };
-    }, [isAuthenticated, notiRefreshTag]);
+    }, [isAuthenticated]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (
