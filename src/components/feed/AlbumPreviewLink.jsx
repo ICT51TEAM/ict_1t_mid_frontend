@@ -15,10 +15,11 @@ export default function AlbumPreviewLink({
   imageClassName = '',
   preferThumb = false,
   children,
+  skipFetch = false,
 }) {
   const albumId = getAlbumId(album);
   const [detail, setDetail] = useState(null);
-  const shouldFetchDetail = Boolean(albumId) && !hasLayoutData(album);
+  const shouldFetchDetail = !skipFetch && Boolean(albumId) && !hasLayoutData(album);
 
   useEffect(() => {
     if (!shouldFetchDetail) return undefined;
