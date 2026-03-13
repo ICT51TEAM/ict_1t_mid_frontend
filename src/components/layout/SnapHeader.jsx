@@ -64,7 +64,6 @@ import { useAuth } from '@/context/AuthContext';
 import { notificationService } from '@/api/notificationService';
 // 🚩 [추가] 유저 설정 조회 API 서비스 (ReferenceError 해결)
 import { userService } from '@/api/userService';
-import { useAlert } from '@/context/AlertContext';
 
 /**
  * @component SnapHeader
@@ -79,9 +78,9 @@ export default function SnapHeader() {
     // ── 컨텍스트: 로그인 여부 ─────────────────────────────────────────────────
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
 
-    const { isAuthenticated, notiRefreshTag } = useAuth();
+    const { isAuthenticated } = useAuth();
 
-    const { showAlert } = useAlert();
+
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
@@ -129,7 +128,6 @@ export default function SnapHeader() {
                 // localStorage에 값이 없으면 서버에서 가져오기
                 let notiEnabled = localStorage.getItem('notificationEnabled');
 
-
                 if (notiEnabled === null) {
                     const settings = await userService.getSettings();
                     notiEnabled = String(settings.notificationEnabled ?? true);
@@ -142,17 +140,11 @@ export default function SnapHeader() {
                 }
 
                 const data = await notificationService.getAll();
-                const newCount = Array.isArray(data)
+                const count = Array.isArray(data)
                     ? data.filter(n => !(n.isRead ?? n.read)).length
                     : 0;
-                console.log('[unread] 미읽음:', newCount, '개');
-                setUnreadCount(prevCount => {
-                    // 1. 이전보다 개수가 늘어났고 2. 이전에 0이 아니었을 때 (처음 로딩 시 알림 방지)
-                    if (newCount > prevCount && prevCount !== 0) {
-                        showAlert(`🔔 새로운 알림이 ${newCount - prevCount}건 도착했습니다!`, '알림', 'info');
-                    }
-                    return newCount;
-                });
+                console.log('[unread] 미읽음:', count, '개');
+                setUnreadCount(count);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
             }
@@ -160,9 +152,9 @@ export default function SnapHeader() {
 
         fetchUnread();
         const interval = setInterval(fetchUnread, 30000); //30초마다 fetch
-
+      
         return () => clearInterval(interval);
-    }, [isAuthenticated, notiRefreshTag]);
+    }, [isAuthenticated]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (
