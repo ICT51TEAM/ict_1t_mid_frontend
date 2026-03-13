@@ -53,7 +53,7 @@
  * [Props]
  *   없음 (필요한 모든 데이터를 훅·서비스에서 자체 조회)
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 // 프로그래매틱 내비게이션 (알림 버튼 클릭 → /notifications 이동)
 import { Link, useNavigate } from 'react-router-dom';
 // 알림 벨 아이콘
@@ -79,13 +79,13 @@ export default function SnapHeader() {
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
 
     const { isAuthenticated } = useAuth();
-
-
+    const { showAlert, showConfirm } = useAlert();
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
     // 9 초과 시 JSX에서 '9+'로 표시됨.
     const [unreadCount, setUnreadCount] = useState(0);
+    const lastCountRef = useRef(null);
 
     // ── useEffect: 알림 카운트 폴링 설정 ─────────────────────────────────────
     /**
@@ -106,10 +106,6 @@ export default function SnapHeader() {
      *     clearInterval(interval)로 폴링 타이머를 해제해 메모리 누수 방지
      */
 
-
-
-
-
     useEffect(() => {
         // TODO: setInterval로 30초마다 notificationService.getUnreadCount() 호출해
         //       setUnreadCount() 업데이트, 클린업에서 clearInterval 호출
@@ -120,6 +116,7 @@ export default function SnapHeader() {
 
         if (!isAuthenticated) {
             setUnreadCount(0);
+            lastCountRef.current = null;
             return;
         }
 
@@ -143,18 +140,62 @@ export default function SnapHeader() {
                 const count = Array.isArray(data)
                     ? data.filter(n => !(n.isRead ?? n.read)).length
                     : 0;
-                console.log('[unread] 미읽음:', count, '개');
-                setUnreadCount(count);
+                console.log("🔄 [폴링 중] 이전 알림수:", lastCountRef.current, " / 현재  알림수:", newCount);
+
+                if (lastCountRef.current !== null && newCount > lastCountRef.current) {
+                    console.log("🔔 알림창 띄우기 시도!");
+
+                    const diff = newCount - lastCountRef.current;
+                    console.log(`🔔 알림 발생! 차이: ${diff}`);
+
+                    // 공통 로직: 친구 페이지로 이동시키거나, 이미 있다면 새로고침
+                    const handleNavigation = () => {
+                        if (location.pathname === '/friends') {
+                            window.location.reload();
+                        } else {
+                            navigate('/friends');
+                        }
+                    }
+
+                    // showAlert 함수가 존재하는지 체크 후 호출
+                    showConfirm({
+                        title: '글벗 알림',
+                        message: `🔔 새로운 요청이 ${diff}건 도착했습니다!\n지금 친구 관리 페이지로 이동하시겠습니까?`,
+                        type: 'info',
+                        confirmText: '이동하기',
+                        cancelText: '나중에',
+                        onConfirm: () => {
+                            // [이동하기] 클릭 시
+                            console.log("✅ 승인: 친구 페이지로 이동/새로고침");
+                            handleNavigation()
+                        },
+                        onCancel: () => {
+                            // [나중에] 클릭 시
+                            console.log("❌ 취소: 현재 페이지 유지 및 새로고침");
+                            // 거부 시에는 페이지 이동 없이 '현재 있는 곳'에서 새로고침만 수행
+                            window.location.reload();
+                        }
+                    });
+                }
+                // 비교가 끝난 후 ref와 state를 최신화
+                lastCountRef.current = newCount;
+                setUnreadCount(newCount);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
             }
         };
-
         fetchUnread();
-        const interval = setInterval(fetchUnread, 30000); //30초마다 fetch
-      
-        return () => clearInterval(interval);
-    }, [isAuthenticated]);
+
+        const interval = setInterval(() => {
+            console.log("⏰ 30초 경과: 알림 체크를 시작합니다.");
+            fetchUnread();
+        }, 30000);
+
+        return () => {
+            console.log("🛑 폴링 중단");
+            clearInterval(interval);
+        };
+    }, [isAuthenticated, notiRefreshTag]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (
