@@ -413,7 +413,7 @@ export default function FriendsPage() {
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
                         { id: 'LIST', label: '모든 글벗들', count: friends.length },
-                        { id: '받은 요청', label: '보낸 요청', count: receivedRequests.length + sentRequests.length }
+                        { id: '받은 요청', label: '글벗 요청 현황', count: receivedRequests.length + sentRequests.length }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -460,7 +460,7 @@ export default function FriendsPage() {
                         <div className="flex flex-col divide-y divide-[#f3f3f3]">
                             {/* 1. 받은 요청 섹션 */}
                             <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3">
-                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Received ({receivedRequests.length})</span>
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">받은 요청 ({receivedRequests.length})</span>
                             </div>
                             {receivedRequests.length > 0 ? (
                                 receivedRequests.map(req => (
@@ -473,18 +473,18 @@ export default function FriendsPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => handleAcceptRequest(req.friendshipId)} className="h-9 px-4 bg-black text-white text-[11px] font-black rounded">ACCEPT</button>
-                                            <button onClick={() => handleDeclineRequest(req.friendshipId)} className="h-9 px-4 border border-[#e5e5e5] text-[11px] font-black rounded">DECLINE</button>
+                                            <button onClick={() => handleAcceptRequest(req.friendshipId)} className="h-9 px-4 bg-black text-white text-[11px] font-black rounded">수락</button>
+                                            <button onClick={() => handleDeclineRequest(req.friendshipId)} className="h-9 px-4 border border-[#e5e5e5] text-[11px] font-black rounded">거절</button>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">No incoming requests</div>
+                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">받은 요청이 없어요...</div>
                             )}
 
                             {/* 2. 보낸 요청 섹션 */}
                             <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3 border-t">
-                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Sent ({sentRequests.length})</span>
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">보낸 요청 ({sentRequests.length})</span>
                             </div>
                             {sentRequests.length > 0 ? (
                                 sentRequests.map(req => (
