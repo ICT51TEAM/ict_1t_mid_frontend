@@ -277,7 +277,7 @@ export default function SnapFeedPage() {
                     /* 3열 매이슨리 그리드: CSS columns-3으로 자동 높이 배분 */
                     <div className="columns-3 gap-1 px-1">
                         {snaps.map((snap) => (
-                            <SnapCard key={snap.id} snap={snap} />
+                            <SnapCard key={snap.albumId ?? snap.id} snap={snap} />
                         ))}
                     </div>
                 )}

@@ -67,6 +67,8 @@ import { postService } from '@/api/postService';
 import { badgeService } from '@/api/badgeService';
 import { friendService } from '@/api/friendService';
 import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
+import AlbumPhotoLayout, { sortAlbumPhotos } from '@/components/feed/AlbumPhotoLayout';
+import { getSavedAlbumLayout } from '@/utils/albumLayoutStore';
 
 export default function SnapDetailPage() {
     // ---------------------------------------------------------
@@ -124,7 +126,6 @@ export default function SnapDetailPage() {
     console.log('[SnapDetailPage] rawSnap =', rawSnap);
     console.log('[SnapDetailPage] isLoading =', isLoading);
     console.log('[SnapDetailPage] error =', error);
-    console.log('[SnapDetailPage] imgIndex =', imgIndex);
     console.log('[SnapDetailPage] showMenu =', showMenu);
     console.log('[SnapDetailPage] badgeTypes =', badgeTypes);
     console.log('[SnapDetailPage] badges =', badges);
@@ -315,12 +316,13 @@ export default function SnapDetailPage() {
     // ---------------------------------------------------------
     // [파생 데이터] rawSnap → snap 구조 변환
     // ---------------------------------------------------------
+    const savedLayoutType = getSavedAlbumLayout(id);
+
     const snap = rawSnap ? {
         ...rawSnap,
-        images: (rawSnap.photos || [])
-            .slice()
-            .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-            .map(p => p.photoUrl),
+        layoutType: savedLayoutType ?? rawSnap.layoutType,
+        photos: sortAlbumPhotos(rawSnap.photos || []),
+        images: sortAlbumPhotos(rawSnap.photos || []).map((photo) => photo.photoUrl || photo.thumbUrl),
         user: {
             id: rawSnap.userId,
             userId: rawSnap.userId,
@@ -498,6 +500,20 @@ export default function SnapDetailPage() {
                 </div>
 
                 {/* ── 이미지 캐러셀 ── */}
+                <div className="bg-[#f9f9f9] dark:bg-[#101215] p-3 md:p-4">
+                    <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-[#1c1f24] shadow-sm">
+                        <div className="aspect-[4/5] md:aspect-[16/10]">
+                            <AlbumPhotoLayout
+                                photos={snap.photos}
+                                layoutType={snap.layoutType}
+                                fallbackImageUrl={DEFAULT_POST_IMAGE}
+                                imageClassName="object-cover"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {false && <>
                 <div className="relative w-full bg-[#f9f9f9] dark:bg-[#101215]" style={{ height: '60vh' }}>
                     <img
                         src={snap.images[imgIndex] || DEFAULT_POST_IMAGE}
@@ -534,6 +550,7 @@ export default function SnapDetailPage() {
                 </div>
 
                 {/* ── 연관 상품 ── */}
+                </>}
                 <div className="flex overflow-x-auto gap-4 px-4 py-6 scrollbar-hide border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {snap?.products?.map(p => (
                         <div key={p.id} className="shrink-0 w-[260px] flex gap-4 bg-[#fafafa] dark:bg-[#1c1f24] p-3 rounded-xl border border-[#f3f3f3] dark:border-[#292e35] relative group cursor-pointer hover:border-black dark:hover:border-[#e5e5e5] transition-all">

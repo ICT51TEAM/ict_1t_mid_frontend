@@ -97,6 +97,7 @@ import { postService } from '@/api/postService';
 import { photoService } from '@/api/photoService';
 import { albumService } from '@/api/albumService';
 import { useAlert } from '@/context/AlertContext';
+import { saveAlbumLayout } from '@/utils/albumLayoutStore';
 
 /**
  * @constant layouts
@@ -517,6 +518,7 @@ export default function EditPostPage() {
 
                     console.log('[handleUpdate] updateAlbum 성공, result =', result);
                     showAlert('수정되었습니다.', '완료', 'success');
+                    saveAlbumLayout(id, getLayoutType(selectedLayout));
                     navigate(`/snap/${id}`);
                 } catch (err) {
                     console.log('[handleUpdate] 실패, err =', err);
