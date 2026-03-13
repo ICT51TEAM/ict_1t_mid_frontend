@@ -415,12 +415,12 @@ export default function SnapDetailPage() {
     if (error || !snap) return (
         <ResponsiveLayout showTabs={false}>
             <div className="p-20 text-center">
-                <p className="text-[#a3b0c1] font-black italic tracking-widest uppercase mb-4">Snap Not Found</p>
+                <p className="text-[#a3b0c1] font-black italic tracking-widest uppercase mb-4">해당 스토리를 찾지 못했습니다.</p>
                 <button
                     onClick={() => navigate(-1)}
                     className="h-10 px-6 bg-black text-white rounded-full text-[12px] font-black italic tracking-widest uppercase"
                 >
-                    GO BACK
+                    이전 페이지로....
                 </button>
             </div>
         </ResponsiveLayout>

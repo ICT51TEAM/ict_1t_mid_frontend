@@ -535,7 +535,7 @@ export default function CreatePhotoAlbumPage() {
                 console.log('[UI] create-canvas 이동');
                 navigate('/create-canvas');
               }}
-              className="text-[12px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
+              className="text-[15px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
             >
               🎨 캔버스에서 직접 만들기
             </button>
@@ -684,10 +684,10 @@ export default function CreatePhotoAlbumPage() {
           {isSubmitting ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>Checking...</span>
+              <span>올리고 있어요...</span>
             </>
           ) : (
-            'Post Snap'
+            '내 스토리 올리기'
           )}
         </button>
       </div>

@@ -130,6 +130,26 @@ const VISIBILITY_REVERSE_MAP = {
     PUBLIC: 'public',
 };
 
+/**
+ * @function normalizeLayoutTypeFromApi
+ * 백엔드에서 반환한 layoutType (예: "GRID_2")을 
+ * 프론트의 layouts 배열 ID로 변환
+ */
+const normalizeLayoutTypeFromApi = (apiLayoutType) => {
+    if (!apiLayoutType) return 1;
+
+    const normalized = apiLayoutType.toUpperCase();
+
+    // 백엔드 형식 → 프론트 ID 매핑
+    if (normalized.includes('SINGLE') || normalized === '1') return 1;
+    if (normalized.includes('GRID_2') || normalized.includes('HORIZONTAL')) return 2;
+    if (normalized.includes('GRID_3') || normalized.includes('VERTICAL')) return 3;
+    if (normalized.includes('GRID_4') || normalized === '4') return 4;
+
+    // 기본값
+    return 1;
+};
+
 export default function EditPostPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -250,14 +270,13 @@ export default function EditPostPage() {
 
                 console.log('[EditPostPage] existingPhotos =', existingPhotos);
 
-                // layoutType apiValue → layouts id 역탐색
-                const matchedLayout = layouts.find(l => l.apiValue === post.layoutType);
-                const layoutId = matchedLayout?.id ?? 1;
-
-                console.log('[EditPostPage] matchedLayout =', matchedLayout);
+                // ✅ layoutType 정규화 (백엔드 형식 → 프론트 ID)
+                const layoutId = normalizeLayoutTypeFromApi(post.layoutType);
+                console.log('[EditPostPage] post.layoutType =', post.layoutType);
+                console.log('[EditPostPage] normalized layoutId =', layoutId);
 
                 setPhotos(existingPhotos);
-                setSelectedLayout(layoutId);
+                setSelectedLayout(layoutId);  // ← 정규화된 ID 사용
                 setTitle(post.title || '');
                 setContent(post.bodyText || post.content || post.preview || '');
                 setTags(post.tags || []);
@@ -338,7 +357,7 @@ export default function EditPostPage() {
      */
     const autoSetLayout = (count) => {
         if (count === 1) setSelectedLayout(1);
-        else if (count === 2) setSelectedLayout(2);
+        else if (count === 2 || count === 3) setSelectedLayout(2);
         else if (count >= 4) setSelectedLayout(4);
     };
 
@@ -417,8 +436,8 @@ export default function EditPostPage() {
         if (photos.length === 0) { showAlert('사진을 1장 이상 등록해주세요.', '입력 오류', 'alert'); return; }
 
         showConfirm({
-            message: '스냅을 수정하시겠습니까?',
-            title: '스냅 수정',
+            message: '게시물을 수정하시겠습니까?',
+            title: '게시물 수정',
             type: 'info',
             confirmText: '수정',
             cancelText: '취소',
@@ -463,24 +482,45 @@ export default function EditPostPage() {
                     console.log('[handleUpdate] photoIds =', photoIds);
                     console.log('[handleUpdate] slotIndexes =', slotIndexes);
 
+                    const storedUser = JSON.parse(localStorage.getItem('user'));
+                    const username = storedUser?.username || '';
+
+                    console.log('[handleUpdate] username =', username);
+
                     // [3] 앨범 수정 API 호출
-                    const result = await albumService.updateAlbum(id, {
-                        userId,
+                    const updatePayload = {
+                        // 식별 정보 (기존에 불러온 데이터에서 참조)
+                        //albumId: Number(id),
+                        //userId: userId,
+                        //username: username || ' ', // albumData 상태값에서 가져오거나 빈 값 처리
+
                         title: title.trim(),
                         bodyText: content.trim(),
-                        recordDate: selectedDate,
-                        visibility: VISIBILITY_MAP[visibility],
+                        visibility: VISIBILITY_MAP[visibility], // 예: "FRIENDS"
+                        recordDate: selectedDate,               // 예: "2026-03-11"
+                        //layoutType: getLayoutType(selectedLayout).toUpperCase(), // 예: "SINGLE"
                         layoutType: getLayoutType(selectedLayout),
-                        photoIds,
-                        slotIndexes,
-                        tags,
-                    });
+                        // ✅ DTO가 List<Long>을 기대하므로 배열 형태 유지
+                        photoIds: photoIds.map(id => Number(id)),
+
+                        // ✅ DTO가 List<Integer>를 기대하므로 배열 형태 유지
+                        slotIndexes: slotIndexes.map(idx => Number(idx)),
+
+                        // ✅ DTO가 List<String>을 기대하므로 반드시 '배열'로 전달 (ttags 오타 주의!)
+                        tags: tags
+
+                    };
+
+                    console.log('[handleUpdate] 최종 전송 데이터:', JSON.stringify(updatePayload, null, 2));
+
+                    const result = await albumService.updateAlbum(id, updatePayload);
 
                     console.log('[handleUpdate] updateAlbum 성공, result =', result);
                     showAlert('수정되었습니다.', '완료', 'success');
                     navigate(`/snap/${id}`);
                 } catch (err) {
                     console.log('[handleUpdate] 실패, err =', err);
+                    console.log('[handleUpdate] err.response?.data =', err.response?.data);
                     const message = err.response?.data?.message || err.message || '수정에 실패했습니다.';
                     showAlert(message, '수정 실패', 'alert');
                 } finally {
@@ -511,7 +551,7 @@ export default function EditPostPage() {
                     <button onClick={() => navigate(-1)} className="p-2">
                         <ArrowLeft size={24} />
                     </button>
-                    <h1 className="font-bold text-[16px]">스냅 수정</h1>
+                    <h1 className="font-bold text-[16px]">게시물 수정</h1>
                     <div className="w-10" />
                 </div>
 
@@ -581,6 +621,19 @@ export default function EditPostPage() {
                                     </button>
                                 </div>
                             ))}
+                        </div>
+
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장)</h3>
+                            <button
+                                onClick={() => {
+                                    console.log('[UI] create-canvas 이동');
+                                    navigate('/create-canvas');
+                                }}
+                                className="text-[15px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
+                            >
+                                🎨 캔버스에서 직접 만들기
+                            </button>
                         </div>
 
                         {/* ── 레이아웃 선택 (사진이 1장 이상일 때만 표시) ──
@@ -751,7 +804,7 @@ export default function EditPostPage() {
                                 <span>Updating...</span>
                             </>
                         ) : (
-                            'UPDATE SNAP'
+                            '내 스토리 수정'
                         )}
                     </button>
                 </div>
