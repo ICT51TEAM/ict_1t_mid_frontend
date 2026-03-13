@@ -499,7 +499,7 @@ export default function FriendsPage() {
                                                 <span className="text-[11px] text-[#ccd3db]">Waiting for approval...</span>
                                             </div>
                                         </div>
-                                        <button onClick={() => handleCancelSentRequest(req.friendshipId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">CANCEL</button>
+                                        <button onClick={() => handleCancelSentRequest(req.friendshipId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">취소</button>
                                     </div>
                                 ))
                             ) : (
