@@ -60,11 +60,13 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { UserMinus, Search, Users, ShieldCheck, Mail } from 'lucide-react';
 import { friendService } from '@/api/friendService';
 import { useAlert } from '@/context/AlertContext';
+import { useAuth } from '@/context/AuthContext';
 import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
 
 export default function FriendsPage() {
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useAlert();
+    const { triggerNotiRefresh } = useAuth()
 
     /**
      * @state friends
@@ -139,6 +141,12 @@ export default function FriendsPage() {
      *   두 호출은 순차(await) 실행됨
      * 에러 시 콘솔에 출력하고 상태는 빈 배열로 유지
      */
+
+    // TODO: friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
+    // 힌트: Promise.all([...]) 또는 순차 await로 두 API를 호출하고
+    //       각 결과를 setFriends(), setPending()에 저장하세요.
+    //       에러 발생 시 console.error로 출력합니다.
+    // friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
     const fetchAllData = async () => {
         try {
             const [friendsData, receiveData, sentData] = await Promise.all([
@@ -154,30 +162,6 @@ export default function FriendsPage() {
             console.error('데이터 로딩 실패:', error);
         }
     }
-
-    useEffect(() => {
-        // TODO: friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
-        // 힌트: Promise.all([...]) 또는 순차 await로 두 API를 호출하고
-        //       각 결과를 setFriends(), setPending()에 저장하세요.
-        //       에러 발생 시 console.error로 출력합니다.
-        // friendService.listFriends()와 friendService.listPendingRequests() 병렬 호출
-        const fetchFriendsData = async () => {
-            try {
-                const [friendsData, receiveData, sentData] = await Promise.all([
-                    friendService.listFriends(),
-                    friendService.listPendingRequests(),
-                    friendService.listSentPendingRequests()
-                ]);
-                setFriends(friendsData || []);
-                setReceivedRequests(receiveData || []);
-                setSentRequests(sentData || []);
-            }
-            catch (error) {
-                console.error('데이터 로딩 실패:', error);
-            }
-        }
-    })
-
     useEffect(() => {
         fetchAllData(); // 페이지가 열리자마자 이 함수를 실행해라!
     }, []);
@@ -257,6 +241,9 @@ export default function FriendsPage() {
 
                     // [4] showAlert 알림
                     showAlert('글벗이 삭제되었습니다.', '완료', 'success');
+
+                    // 🔔 친구 삭제 시에도 알림 상태가 변할 수 있다면 호출
+                    triggerNotiRefresh();
                 } catch (error) {
                     console.error('삭제 오류:', error);
                     showAlert('삭제에 실패했습니다.', '오류', 'alert');
@@ -273,6 +260,8 @@ export default function FriendsPage() {
                 try {
                     await friendService.removeFriend(friendshipId);
                     setSentRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
+                    // ✨ [핵심] 거절 직후 헤더의 알림 개수 즉시 갱신
+                    triggerNotiRefresh();
                     showAlert('요청이 취소되었습니다.', '완료', 'success');
                 } catch (error) {
                     showAlert('취소 중 오류가 발생했습니다.', '오류', 'alert');
@@ -347,6 +336,9 @@ export default function FriendsPage() {
 
                     // [2] 성공 시 setReceivedRequests 으로 목록에서 즉시 제거
                     setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
+
+                    // ✨ [핵심] 거절 직후 헤더의 알림 개수 즉시 갱신
+                    triggerNotiRefresh();
                 } catch (error) {
                     console.error('요청 거절 중 오류 발생:', error);
                 }
@@ -388,7 +380,7 @@ export default function FriendsPage() {
                         >
                             <UserPlus size={22} />
                         </button> */}
-                    </div> 
+                    </div>
 
                     {/* 실시간 검색 결과 드롭다운
                         조건: searchQuery 비지 않음 AND searchResults.length > 0
@@ -413,7 +405,7 @@ export default function FriendsPage() {
                 <div className="flex px-4 bg-white dark:bg-[#1c1f24] sticky top-[154px] z-10 border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {[
                         { id: 'LIST', label: '모든 글벗들', count: friends.length },
-                        { id: '받은 요청', label: '보낸 요청', count: receivedRequests.length + sentRequests.length }
+                        { id: '받은 요청', label: '글벗 요청 현황', count: receivedRequests.length + sentRequests.length }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -460,7 +452,7 @@ export default function FriendsPage() {
                         <div className="flex flex-col divide-y divide-[#f3f3f3]">
                             {/* 1. 받은 요청 섹션 */}
                             <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3">
-                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Received ({receivedRequests.length})</span>
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">받은 요청 ({receivedRequests.length})</span>
                             </div>
                             {receivedRequests.length > 0 ? (
                                 receivedRequests.map(req => (
@@ -473,18 +465,18 @@ export default function FriendsPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => handleAcceptRequest(req.friendshipId)} className="h-9 px-4 bg-black text-white text-[11px] font-black rounded">ACCEPT</button>
-                                            <button onClick={() => handleDeclineRequest(req.friendshipId)} className="h-9 px-4 border border-[#e5e5e5] text-[11px] font-black rounded">DECLINE</button>
+                                            <button onClick={() => handleAcceptRequest(req.friendshipId)} className="h-9 px-4 bg-black text-white text-[11px] font-black rounded">수락</button>
+                                            <button onClick={() => handleDeclineRequest(req.friendshipId)} className="h-9 px-4 border border-[#e5e5e5] text-[11px] font-black rounded">거절</button>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">No incoming requests</div>
+                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">받은 요청이 없어요...</div>
                             )}
 
                             {/* 2. 보낸 요청 섹션 */}
                             <div className="bg-[#fafafa] dark:bg-[#1c1f24] px-6 py-3 border-t">
-                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">Sent ({sentRequests.length})</span>
+                                <span className="text-[11px] font-black text-[#a3b0c1] uppercase tracking-widest">보낸 요청 ({sentRequests.length})</span>
                             </div>
                             {sentRequests.length > 0 ? (
                                 sentRequests.map(req => (
