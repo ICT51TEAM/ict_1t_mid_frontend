@@ -13,12 +13,12 @@
  * [제공하는 Context 값 (value shape)]
  * {
  * user           : object | null  — 현재 로그인된 사용자 객체.
- * isAuthenticated : boolean       — 현재 로그인 여부 (!!user).
- * isLoading      : boolean        — 세션 복원 및 토큰 갱신 프로세스 진행 중 여부.
- * login          : function       — 로그인 성공 시 호출. 토큰/유저 정보를 저장 및 상태 업데이트.
- * logout         : function       — 로그아웃 처리. 스토리지 클리어 및 세션 종료.
- * updateUser     : function       — 유저 프로필 등 상태 부분 업데이트.
- * checkAuth      : function       — 새로고침 시 서버와 통신하여 세션 유효성을 검증하고 복원.
+ * isAuthenticated : boolean        — 현재 로그인 여부 (!!user).
+ * isLoading      : boolean         — 세션 복원 및 토큰 갱신 프로세스 진행 중 여부.
+ * login          : function        — 로그인 성공 시 호출. 토큰/유저 정보를 저장 및 상태 업데이트.
+ * logout         : function        — 로그아웃 처리. 스토리지 클리어 및 세션 종료.
+ * updateUser     : function        — 유저 프로필 등 상태 부분 업데이트.
+ * checkAuth      : function        — 새로고침 시 서버와 통신하여 세션 유효성을 검증하고 복원.
  * }
  *
  * ─────────────────────────────────────────────────────────────────────────────
@@ -46,8 +46,7 @@
  * [제공하는 Context 값]
  * - user: 유저 정보 객체 / isAuthenticated: 로그인 여부 / isLoading: 인증 복구 중 여부
  * - login/logout: 세션 시작 및 종료 / checkAuth: 토큰 갱신 및 유효성 검증
- * 
- * ─────────────────────────────────────────────────────────────────────────────
+ * * ─────────────────────────────────────────────────────────────────────────────
  * [주요 동작 흐름]
  * 1. 앱 마운트 → checkAuth() 실행 → isLoading = true
  * 2. localStorage 확인 → 서버 API 호출 (토큰 갱신 및 유효성 검증)
@@ -61,6 +60,7 @@ import apiClient from '@/api/apiClient';
 // ─── Context 생성 ──────────────────────────────────────────────────────────────
 const AuthContext = createContext(undefined);
 
+
 // ─── AuthProvider 컴포넌트 ─────────────────────────────────────────────────────
 /**
  * @component AuthProvider
@@ -71,7 +71,6 @@ export const AuthProvider = ({ children }) => {
   // ── State: 현재 로그인된 사용자 객체 ──────────────────────────────────────
   const [user, setUser] = useState(null);
 
-
   // ── State: 초기 인증 복원 중 여부 ─────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(true);
   const isVerifying = useRef(false);
@@ -81,7 +80,12 @@ export const AuthProvider = ({ children }) => {
   const location = useLocation();
 
   // ── 파생 상태: 로그인 인증 여부 (T/F)───────────────────────────────────────
-  const isAuthenticated = !!user;
+  const [notiRefreshTag, setNotiRefreshTag] = useState(0);
+
+  //  태그를 1씩 증가시켜 변화를 주는 함수
+  const refreshNotifications = useCallback(() => {
+    setNotiRefreshTag(prev => prev + 1);
+  }, []);
 
   // ── 함수: login ─────────────────────────────────────────────────────────
   /**
@@ -105,8 +109,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
   }, []);
-
-
 
   // ── 함수: logout ──────────────────────────────────────────────────────────
   /**
@@ -154,21 +156,12 @@ export const AuthProvider = ({ children }) => {
     }
 
     const token = localStorage.getItem('accessToken');
-    const storageUser = localStorage.getItem('user');
     if (!token) {
       setIsLoading(false);
       return;
     }
 
     try {
-      /*
-      if (token && storageUser) {
-        const { data } = await apiClient.post('/auth/refresh', {}, {
-          withCredentials: true
-        });
-        localStorage.setItem('accessToken', data.accessToken);
-        setUser(JSON.parse(storageUser));
-*/
       isVerifying.current = true; // 요청 시작 잠금
 
       // 2. Refresh Token을 이용한 세션 복구 요청
@@ -178,7 +171,6 @@ export const AuthProvider = ({ children }) => {
       console.log("서버 응답 데이터:", data); // 디버깅용 로그
 
       const newAccessToken = data.accessToken;
-
       const userData = data.user || JSON.parse(localStorage.getItem('user'));
 
       if (newAccessToken && userData) {
@@ -195,8 +187,6 @@ export const AuthProvider = ({ children }) => {
       // 보호된 경로(로그인 제외)에서 접근 시 로그인으로 튕겨냄
       if (location.pathname !== '/login' && location.pathname !== '/signup') {
         navigate('/login', { replace: true });
-      } else {
-        console.error('인증 복구 중 알 수 없는 에러 발생:', error);
       }
     } finally {
       isVerifying.current = false;
@@ -217,17 +207,22 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     setUser,
-    login,
+    login,    
     logout,
     checkAuth,
     updateUser,
-  }
+    notiRefreshTag,      // 알림 태그
+    refreshNotifications // 알림 갱신 함수
+  };
 
   // isLoading이 true일 때 실제 App 내용을 숨김 (보안 가드)
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="spinner">인증 확인 중...</div>
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 font-medium text-sm">인증 정보를 확인 중입니다...</p>
+        </div>
       </div>
     );
   }

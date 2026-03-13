@@ -128,6 +128,7 @@ export default function FriendsPage() {
      * (현재 UI에서 직접 사용되지 않지만 향후 로딩 인디케이터 용도로 예약됨)
      */
     const [isSearching, setIsSearching] = useState(false);
+    const { user, refreshNotifications } = useAuth();
 
     /**
      * @useEffect 1 - 글벗 목록 및 대기 요청 초기 로드
@@ -292,22 +293,32 @@ export default function FriendsPage() {
         // TODO: [3] setFriends()로 friends 배열 끝에 acceptedUser 추가 (낙관적 UI 업데이트)
         // TODO: [4] setPending()으로 해당 항목을 pending 배열에서 제거
         // TODO: [5] showAlert으로 성공 알림 표시
+        const acceptedRequest = receivedRequests.find(req => req.friendshipId === friendshipId);
+
+        if (!acceptedRequest) {
+            showAlert('해당 요청을 찾을 수 없습니다.', '오류', 'alert');
+            return;
+        }
         try {
-            // [1] friendService.acceptRequest 호출
+            // [1] 서버 요청
             await friendService.acceptRequest(friendshipId);
 
-            // [2] receivedRequests 에서 사용자 찾기
-            const acceptedUser = receivedRequests.find(req => req.friendshipId === friendshipId);
+            // [2] 알림 배지 즉시 갱신 (태그 업데이트 함수 하나만 실행)
+            refreshNotifications();
 
-            if (acceptedUser) {
-                // [3] setFriends로 배열에 추가
-                setFriends(prev => [...prev, acceptedUser]);
-            }
-            // [4] setReceivedRequests 으로 목록에서 제거
+            // [3] UI 업데이트: 요청 목록에서 제거
             setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
 
-            // [5] 성공 알림 표시
-            showAlert(`${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`, '완료', 'success');
+// [4] UI 업데이트: 친구 목록에 추가
+            // 주의: acceptedRequest 내부의 유저 정보 구조가 friends 배열과 맞는지 확인 필요
+            setFriends(prev => [...prev, acceptedRequest]);
+
+            // [5] 성공 알림
+            showAlert(
+                `${acceptedRequest.username || '사용자'}님과 글벗이 되었습니다!`,
+                '완료',
+                'success'
+            );
         } catch (error) {
             console.error('요청 수락 오류:', error);
             showAlert('요청 승인 중 오류가 발생했습니다.', '오류', 'alert');
@@ -492,7 +503,7 @@ export default function FriendsPage() {
                                     </div>
                                 ))
                             ) : (
-                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">No sent requests</div>
+                                <div className="py-10 text-center text-[#ccd3db] text-[12px] italic">보낸 요청이 없습니다</div>
                             )}
                         </div>
                     )}
@@ -500,7 +511,7 @@ export default function FriendsPage() {
 
                 {/* 푸터 */}
                 <div className="p-10 text-center bg-[#fafafa] dark:bg-[#1c1f24]">
-                    <p className="text-[11px] font-bold text-[#ccd3db] tracking-[2px] uppercase">SNAP 스타일의 새로운 글벗 문화</p>
+                    <p className="text-[11px] font-bold text-[#ccd3db] tracking-[2px] uppercase">내 스토리를 공유하는 새로운 문화</p>
                 </div>
             </div>
         </ResponsiveLayout>
