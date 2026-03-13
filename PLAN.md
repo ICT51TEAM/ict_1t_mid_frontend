@@ -83,7 +83,7 @@
 
 visibility 매핑:
 - `'private'` → `'PRIVATE'`
-- `'friends'` → `'FRIENDS_ONLY'`
+- `'friends'` → `'FRIENDS'`
 - `'public'` → `'PUBLIC'`
 
 ### STEP 9: `pages/settings/QnaPage.jsx` 백엔드 연결
