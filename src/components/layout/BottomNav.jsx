@@ -72,12 +72,12 @@ export default function BottomNav() {
     // 각 탭의 식별자(id), 화면에 표시되는 한국어 레이블, 아이콘 컴포넌트, 이동 경로를 정의.
     // 이 배열을 순회해 탭 버튼들을 동적으로 렌더링함.
     const tabs = [
-        { id: 'feed',    label: '피드', icon: Home,     path: '/' },       // 메인 피드 페이지
+        { id: 'feed',    label: '게시글', icon: Home,     path: '/' },       // 메인 피드 페이지
         { id: 'create',  label: '창작', icon: PenTool,  path: '/create' },  // 게시물 작성 페이지
         { id: 'badges',  label: '달개', icon: Award,    path: '/badges' },  // 배지 목록 페이지
         { id: 'friends', label: '글벗', icon: Users,    path: '/friends' }, // 친구 목록 페이지
         { id: 'finance', label: '금융', icon: Landmark, path: '/finance' }, // 금융 정보 페이지
-        { id: 'profile', label: '마이', icon: User,     path: '/profile' }, // 내 프로필 페이지
+        { id: 'profile', label: '설정', icon: User,     path: '/profile' }, // 내 프로필 페이지
     ];
 
     // ── 파생값: 현재 활성 탭 ID 계산 ──────────────────────────────────────────

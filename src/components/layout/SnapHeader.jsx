@@ -80,7 +80,11 @@ export default function SnapHeader() {
     // ── 컨텍스트: 로그인 여부 ─────────────────────────────────────────────────
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
 
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated,
+        user,
+        logout,
+        notiRefreshTag,
+        refreshNotifications } = useAuth();
     const { showAlert, showConfirm } = useAlert();
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
@@ -146,19 +150,10 @@ export default function SnapHeader() {
                 if (lastCountRef.current !== null && newCount > lastCountRef.current) {
                     console.log("🔔 알림창 띄우기 시도!");
 
-                    setNotiRefreshTag(prev => prev + 1);
+                    refreshNotifications();
 
                     const diff = newCount - lastCountRef.current;
                     console.log(`🔔 알림 발생! 차이: ${diff}`);
-
-                    // 공통 로직: 친구 페이지로 이동시키거나, 이미 있다면 새로고침
-                    const handleNavigation = () => {
-                        if (location.pathname === '/friends') {
-                            window.location.reload();
-                        } else {
-                            navigate('/friends');
-                        }
-                    }
 
                     // showAlert 함수가 존재하는지 체크 후 호출
                     showConfirm({
@@ -170,7 +165,11 @@ export default function SnapHeader() {
                         onConfirm: () => {
                             // [이동하기] 클릭 시
                             console.log("✅ 승인: 친구 페이지로 이동/새로고침");
-                            handleNavigation()
+                            if (location.pathname === '/friends') {
+                                window.location.reload();
+                            } else {
+                                navigate('/friends');
+                            }
                         },
                         onCancel: () => {
                             // [나중에] 클릭 시
@@ -198,7 +197,7 @@ export default function SnapHeader() {
             console.log("🛑 폴링 중단");
             clearInterval(interval);
         };
-    }, [isAuthenticated]);
+    }, [isAuthenticated, notiRefreshTag, location.pathname, navigate]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (

@@ -191,15 +191,11 @@ export default function FssPage() {
     };
 
     return (
-        // showTabs={true}: 하단 내비게이션 탭 표시
         <ResponsiveLayout showTabs={true}>
             <div className="flex flex-col min-h-screen bg-white dark:bg-[#101215] text-black dark:text-[#e5e5e5] pb-20">
 
                 {/* ──────────────────────────────────────────────────────
-                    Hero Section (페이지 상단 히어로)
-                    - TrendingUp 아이콘 (검정 박스, rotate-3 → hover 시 0)
-                    - "FINANCIAL SNAP" 대형 이탤릭 제목
-                    - "Stay ahead of the market trend" 서브텍스트
+                    Hero Section
                 ────────────────────────────────────────────────────── */}
                 <div className="px-6 py-12 flex flex-col items-center border-b border-[#f3f3f3] dark:border-[#292e35] bg-[#fafafa] dark:bg-[#1c1f24]">
                     <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mb-6 shadow-xl transform rotate-3 hover:rotate-0 transition-all">
@@ -212,96 +208,66 @@ export default function FssPage() {
                 <div className="p-4">
                     {/* ──────────────────────────────────────────────────────
                         Search Panel (날짜 범위 선택 + 검색 버튼)
-                        - 검정 배경 카드 (bg-black)
-                        - 우측 상단에 Cpu 아이콘 워터마크 (opacity-10)
-                        - Landmark 아이콘 + "Select Timeline" 헤더
-                        - From/To 날짜 입력:
-                            startDate ↔ From date input (onChange: setStartDate)
-                            endDate   ↔ To   date input (onChange: setEndDate)
-                        - FETCH INSIGHTS 버튼:
-                            onClick: fetchData()
-                            disabled: loading === true (중복 호출 방지)
-                            loading 중 → Loader2 스피너, 아니면 Search 아이콘
                     ────────────────────────────────────────────────────── */}
                     <div className="bg-black text-white p-8 rounded-[24px] mb-8 shadow-2xl relative overflow-hidden">
-                        {/* Cpu 워터마크 (우측 상단 반투명) */}
+                        {/* Cpu 워터마크 */}
                         <div className="absolute top-[-20%] right-[-10%] opacity-10">
                             <Cpu size={180} />
                         </div>
 
-                        {/* 패널 헤더: Landmark 아이콘 + "Select Timeline" */}
-                        <div className="flex items-center gap-3 mb-8">
+                        {/* 패널 헤더 */}
+                        <div className="flex flex-col gap-4 relative z-10 mb-6">
                             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                                 <Landmark size={18} />
                             </div>
                             <h2 className="text-[18px] font-black italic tracking-widest uppercase">검색 기간 설정</h2>
                         </div>
 
-                        <div className="flex flex-col gap-4 relative z-10">
-                            {/* 날짜 범위 입력 (From ~ To) */}
-                            <div className="flex gap-4 items-center">
-                                {/* 시작일 입력 (startDate 상태 연결) */}
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">시작 날짜</p>
-                                    <input
-                                        type="date"
-                                        className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                    />
-                                </div>
-                                {/* 구분자 */}
-                                <div className="text-gray-600 mt-5 font-bold">~</div>
-                                {/* 종료일 입력 (endDate 상태 연결) */}
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">마지막 날짜</p>
-                                    <input
-                                        type="date"
-                                        className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                    />
-                                </div>
+                        {/* 수정된 핵심 영역: 계단식 정렬 적용 */}
+                        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end relative z-10">
+
+                            {/* 시작일 입력 */}
+                            <div className="flex-1">
+                                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">시작 날짜</p>
+                                <input
+                                    type="date"
+                                    className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all text-white"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                />
                             </div>
-                            {/* FETCH INSIGHTS 버튼
-                                loading 중: Loader2 스피너 표시 + 버튼 비활성
-                                대기 중:    Search 아이콘 표시 */}
+
+                            {/* 가로 모드일 때만 보이는 구분자 */}
+                            <div className="hidden sm:block text-gray-600 mb-3 font-bold">~</div>
+
+                            {/* 종료일 입력 */}
+                            <div className="flex-1">
+                                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">마지막 날짜</p>
+                                <input
+                                    type="date"
+                                    className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[13px] font-black italic tracking-widest outline-none focus:border-white/40 focus:bg-white/10 transition-all text-white"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                />
+                            </div>
+
+                            {/* 검색 버튼 */}
                             <button
                                 onClick={fetchData}
                                 disabled={loading}
-                                className="w-full h-14 bg-white dark:bg-[#292e35] text-black dark:text-[#e5e5e5] font-black italic tracking-[2px] text-[15px] rounded-xl mt-4 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                className="w-full sm:w-auto sm:px-8 h-12 bg-white dark:bg-[#292e35] text-black dark:text-[#e5e5e5] font-black italic tracking-[1px] text-[14px] rounded-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 mt-2 sm:mt-0"
                             >
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : <Search size={22} />}
-                                데이터 검색
+                                {loading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+                                <span>데이터 검색</span>
                             </button>
                         </div>
                     </div>
 
                     {/* ──────────────────────────────────────────────────────
                         Content Section (검색 결과 영역)
-                        isSearched / loading / data 에 따라 4가지 상태 표시:
-
-                        [1] isSearched === false (아직 검색 안 함)
-                            → 원형 점선 Search 아이콘 + "Awaiting Query" 텍스트
-
-                        [2] isSearched === true AND loading === true (로딩 중)
-                            → 대형 Loader2 스피너 + "Scanning Financial Data..."
-
-                        [3] isSearched === true AND loading === false AND data.length > 0 (결과 있음)
-                            → "Market Feed" 헤더 + {data.length} UPDATES 카운트
-                            → 각 공시 항목 카드:
-                               - "REPORT" 태그 + 등록일
-                               - 공시 제목 (hover 시 파란색)
-                               - ExternalLink 버튼 (원형)
-                               - 출처 "FSS.GO.KR" (녹색 점 + 텍스트)
-                               - 클릭 시 window.open(url, '_blank') 로 원문 새 탭 열기
-
-                        [4] isSearched === true AND loading === false AND data.length === 0 (결과 없음)
-                            → Info 아이콘 + "No Signals Found"
                     ────────────────────────────────────────────────────── */}
                     <div className="px-2">
                         {!isSearched ? (
-                            /* [1] 초기 안내 화면 */
                             <div className="py-24 flex flex-col items-center text-[#ccd3db] gap-4">
                                 <div className="w-16 h-16 rounded-full border-2 border-dashed border-[#ccd3db] flex items-center justify-center">
                                     <Search size={28} />
@@ -312,23 +278,18 @@ export default function FssPage() {
                                 </div>
                             </div>
                         ) : loading ? (
-                            /* [2] 로딩 중 */
                             <div className="py-24 flex flex-col items-center text-black dark:text-[#e5e5e5] gap-4">
                                 <Loader2 size={40} className="animate-spin text-black dark:text-[#e5e5e5]" />
                                 <p className="text-[13px] font-black italic tracking-widest uppercase animate-pulse">데이터 조회중...</p>
                             </div>
                         ) : data.length > 0 ? (
-                            /* [3] 결과 목록 */
                             <div className="flex flex-col divide-y divide-[#f3f3f3]">
-                                {/* 결과 헤더: "Market Feed" + 건수 */}
                                 <div className="pb-4 flex items-center justify-between border-b-2 border-black">
                                     <span className="text-[12px] font-black italic tracking-widest uppercase">뉴스레터</span>
                                     <span className="text-[10px] font-bold text-[#ccd3db] uppercase tracking-[1px]">{data.length} UPDATES</span>
                                 </div>
 
-                                {/* 각 공시 항목 카드 */}
                                 {data.map((item, index) => {
-                                    // 필드명 fallback 처리 (FSS API 버전마다 키 이름 다름)
                                     const id = item.contentId || item.idx || item.fcnNo || index;
                                     const title = item.subject || item.title || item.name || '공시 내용이 없습니다.';
                                     const date = item.regDate || item.reg_date || item.createdAt || '날짜 미상';
@@ -338,9 +299,8 @@ export default function FssPage() {
                                         <div
                                             key={id}
                                             className="py-8 flex flex-col gap-3 cursor-pointer group hover:bg-[#fafafa] dark:hover:bg-[#1c1f24] transition-all px-2 -mx-2 rounded-xl"
-                                            onClick={() => window.open(url, '_blank')} // 원문 새 탭 열기
+                                            onClick={() => window.open(url, '_blank')}
                                         >
-                                            {/* 항목 상단: REPORT 태그 + 날짜 */}
                                             <div className="flex items-center gap-3">
                                                 <div className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black italic tracking-tighter uppercase rounded">NEWSLETTER</div>
                                                 <div className="flex items-center gap-1.5 text-[#ccd3db]">
@@ -348,18 +308,14 @@ export default function FssPage() {
                                                     <span className="text-[11px] font-bold tracking-widest uppercase">{date}</span>
                                                 </div>
                                             </div>
-                                            {/* 공시 제목 + ExternalLink 버튼 */}
                                             <div className="flex justify-between items-start gap-4">
-                                                {/* hover 시 파란색으로 전환 */}
                                                 <h3 className="font-black italic text-[18px] tracking-tighter uppercase leading-[1.2] text-[#111] dark:text-[#e5e5e5] group-hover:text-blue-600 transition-colors">
                                                     {title}
                                                 </h3>
-                                                {/* 외부 링크 아이콘 버튼 (hover 시 검정 테두리) */}
                                                 <div className="w-10 h-10 rounded-full border border-[#f3f3f3] flex items-center justify-center text-[#ccd3db] group-hover:border-black group-hover:text-black transition-all shrink-0 translate-y-[-5px]">
                                                     <ExternalLink size={16} />
                                                 </div>
                                             </div>
-                                            {/* 출처 표시 */}
                                             <div className="flex items-center gap-2 mt-1">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                                                 <span className="text-[11px] font-bold text-[#a3b0c1] uppercase">데이터 제공: FSS.GO.KR</span>
@@ -369,7 +325,6 @@ export default function FssPage() {
                                 })}
                             </div>
                         ) : (
-                            /* [4] 결과 없음 */
                             <div className="py-24 flex flex-col items-center text-[#ccd3db] gap-4">
                                 <Info size={40} />
                                 <p className="text-[14px] font-black italic tracking-widest uppercase">No Signals Found</p>
@@ -378,12 +333,7 @@ export default function FssPage() {
                     </div>
                 </div>
 
-                {/* ──────────────────────────────────────────────────────
-                    Footer Insight
-                    페이지 최하단 서비스 설명 카드.
-                    "ICT5 x SNAP x FSS" 레이블
-                    "금융감독원 공시 데이터를 바탕으로 실시간 마켓 트렌드를 분석합니다."
-                ────────────────────────────────────────────────────── */}
+                {/* Footer Insight */}
                 <div className="mx-6 p-8 bg-[#f9f9f9] dark:bg-[#1c1f24] rounded-[24px] border border-[#f3f3f3] dark:border-[#292e35] text-center mt-6">
                     <p className="text-[10px] font-black italic tracking-[3px] uppercase text-[#ccd3db] mb-2 leading-relaxed">ICT5 x SNAP x FSS</p>
                     <p className="text-[12px] font-medium text-[#7b8b9e] max-w-[280px] mx-auto">금융감독원 공시 데이터를 바탕으로 실시간 마켓 트렌드를 분석합니다.</p>
