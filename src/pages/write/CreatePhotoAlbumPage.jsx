@@ -76,10 +76,11 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Calendar, Loader2, ImagePlus } from 'lucide-react';
+import { ArrowLeft, X, Calendar, Loader2, ImagePlus } from 'lucide-react';
 import { photoService } from '@/api/photoService';
 import { albumService } from '@/api/albumService';
 import { useAlert } from '@/context/AlertContext';
+import { saveAlbumLayout } from '@/utils/albumLayoutStore';
 
 /**
  * @constant layouts
@@ -116,6 +117,9 @@ export default function CreatePhotoAlbumPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { showConfirm, showAlert } = useAlert();
+
+  console.log('[CreatePhotoAlbumPage] render 시작');
+  console.log('[CreatePhotoAlbumPage] location.state =', location.state);
 
   /**
    * @state photos
@@ -195,6 +199,16 @@ export default function CreatePhotoAlbumPage() {
    */
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  console.log('[CreatePhotoAlbumPage] photos =', photos);
+  console.log('[CreatePhotoAlbumPage] selectedLayout =', selectedLayout);
+  console.log('[CreatePhotoAlbumPage] title =', title);
+  console.log('[CreatePhotoAlbumPage] content =', content);
+  console.log('[CreatePhotoAlbumPage] tags =', tags);
+  console.log('[CreatePhotoAlbumPage] tagInput =', tagInput);
+  console.log('[CreatePhotoAlbumPage] visibility =', visibility);
+  console.log('[CreatePhotoAlbumPage] selectedDate =', selectedDate);
+  console.log('[CreatePhotoAlbumPage] isSubmitting =', isSubmitting);
+
   /**
    * @function handlePhotoUpload
    * @param {Event} e - file input 의 change 이벤트
@@ -210,26 +224,36 @@ export default function CreatePhotoAlbumPage() {
    * 트리거: file input 의 onChange (accept="image/*", multiple)
    */
   const handlePhotoUpload = (e) => {
-    // TODO: e.target.files에서 File 배열 추출
+    console.log('[handlePhotoUpload] 호출');
+    console.log('[handlePhotoUpload] e.target.files =', e.target.files);
+
     const files = e.target.files;
-    // TODO: 각 File을 { url: URL.createObjectURL(file), file } 객체로 변환
+
     if (files) {
       const newPhotoObjects = Array.from(files).map((file) => ({
-        url: URL.createObjectURL(file), // 브라우저 로컬 미리보기 URL
+        url: URL.createObjectURL(file),
         file: file
       }));
 
-      // TODO: 기존 photos + 새 항목 합쳐 최대 4장(.slice(0,4))으로 제한 후 setPhotos()
-      // 힌트: 사진 수에 따라 setSelectedLayout(1/2/4) 자동 조정
+      console.log('[handlePhotoUpload] newPhotoObjects =', newPhotoObjects);
+
       const updatedPhotos = [...photos, ...newPhotoObjects].slice(0, 4);
+      console.log('[handlePhotoUpload] updatedPhotos =', updatedPhotos);
+
       setPhotos(updatedPhotos);
 
-      if (updatedPhotos.length === 1) setSelectedLayout(1);
-      else if (updatedPhotos.length === 2) setSelectedLayout(2);
-      else if (updatedPhotos.length >= 4) setSelectedLayout(4);
+      if (updatedPhotos.length === 1) {
+        console.log('[handlePhotoUpload] selectedLayout -> 1');
+        setSelectedLayout(1);
+      } else if (updatedPhotos.length === 2) {
+        console.log('[handlePhotoUpload] selectedLayout -> 2');
+        setSelectedLayout(2);
+      } else if (updatedPhotos.length >= 4) {
+        console.log('[handlePhotoUpload] selectedLayout -> 4');
+        setSelectedLayout(4);
+      }
     }
   };
-
 
   /**
    * @function removePhoto
@@ -241,12 +265,23 @@ export default function CreatePhotoAlbumPage() {
    * 트리거: 각 썸네일의 X 버튼 클릭
    */
   const removePhoto = (index) => {
+    console.log('[removePhoto] 제거할 index =', index);
+
     const newPhotos = photos.filter((_, i) => i !== index);
+    console.log('[removePhoto] newPhotos =', newPhotos);
+
     setPhotos(newPhotos);
-    // 남은 사진 수에 맞게 레이아웃 재조정
-    if (newPhotos.length === 1) setSelectedLayout(1);
-    else if (newPhotos.length === 2) setSelectedLayout(2);
-    else if (newPhotos.length >= 4) setSelectedLayout(4);
+
+    if (newPhotos.length === 1) {
+      console.log('[removePhoto] selectedLayout -> 1');
+      setSelectedLayout(1);
+    } else if (newPhotos.length === 2) {
+      console.log('[removePhoto] selectedLayout -> 2');
+      setSelectedLayout(2);
+    } else if (newPhotos.length >= 4) {
+      console.log('[removePhoto] selectedLayout -> 4');
+      setSelectedLayout(4);
+    }
   };
 
   /**
@@ -262,6 +297,8 @@ export default function CreatePhotoAlbumPage() {
    *   photos.length === 4 → [id=4] (Quad만)
    */
   const getAvailableLayouts = () => {
+    console.log('[getAvailableLayouts] photos.length =', photos.length);
+
     if (photos.length === 0) return [];
     if (photos.length === 1) return layouts.filter((l) => l.id === 1);
     if (photos.length === 2) return layouts.filter((l) => l.id === 2 || l.id === 3);
@@ -269,134 +306,94 @@ export default function CreatePhotoAlbumPage() {
     return layouts.filter((l) => l.id === 4);
   };
 
-  /**
-   * @function handleAddTag
-   * tagInput 의 현재 값을 tags 배열에 추가한다.
-   * 동작:
-   *   1. tagInput.trim() 이 비어있으면 무시
-   *   2. 이미 tags 에 동일 값이 있으면 무시 (중복 방지)
-   *   3. tags 배열에 tagInput.trim() 추가
-   *   4. tagInput 을 '' 로 초기화
-   *
-   * 트리거: 태그 입력창의 Enter 키(onKeyDown) 또는 "추가" 버튼 클릭
-   */
   const handleAddTag = () => {
+    console.log('[handleAddTag] tagInput =', tagInput);
+    console.log('[handleAddTag] 현재 tags =', tags);
+
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
+      const nextTags = [...tags, tagInput.trim()];
+      console.log('[handleAddTag] nextTags =', nextTags);
+      setTags(nextTags);
       setTagInput('');
     }
   };
 
-  /**
-   * @function handleRemoveTag
-   * @param {string} tag - 제거할 태그 문자열
-   *
-   * tags 배열에서 해당 태그를 제거한다.
-   * 트리거: 태그 칩의 X 버튼 클릭
-   */
   const handleRemoveTag = (tag) => {
-    setTags(tags.filter((t) => t !== tag));
+    console.log('[handleRemoveTag] 제거할 tag =', tag);
+
+    const nextTags = tags.filter((t) => t !== tag);
+    console.log('[handleRemoveTag] nextTags =', nextTags);
+
+    setTags(nextTags);
   };
 
-  /**
-   * @function getCurrentUserId
-   * localStorage 에서 현재 로그인한 유저의 ID 를 추출하여 반환한다.
-   *
-   * 동작:
-   *   1. localStorage.getItem('user') 로 JSON 문자열 읽기
-   *   2. JSON.parse 후 .id 추출
-   *   3. 없거나 파싱 실패 시 null 반환
-   *
-   * handleComplete 에서 null 이면 로그인 페이지로 이동시킴.
-   */
   const getCurrentUserId = () => {
     try {
       const raw = localStorage.getItem('user');
+      console.log('[getCurrentUserId] raw =', raw);
+
       if (!raw) return null;
-      return JSON.parse(raw)?.id ?? null;
-    } catch {
+
+      const parsedId = JSON.parse(raw)?.id ?? null;
+      console.log('[getCurrentUserId] parsedId =', parsedId);
+
+      return parsedId;
+    } catch (e) {
+      console.log('[getCurrentUserId] parse 실패, e =', e);
       return null;
     }
   };
 
-  /**
-   * @function getLayoutType
-   * @param {number} layoutId - layouts 배열의 id (1~4)
-   * @returns {string} API 에 전달할 layoutType 문자열
-   *
-   * selectedLayout ID 를 layouts 배열에서 찾아 apiValue 를 반환한다.
-   * 예: 1 → 'single', 2 → 'horizontal-two', 4 → 'grid'
-   * 찾지 못하면 'single' 을 기본값으로 반환.
-   */
   const getLayoutType = (layoutId) => {
-    return layouts.find((l) => l.id === layoutId)?.apiValue ?? 'single';
+    const layoutType = layouts.find((l) => l.id === layoutId)?.apiValue ?? 'single';
+    console.log('[getLayoutType] layoutId =', layoutId, ', layoutType =', layoutType);
+    return layoutType;
   };
 
-  /**
-   * @function handleComplete
-   * Post Snap 버튼 클릭 시 실행되는 게시물 업로드 함수.
-   * 유효성 검사 → 2단계 API 호출 → 성공 시 게시물 상세 페이지로 이동.
-   *
-   * [유효성 검사]
-   *   - title.trim() 비어있음 → "제목을 입력해주세요." 알림 후 return
-   *   - content.trim() 비어있음 → "내용을 입력해주세요." 알림 후 return
-   *   - photos.length === 0 → "사진을 1장 이상 업로드해주세요." 알림 후 return
-   *   - userId === null → "로그인 정보가 없습니다." 알림 후 /login 이동
-   *
-   * [단계 1] 사진 업로드
-   *   photoService.uploadPhotos({ files: photos.map(p => p.file), userId })
-   *   → POST /api/photos/upload (multipart/form-data)
-   *   응답: { photos: [ { photoId } ] }
-   *   photoIds = uploadedPhotos.map(p => p.photoId)
-   *   slotIndexes = photoIds.map((_, i) => i)  (0, 1, 2, 3)
-   *
-   * [단계 2] 앨범 생성
-   *   albumService.createAlbum({
-   *     userId,
-   *     title: title.trim(),
-   *     bodyText: content.trim(),
-   *     recordDate: selectedDate,
-   *     visibility: VISIBILITY_MAP[visibility],
-   *     layoutType: getLayoutType(selectedLayout),
-   *     photoIds,
-   *     slotIndexes,
-   *     tags
-   *   })
-   *   → POST /api/albums
-   *   응답: { albumId, message }
-   *   성공 시: showAlert(message) + navigate('/snap/{albumId}')
-   *
-   * 에러 처리:
-   *   e.response?.data?.message || e.message || '글 작성에 실패했습니다.'
-   *   "업로드 실패" 알림 표시
-   */
   const handleComplete = async () => {
-    // TODO: [유효성 검사] title, content, photos.length===0, userId===null 체크
+    console.log('[handleComplete] 호출');
+    console.log('[handleComplete] title =', title);
+    console.log('[handleComplete] content =', content);
+    console.log('[handleComplete] photos =', photos);
+    console.log('[handleComplete] tags =', tags);
+    console.log('[handleComplete] visibility =', visibility);
+    console.log('[handleComplete] selectedDate =', selectedDate);
+    console.log('[handleComplete] selectedLayout =', selectedLayout);
+
     if (!title.trim()) { showAlert('제목을 입력해주세요.', '입력 오류', 'alert'); return; }
     if (!content.trim()) { showAlert('내용을 입력해주세요.', '입력 오류', 'alert'); return; }
     if (photos.length === 0) { showAlert('사진을 1장 이상 업로드해주세요.', '입력 오류', 'alert'); return; }
 
     const userId = getCurrentUserId();
+    console.log('[handleComplete] userId =', userId);
+
     if (!userId) {
       showAlert('로그인 정보가 없습니다. 다시 로그인해주세요.', '인증 오류', 'alert');
       navigate('/login');
       return;
     }
+
     setIsSubmitting(true);
+
     try {
       const uploadResult = await photoService.uploadPhotos({
         files: photos.map((p) => p.file),
         userId,
       });
 
+      console.log('[handleComplete] uploadResult =', uploadResult);
+
       const uploadedPhotos = uploadResult?.photos ?? [];
+      console.log('[handleComplete] uploadedPhotos =', uploadedPhotos);
+
       if (uploadedPhotos.length === 0) throw new Error('업로드된 사진 정보가 없습니다.');
 
       const photoIds = uploadedPhotos.map((p) => p.photoId);
-      const slotIndexes = photoIds.map((_, i) => i); // [0, 1, 2, ...] 순서 인덱스
+      const slotIndexes = photoIds.map((_, i) => i);
 
+      console.log('[handleComplete] photoIds =', photoIds);
+      console.log('[handleComplete] slotIndexes =', slotIndexes);
 
-      // TODO: [단계 2] albumService.createAlbum({ userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }) 호출
       const result = await albumService.createAlbum({
         userId,
         title: title.trim(),
@@ -409,23 +406,28 @@ export default function CreatePhotoAlbumPage() {
         tags,
       });
 
+      console.log('[handleComplete] createAlbum result =', result);
+
       showAlert(result?.message || '스냅이 게시되었습니다!', '게시 완료', 'success');
+      saveAlbumLayout(result?.albumId, getLayoutType(selectedLayout));
       navigate(`/snap/${result.albumId}`, { state: { fromPage: 'create' } });
     } catch (e) {
+      console.log('[handleComplete] 실패 e =', e);
       console.error(e);
       const message = e.response?.data?.message || e.message || '글 작성에 실패했습니다.';
       showAlert(message, '업로드 실패', 'alert');
     } finally {
+      console.log('[handleComplete] 종료');
       setIsSubmitting(false);
     }
   };
-
-  // 힌트: 성공 시 showAlert() + navigate(`/snap/${result.albumId}`), 실패 시 showAlert(에러메시지)
-  // 힌트: setIsSubmitting(true) → try/catch/finally → setIsSubmitting(false)
-
-  // canvasEditerPage에서 넘어온 이미지 수신
+    // canvasEditerPage에서 넘어온 이미지 수신
   useEffect(() => {
+    console.log('[useEffect canvas] 시작');
+    console.log('[useEffect canvas] location.state =', location.state);
+
     const canvasData = location.state?.canvasFile;
+    console.log('[useEffect canvas] canvasData =', canvasData);
 
     if (canvasData) {
       const newImage = {
@@ -435,10 +437,13 @@ export default function CreatePhotoAlbumPage() {
         isCanvas: true
       };
 
-      // 최신 상태(prev)를 기준으로 개수 체크 및 처리
+      console.log('[useEffect canvas] newImage =', newImage);
+
       setPhotos(prev => {
-        // 1. 이미 4장이 꽉 찬 경우
+        console.log('[useEffect canvas] prev photos =', prev);
+
         if (prev.length >= 4) {
+          console.log('[useEffect canvas] 이미 4장이라 교체 confirm');
           showConfirm({
             title: "사진 개수 초과",
             message: "이미 4장의 사진이 등록되어 있습니다.\n마지막 사진을 현재 제작한 이미지로 교체할까요?",
@@ -446,18 +451,17 @@ export default function CreatePhotoAlbumPage() {
             cancelText: "유지하기",
             type: "alert",
             onConfirm: () => {
+              console.log('[useEffect canvas] 교체 확정');
               setPhotos(current => [...current.slice(0, -1), newImage]);
               showAlert("마지막 사진이 제작한 이미지로 교체되었습니다.", "완료", "success");
             }
           });
-          // Confirm 모달이 떴으므로 여기선 일단 기존 상태 유지
           return prev;
         }
 
-        // 2. 4장 미만인 경우 (단순 추가)
         const updated = [...prev, newImage];
+        console.log('[useEffect canvas] updated photos =', updated);
 
-        // 추가된 후의 사진 수에 따라 레이아웃 자동 조정
         if (updated.length === 1) setSelectedLayout(1);
         else if (updated.length === 2) setSelectedLayout(2);
         else if (updated.length >= 4) setSelectedLayout(4);
@@ -465,22 +469,15 @@ export default function CreatePhotoAlbumPage() {
         return updated;
       });
 
-      // 데이터 중복 수신 방지를 위해 state 초기화
       window.history.replaceState({}, document.title);
       location.state.canvasFile = null;
+      console.log('[useEffect canvas] state 초기화 완료');
     }
   }, [location.state]);
 
   return (
-    // ResponsiveLayout 미사용 (페이지 전체가 독립적인 전체화면 레이아웃)
     <div className="min-h-screen bg-[#f9f9fa] dark:bg-[#101215] text-black dark:text-white transition-colors duration-300 pb-20">
 
-      {/* ──────────────────────────────────────────────────────
-          Header (sticky, top-0)
-          - 좌측: ArrowLeft 버튼 → navigate(-1)
-          - 가운데: "사진첩 창작" 제목
-          - 우측: 여백 div (중앙 정렬 유지)
-      ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between h-14 px-4 bg-white dark:bg-[#1c1f24] border-b border-[#e5e5e5] dark:border-[#292e35] sticky top-0 z-40 transition-colors duration-300">
         <button onClick={() => navigate(-1)} className="p-2">
           <ArrowLeft size={24} />
@@ -491,13 +488,6 @@ export default function CreatePhotoAlbumPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
 
-        {/* ──────────────────────────────────────────────────────
-            작성 날짜 선택
-            - Calendar 아이콘 (좌측 내부 고정)
-            - date input: selectedDate 상태와 연결
-              onChange → setSelectedDate
-            - API 의 recordDate 필드로 전달됨
-        ────────────────────────────────────────────────────── */}
         <div className="space-y-3">
           <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">작성 날짜</h3>
           <div className="relative">
@@ -505,41 +495,18 @@ export default function CreatePhotoAlbumPage() {
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                console.log('[UI] selectedDate 변경 =', e.target.value);
+                setSelectedDate(e.target.value);
+              }}
               className="w-full h-12 pl-12 pr-4 bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-xl text-[14px] font-bold outline-none focus:border-black dark:focus:border-white transition-all"
             />
           </div>
         </div>
 
-        {/* ──────────────────────────────────────────────────────
-            사진 등록 (최대 4장)
-            [업로드 버튼]
-            - photos.length < 4 일 때만 표시 (4장 다 차면 숨김)
-            - label + hidden file input (accept="image/*", multiple)
-            - ImagePlus 아이콘 + "N/4" 카운트 텍스트
-
-            [썸네일 목록]
-            - 각 사진: 24×24 박스, 둥근 모서리
-            - X 버튼: removePhoto(index) 호출로 해당 사진 제거
-
-            [레이아웃 선택 패널] (사진이 1장 이상일 때만 표시)
-            - "Step 2" 레이블 + "Pick Your Grid" 제목
-            - getAvailableLayouts() 반환 레이아웃만 버튼으로 표시
-            - 각 버튼:
-              선택됨 (selectedLayout === layout.id):
-                scale-110, 검정 테두리, 검정 격자 미리보기
-              미선택:
-                opacity-60 grayscale, hover 시 복원
-            - 레이아웃 격자 미리보기:
-              id=1: 격자 1칸, id=2|3: 2칸, id=4: 4칸
-              칸 수 = layout.id === 1 ? 1 : (2 또는 3 ? 2 : 4)
-            - 버튼 레이블:
-              id=1 → 'Solo', id=2 → 'Twin H', id=3 → 'Twin V', id=4 → 'Quad'
-        ────────────────────────────────────────────────────── */}
         <div className="space-y-4">
           <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장, 확장자 : "jpg", "jpeg", "png", "webp" 파일만 가능합니다)</h3>
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {/* 사진 추가 버튼 (4장 미만일 때만 표시) */}
             {photos.length < 4 && (
               <label className="flex-shrink-0 cursor-pointer">
                 <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
@@ -550,11 +517,9 @@ export default function CreatePhotoAlbumPage() {
               </label>
             )}
 
-            {/* 선택된 사진 썸네일 목록 */}
             {photos.map((photo, index) => (
               <div key={index} className="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden shadow-sm border border-[#e5e5e5] dark:border-[#292e35]">
                 <img src={photo.url} alt="" className="w-full h-full object-cover" />
-                {/* X 버튼: 해당 인덱스 사진 제거 */}
                 <button
                   onClick={() => removePhoto(index)}
                   className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black transition-colors"
@@ -565,19 +530,19 @@ export default function CreatePhotoAlbumPage() {
             ))}
           </div>
 
-          {/* 이미지를 직접 제작 원하는 경우 canvasEditerPage 이동 */}
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">사진 등록 (최대 4장)</h3>
             <button
-              onClick={() => navigate('/create-canvas')}
-              className="text-[12px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
+              onClick={() => {
+                console.log('[UI] create-canvas 이동');
+                navigate('/create-canvas');
+              }}
+              className="text-[15px] font-bold text-indigo-500 flex items-center gap-1 hover:text-indigo-600 transition-colors"
             >
               🎨 캔버스에서 직접 만들기
             </button>
           </div>
 
-
-          {/* 레이아웃 선택 패널 (사진 1장 이상일 때만 표시) */}
           {photos.length > 0 && (
             <div className="bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-[32px] p-6 shadow-sm mt-6 overflow-hidden relative">
               <div className="flex flex-col items-center gap-1 mb-6">
@@ -585,21 +550,20 @@ export default function CreatePhotoAlbumPage() {
                 <h4 className="text-[16px] font-black italic tracking-tighter uppercase">Pick Your Grid</h4>
               </div>
 
-              {/* 레이아웃 버튼 목록 (getAvailableLayouts 반환값만) */}
               <div className="flex items-center justify-center gap-4">
                 {getAvailableLayouts().map((layout) => (
                   <button
                     key={layout.id}
-                    onClick={() => setSelectedLayout(layout.id)}
+                    onClick={() => {
+                      console.log('[UI] 레이아웃 선택 =', layout);
+                      setSelectedLayout(layout.id);
+                    }}
                     className={`relative w-20 flex flex-col items-center gap-3 transition-all duration-300 group ${selectedLayout === layout.id ? 'scale-110' : 'opacity-60 grayscale hover:opacity-100'
                       }`}
                   >
-                    {/* 레이아웃 격자 미리보기 박스 */}
                     <div className={`w-full aspect-square rounded-2xl border-2 transition-all p-1.5 ${selectedLayout === layout.id ? 'border-black dark:border-white shadow-xl bg-gray-50 dark:bg-gray-800' : 'border-transparent bg-gray-100 dark:bg-gray-900'
                       }`}>
-                      {/* 격자 미리보기: layout.grid 클래스로 형태 결정 */}
                       <div className={`w-full h-full ${layout.grid} gap-1 p-0.5 grid`}>
-                        {/* 칸 수: id=1→1칸, id=2|3→2칸, id=4→4칸 */}
                         {Array(layout.id === 1 ? 1 : layout.id === 2 || layout.id === 3 ? 2 : 4)
                           .fill(0)
                           .map((_, i) => (
@@ -607,12 +571,10 @@ export default function CreatePhotoAlbumPage() {
                           ))}
                       </div>
                     </div>
-                    {/* 레이아웃 레이블 (선택됨: 항상 표시, 미선택: hover 시만 표시) */}
                     <span className={`text-[10px] font-black italic tracking-widest uppercase transition-all ${selectedLayout === layout.id ? 'text-black dark:text-white opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'
                       }`}>
                       {layout.id === 1 ? 'Solo' : layout.id === 2 ? 'Twin H' : layout.id === 3 ? 'Twin V' : 'Quad'}
                     </span>
-                    {/* 선택된 레이아웃 하단 점 인디케이터 */}
                     {selectedLayout === layout.id && (
                       <div className="absolute -bottom-1 w-1 h-1 bg-black dark:bg-white rounded-full transition-all"></div>
                     )}
@@ -623,59 +585,49 @@ export default function CreatePhotoAlbumPage() {
           )}
         </div>
 
-        {/* ──────────────────────────────────────────────────────
-            제목 + 내용 입력
-            제목: text input, title 상태 연결
-            내용: textarea (h-48, resize-none), content 상태 연결
-                  "오늘의 이야기를 들려주세요 (최대 2000자)" placeholder
-        ────────────────────────────────────────────────────── */}
         <div className="space-y-6">
-          {/* 제목 입력 */}
           <div className="space-y-3">
             <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">제목</h3>
             <input
               type="text"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                console.log('[UI] title 변경 =', e.target.value);
+                setTitle(e.target.value);
+              }}
               placeholder="제목을 입력하세요"
               className="w-full h-12 px-4 bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-xl text-[14px] font-bold outline-none focus:border-black dark:focus:border-white transition-all shadow-sm"
             />
           </div>
 
-          {/* 내용 입력 */}
           <div className="space-y-3">
             <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">내용</h3>
             <textarea
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => {
+                console.log('[UI] content 변경 =', e.target.value);
+                setContent(e.target.value);
+              }}
               placeholder="오늘의 이야기를 들려주세요 (최대 2000자)"
               className="w-full h-48 p-4 bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-2xl resize-none text-[14px] font-medium leading-relaxed outline-none focus:border-black dark:focus:border-white transition-all shadow-sm"
             />
           </div>
         </div>
 
-        {/* ──────────────────────────────────────────────────────
-            태그 입력
-            - tagInput 상태와 연결된 text input
-            - 엔터 키: handleAddTag() 호출 (기본 submit 방지)
-            - "추가" 버튼: handleAddTag() 호출
-            - 추가된 태그들: 칩(chip) 형태로 표시
-              각 칩: "#{tag}" 텍스트 + X 버튼(handleRemoveTag)
-            - tags 배열이 비어있으면 태그 칩 영역 미표시
-        ────────────────────────────────────────────────────── */}
         <div className="space-y-4">
           <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400">태그</h3>
           <div className="flex gap-2">
-            {/* 태그 입력창: 엔터로 추가 */}
             <input
               type="text"
               value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
+              onChange={(e) => {
+                console.log('[UI] tagInput 변경 =', e.target.value);
+                setTagInput(e.target.value);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
               placeholder="# 태그 입력 후 엔터"
               className="flex-1 h-12 px-4 bg-white dark:bg-[#1c1f24] border border-[#e5e5e5] dark:border-[#292e35] rounded-xl text-[14px] font-bold outline-none focus:border-black dark:focus:border-white transition-all"
             />
-            {/* "추가" 버튼 */}
             <button
               onClick={handleAddTag}
               className="px-6 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-[14px] active:scale-95 transition-all"
@@ -683,7 +635,7 @@ export default function CreatePhotoAlbumPage() {
               추가
             </button>
           </div>
-          {/* 태그 칩 목록 (tags 배열이 있을 때만 표시) */}
+
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
@@ -692,7 +644,6 @@ export default function CreatePhotoAlbumPage() {
                   className="px-4 py-1.5 bg-gray-100 dark:bg-[#1c1f24] text-gray-600 dark:text-gray-300 font-bold rounded-full text-[12px] flex items-center gap-2 border border-[#e5e5e5] dark:border-[#292e35]"
                 >
                   #{tag}
-                  {/* X 버튼: 해당 태그 제거 */}
                   <button onClick={() => handleRemoveTag(tag)} className="hover:text-black dark:hover:text-white transition-colors">
                     <X size={12} strokeWidth={3} />
                   </button>
@@ -702,31 +653,23 @@ export default function CreatePhotoAlbumPage() {
           )}
         </div>
 
-        {/* ──────────────────────────────────────────────────────
-            공개범위 설정
-            3개 버튼: 나만보기 / 글벗만 / 전체공개
-            각 버튼 클릭 시 setVisibility(option.value) 호출
-            선택된 버튼: 검정 배경 + 흰색 텍스트 (다크: 반전)
-            미선택 버튼: 흰색 배경 + 회색 텍스트
-            VISIBILITY_MAP 을 통해 API 값으로 변환됨:
-              'private' → 'PRIVATE'
-              'friends' → 'FRIENDS'
-              'public'  → 'PUBLIC'
-        ────────────────────────────────────────────────────── */}
         <div className="pt-6 border-t border-[#e5e5e5] dark:border-[#292e35]">
           <h3 className="text-[14px] font-bold text-gray-500 dark:text-gray-400 mb-4 text-center">공개범위 설정</h3>
           <div className="flex gap-3 max-w-sm mx-auto">
             {[
-              { value: 'private', label: '나만보기' },    // → PRIVATE
-              { value: 'friends', label: '글벗만' },      // → FRIENDS
-              { value: 'public', label: '전체공개' },    // → PUBLIC
+              { value: 'private', label: '나만보기' },
+              { value: 'friends', label: '글벗만' },
+              { value: 'public', label: '전체공개' },
             ].map((option) => (
               <button
                 key={option.value}
-                onClick={() => setVisibility(option.value)}
+                onClick={() => {
+                  console.log('[UI] visibility 변경 =', option.value);
+                  setVisibility(option.value);
+                }}
                 className={`flex-1 py-3 rounded-xl text-center transition-all font-bold text-[13px] border ${visibility === option.value
-                  ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'  // 선택됨
-                  : 'border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-gray-400'   // 미선택
+                  ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
+                  : 'border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-gray-400'
                   }`}
               >
                 {option.label}
@@ -735,15 +678,6 @@ export default function CreatePhotoAlbumPage() {
           </div>
         </div>
 
-        {/* ──────────────────────────────────────────────────────
-            Post Snap 버튼 (게시 버튼)
-            - disabled 조건: content.trim() 비어있음 OR isSubmitting === true
-            - isSubmitting 중:
-                Loader2 스피너 + "Checking..." 텍스트
-            - 대기 중:
-                "Post Snap" 텍스트 (대문자 이탤릭)
-            - active:scale-95 로 클릭 피드백 제공
-        ────────────────────────────────────────────────────── */}
         <button
           onClick={handleComplete}
           disabled={!content.trim() || isSubmitting}
@@ -752,10 +686,10 @@ export default function CreatePhotoAlbumPage() {
           {isSubmitting ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>Checking...</span>
+              <span>올리고 있어요...</span>
             </>
           ) : (
-            'Post Snap'
+            '내 스토리 올리기'
           )}
         </button>
       </div>

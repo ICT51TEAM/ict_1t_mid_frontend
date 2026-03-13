@@ -72,6 +72,7 @@ import RankingPage from '@/pages/feed/RankingPage';
 import FollowingPage from '@/pages/feed/FollowingPage';
 import SnapDetailPage from '@/pages/feed/SnapDetailPage';
 import CanvasEditorPage from '@/pages/write/CanvasEditerPage';
+//import EditPostPage from '@/pages/EditPostPage';
 // Auth
 import LoginPage from '@/pages/auth/LoginPage';
 import SignupPage from '@/pages/auth/SignupPage';
@@ -166,7 +167,7 @@ export default function App() {
             <Route path="/following" element={<ProtectedRoute><FollowingPage /></ProtectedRoute>} />
 
             {/* Snap 상세 페이지: 공개 (URL 공유 가능) */}
-            <Route path="/snap/:id" element={<SnapDetailPage />} />
+            <Route path="/snap/:id" element={<ProtectedRoute><SnapDetailPage /></ProtectedRoute>} />
             {/* Snap 편집 페이지: 본인 게시글만 편집 가능 → ProtectedRoute로 보호 */}
             <Route path="/snap/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
 

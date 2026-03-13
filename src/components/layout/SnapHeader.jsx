@@ -53,7 +53,7 @@
  * [Props]
  *   없음 (필요한 모든 데이터를 훅·서비스에서 자체 조회)
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 // 프로그래매틱 내비게이션 (알림 버튼 클릭 → /notifications 이동)
 import { Link, useNavigate } from 'react-router-dom';
 // 알림 벨 아이콘
@@ -64,6 +64,8 @@ import { useAuth } from '@/context/AuthContext';
 import { notificationService } from '@/api/notificationService';
 // 🚩 [추가] 유저 설정 조회 API 서비스 (ReferenceError 해결)
 import { userService } from '@/api/userService';
+import { useAlert } from '@/context/AlertContext';
+
 
 /**
  * @component SnapHeader
@@ -78,14 +80,18 @@ export default function SnapHeader() {
     // ── 컨텍스트: 로그인 여부 ─────────────────────────────────────────────────
     // isAuthenticated: true이면 알림 버튼 표시 + 폴링 시작, false이면 둘 다 비활성
 
-    const { isAuthenticated } = useAuth();
-
-
+    const { isAuthenticated,
+        user,
+        logout,
+        notiRefreshTag,
+        refreshNotifications } = useAuth();
+    const { showAlert, showConfirm } = useAlert();
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
     // 9 초과 시 JSX에서 '9+'로 표시됨.
     const [unreadCount, setUnreadCount] = useState(0);
+    const lastCountRef = useRef(null);
 
     // ── useEffect: 알림 카운트 폴링 설정 ─────────────────────────────────────
     /**
@@ -105,11 +111,6 @@ export default function SnapHeader() {
      *   - 컴포넌트 언마운트 또는 isAuthenticated 변경 시:
      *     clearInterval(interval)로 폴링 타이머를 해제해 메모리 누수 방지
      */
-
-
-
-
-
     useEffect(() => {
         // TODO: setInterval로 30초마다 notificationService.getUnreadCount() 호출해
         //       setUnreadCount() 업데이트, 클린업에서 clearInterval 호출
@@ -120,6 +121,7 @@ export default function SnapHeader() {
 
         if (!isAuthenticated) {
             setUnreadCount(0);
+            lastCountRef.current = null;
             return;
         }
 
@@ -140,22 +142,62 @@ export default function SnapHeader() {
                 }
 
                 const data = await notificationService.getAll();
-                setUnreadCount(
+                const newCount = Array.isArray(data)
+                    ? data.filter(n => !(n.isRead ?? n.read)).length
+                    : 0;
+                console.log("🔄 [폴링 중] 이전 알림수:", lastCountRef.current, " / 현재  알림수:", newCount);
 
-                    Array.isArray(data)
-                        ? data.filter(n => !(n.isRead ?? n.read)).length
-                        : 0
-                );
+                if (lastCountRef.current !== null && newCount > lastCountRef.current) {
+                    console.log("🔔 알림창 띄우기 시도!");
+
+                    refreshNotifications();
+
+                    const diff = newCount - lastCountRef.current;
+                    console.log(`🔔 알림 발생! 차이: ${diff}`);
+
+                    // showAlert 함수가 존재하는지 체크 후 호출
+                    showConfirm({
+                        title: '글벗 알림',
+                        message: `🔔 새로운 요청이 ${diff}건 도착했습니다!\n지금 친구 관리 페이지로 이동하시겠습니까?`,
+                        type: 'info',
+                        confirmText: '이동하기',
+                        cancelText: '나중에',
+                        onConfirm: () => {
+                            // [이동하기] 클릭 시
+                            console.log("✅ 승인: 친구 페이지로 이동/새로고침");
+                            if (location.pathname === '/friends') {
+                                window.location.reload();
+                            } else {
+                                navigate('/friends');
+                            }
+                        },
+                        onCancel: () => {
+                            // [나중에] 클릭 시
+                            console.log("❌ 취소: 현재 페이지 유지 및 새로고침");
+                            // 거부 시에는 페이지 이동 없이 '현재 있는 곳'에서 새로고침만 수행
+                            window.location.reload();
+                        }
+                    });
+                }
+                // 비교가 끝난 후 ref와 state를 최신화
+                lastCountRef.current = newCount;
+                setUnreadCount(newCount);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
             }
         };
-
         fetchUnread();
-        const interval = setInterval(fetchUnread, 10000); //10초마다 fetch
-      
-        return () => clearInterval(interval);
-    }, [isAuthenticated]);
+
+        const interval = setInterval(() => {
+            console.log("⏰ 30초 경과: 알림 체크를 시작합니다.");
+            fetchUnread();
+        }, 30000);
+
+        return () => {
+            console.log("🛑 폴링 중단");
+            clearInterval(interval);
+        };
+    }, [isAuthenticated, notiRefreshTag, location.pathname, navigate]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (
@@ -175,7 +217,7 @@ export default function SnapHeader() {
                 클릭 시 "/" 경로(피드 페이지)로 이동.
                 스타일: 3xl 크기, 최대 굵기(font-black), 이탤릭, 자간 좁음(tracking-tighter) */}
             <Link to="/" className="text-3xl font-black tracking-tighter text-black dark:text-[#e5e5e5] italic">
-                SNAP
+                MYMORY
             </Link>
 
             {/* ── 우측: 알림 버튼 or 더미 공간 (로그인 상태에 따라 분기) ─────── */}

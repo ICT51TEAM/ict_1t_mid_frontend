@@ -89,7 +89,7 @@ export default function CreatePage() {
     const creationTypes = [
         {
             id: 'photo',
-            title: '사진첩 스냅',
+            title: '사진첩 만들기',
             description: '최대 4장의 사진으로 당신의 스타일을 기록하세요.',
             icon: Image,
             path: '/create-photo-album',  // 활성: 이 경로로 이동
@@ -98,11 +98,11 @@ export default function CreatePage() {
         },
         {
             id: 'canvas',
-            title: '글 캔버스',
+            title: '이미지 캔버스',
             description: '나만의 디자인 스냅을 만들어 사진첩에 추가하세요.',
             icon: BookOpen,
             path: '/create-canvas',        // Konva 라이브러리 활용 페이지로 이동
-            theme: 'bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35]',
+            theme: 'bg-black text-white',
             //isComingSoon: true            // 비활성: disabled + opacity-50
             badge: 'NEW STYLE'          // 노란색 뱃지 표시
         }
@@ -142,7 +142,7 @@ export default function CreatePage() {
                         {/* 메인 헤드라인 */}
                         <h2 className="text-3xl font-black italic tracking-tighter uppercase leading-tight">
                             Create Your <br />
-                            Unique Style Snap
+                            Unique Style Memory
                         </h2>
                     </div>
 
@@ -182,7 +182,7 @@ export default function CreatePage() {
                                 {/* 카드 좌측: 아이콘 + 텍스트 */}
                                 <div className="flex items-center gap-6 z-10">
                                     {/* 아이콘 박스 */}
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${type.id === 'photo' ? 'bg-white/10 border-white/20' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${type.id === 'photo' ? 'bg-white/10 border-white/20' : 'bg-white/10 border-white/20'}`}>
                                         <type.icon size={32} />
                                     </div>
                                     <div className="space-y-1">

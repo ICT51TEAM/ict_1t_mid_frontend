@@ -93,10 +93,10 @@ export default function GlobalNav() {
     // 순서대로 렌더링됨. path는 활성 여부 판별과 <Link to> 속성에 모두 사용.
     const leftItems = [
         { name: 'HOME', path: '/' },       // 메인 피드 페이지
-        { name: 'CREATE', path: '/create' },  // 게시물 작성 페이지
-        { name: 'FRIENDS', path: '/friends' }, // 친구 목록 페이지
-        { name: 'BADGES', path: '/badges' },  // 배지 목록 페이지
-        { name: 'FINANCE', path: '/finance' }, // 금융 정보 페이지
+        { name: '창작', path: '/create' },  // 게시물 작성 페이지
+        { name: '글벗', path: '/friends' }, // 친구 목록 페이지
+        { name: '달개', path: '/badges' },  // 배지 목록 페이지
+        { name: '금융', path: '/finance' }, // 금융 정보 페이지
     ];
 
     // ── 함수: handleLogout ────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ export default function GlobalNav() {
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="SEARCH"
+                                placeholder="#태그 검색"
                                 className="bg-[#222] text-white text-[11px] font-black italic tracking-widest px-4 py-1.5 rounded-full outline-none border border-transparent focus:border-white/30 w-[140px] transition-all focus:w-[200px] placeholder:text-gray-500"
                             />
                             {/* 검색 제출 버튼: 입력창 우측 내부에 절대 위치
@@ -212,7 +212,7 @@ export default function GlobalNav() {
                         </form>
 
                         {/* MY 링크: /profile 페이지로 이동 */}
-                        <Link to="/profile" className="text-[12px] font-black italic tracking-widest hover:text-white transition-colors">MY</Link>
+                        <Link to="/profile" className="text-[12px] font-black italic tracking-widest hover:text-white transition-colors">설정</Link>
                     </div>
 
                     {/* ── 로그인/로그아웃 버튼: 인증 상태에 따라 분기 ──────────

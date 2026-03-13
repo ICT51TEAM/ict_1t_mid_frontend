@@ -11,9 +11,22 @@
  * 2. 사진 이미지 캐러셀 (여러 장의 사진을 좌/우 버튼으로 탐색)
  * 3. 작성자 판별: authUser.id === snap.userId 이면 편집/삭제 메뉴 표시
  *    비작성자: "Follow" 버튼 표시
- * 4. 달개(Badge) 시스템: 8가지 이모지 달개를 게시물에 전달할 수 있음
- *    (현재 미구현, 클릭 시 "준비 중" 알림 표시)
+ * 4. 달개(Badge) 시스템: 백엔드 달개 유형을 로드하여 토글 방식으로 부여/취소
+ *    - 백엔드 API: POST /api/badges/albums/{albumId}/toggle?badgeTypeId=N
+ *    - 내가 이미 남긴 달개는 강조 스타일(bg-black)로 표시
+ *    - 클릭 시 토글: 부여 ↔ 취소
  * 5. 게시물 삭제: showConfirm으로 확인 후 DELETE API 호출 → '/' 이동
+ *
+ * @달개_시스템_흐름
+ * [1] 컴포넌트 마운트 시 badgeService.getAllTypes()로 달개 유형 목록 로드
+ *     → badgeTypes 상태에 저장 (DB의 BADGE_TYPES 테이블에서 가져온 유형들)
+ * [2] 스냅 상세 데이터 로드 후 badgeService.getAlbumDalgae(id)로 달개 데이터 로드
+ *     → badges: 해당 앨범의 달개 유형별 집계 [{emoji, name, count}]
+ *     → myBadges: 내가 남긴 달개 이모지 목록 ["❤️", "😢", ...]
+ * [3] 달개 버튼 클릭 시 handleGiveBadge(badgeTypeId) 호출
+ *     → badgeService.toggleAlbumDalgae(albumId, badgeTypeId) API 호출
+ *     → 응답으로 갱신된 badges/myBadges를 받아 상태 업데이트
+ *     → UI에 즉시 반영 (토글된 달개의 강조 스타일 변경 + 카운트 업데이트)
  *
  * @데이터_변환 (rawSnap → snap)
  * 백엔드 rawSnap 구조를 프론트엔드에서 사용하기 편한 snap 구조로 변환:
@@ -22,20 +35,19 @@
  * - user 객체 정규화:
  *   { id: userId, userId, username, profileImage: profileImageUrl, info: recordDate }
  * - description: rawSnap.bodyText
- * - badges: rawSnap.badges (달개 배열)
- * - likedByMe: rawSnap.likedByMe
- * - myBadge: rawSnap.myBadge (내가 이미 전달한 달개 이모지)
+ * - badges: rawSnap.badges (달개 배열) → 이후 badgeService.getAlbumDalgae()로 갱신
+ * - myBadges: 내가 이 앨범에 남긴 달개 이모지 목록 (배열)
  *
  * @state
- * - rawSnap   {object|null}  - 백엔드에서 받아온 원본 스냅 데이터
- * - isLoading {boolean}      - API 요청 중 여부 (로딩 화면 표시용)
- * - error     {any}          - 패칭 오류 (있으면 "Snap Not Found" 화면 표시)
- * - imgIndex  {number}       - 현재 캐러셀에서 표시 중인 이미지 인덱스 (0-based)
- * - showMenu  {boolean}      - 작성자용 편집/삭제 드롭다운 메뉴 표시 여부
- *
- * @상수
- * - AVAILABLE_BADGES: 사용자가 게시물에 전달할 수 있는 8가지 달개(이모지) 목록
- *   각 항목: { emoji: '💡', name: '영감' } 형태
+ * - rawSnap      {object|null}  - 백엔드에서 받아온 원본 스냅 데이터
+ * - isLoading    {boolean}      - API 요청 중 여부 (로딩 화면 표시용)
+ * - error        {any}          - 패칭 오류 (있으면 "Snap Not Found" 화면 표시)
+ * - imgIndex     {number}       - 현재 캐러셀에서 표시 중인 이미지 인덱스 (0-based)
+ * - showMenu     {boolean}      - 작성자용 편집/삭제 드롭다운 메뉴 표시 여부
+ * - badgeTypes   {Array}        - 백엔드에서 로드한 달개 유형 목록 [{id, name, emoji, ...}]
+ * - badges       {Array}        - 현재 앨범의 달개 집계 [{emoji, name, count}]
+ * - myBadges     {string[]}     - 내가 이 앨범에 남긴 달개 이모지 목록
+ * - togglingBadge {number|null} - 현재 토글 중인 달개 유형 ID (중복 클릭 방지용)
  *
  * @hooks
  * - useParams    : URL의 :id 파라미터 읽기
@@ -44,7 +56,7 @@
  * - useAlert     : showAlert(일반 알림), showConfirm(삭제 확인 모달)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchSnapDetail } from '@/api/snapService';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
@@ -52,112 +64,265 @@ import { MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Award, Plus, Ed
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 import { postService } from '@/api/postService';
+import { badgeService } from '@/api/badgeService';
+import { friendService } from '@/api/friendService';
 import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
-
-
-// ---------------------------------------------------------
-// [상수] AVAILABLE_BADGES - 달개 시스템에서 사용 가능한 8가지 이모지 목록
-// 사용자가 마음에 드는 스냅에 달개(이모지 반응)를 전달할 수 있다.
-// 현재는 미구현 상태로, 클릭 시 "준비 중" 알림이 표시됨.
-// 형식: { emoji: 이모지 문자열, name: 한글 이름 }
-// ---------------------------------------------------------
-const AVAILABLE_BADGES = [
-    { emoji: '💡', name: '영감' },   // 영감을 주는 코디
-    { emoji: '👏', name: '박수' },   // 박수를 보내는 반응
-    { emoji: '🔥', name: '열정' },   // 열정적인 스타일
-    { emoji: '😍', name: '취향' },   // 취향 저격 코디
-    { emoji: '👕', name: '코디' },   // 코디가 마음에 드는 경우
-    { emoji: '✨', name: '빛남' },   // 빛나는 스타일
-    { emoji: '👍', name: '추천' },   // 추천하고 싶은 코디
-    { emoji: '🙌', name: '응원' },   // 응원을 보내는 반응
-];
+import AlbumPhotoLayout, { sortAlbumPhotos } from '@/components/feed/AlbumPhotoLayout';
+import { getSavedAlbumLayout } from '@/utils/albumLayoutStore';
 
 export default function SnapDetailPage() {
     // ---------------------------------------------------------
     // [라우터 / 컨텍스트 훅 초기화]
-    // id         : URL /snap/:id 에서 추출한 스냅 고유 ID 문자열
-    // navigate   : 삭제 완료 후 '/', 에러 화면의 "GO BACK" 버튼에서 navigate(-1)
-    // authUser   : 현재 로그인한 사용자 객체. id로 작성자 여부 판별.
-    // showAlert  : 일반 알림 모달 표시
-    // showConfirm: 확인/취소 선택이 필요한 모달 표시 (삭제 확인용)
     // ---------------------------------------------------------
     const { id } = useParams();
     const navigate = useNavigate();
     const { user: authUser } = useAuth();
     const { showAlert, showConfirm } = useAlert();
 
+    console.log('[SnapDetailPage] route id =', id);
+    console.log('[SnapDetailPage] authUser =', authUser);
+
     // ---------------------------------------------------------
     // [상태 변수]
     // ---------------------------------------------------------
-
-    // rawSnap: 백엔드 API에서 받아온 원본 스냅 데이터 객체.
-    // null이면 아직 로딩 중 또는 에러 상태.
-    // 아래 snap 파생 변수로 변환되어 실제 렌더링에 사용됨.
     const [rawSnap, setRawSnap] = useState(null);
-
-    // isLoading: true이면 API 요청 진행 중 → "Loading Snap..." 전체 화면 표시
     const [isLoading, setIsLoading] = useState(true);
-
-    // error: API 호출 실패 시 에러 객체가 저장됨.
-    // null이 아니면 "Snap Not Found" 에러 화면 표시.
     const [error, setError] = useState(null);
-
-    // imgIndex: 현재 캐러셀에서 보이는 이미지의 인덱스 (0-based).
-    // 초기값: 0 (첫 번째 이미지)
-    // ChevronLeft 버튼: Math.max(0, i - 1) → 0 아래로 안 내려감
-    // ChevronRight 버튼: Math.min(images.length - 1, i + 1) → 마지막 인덱스 초과 방지
     const [imgIndex, setImgIndex] = useState(0);
-
-    // showMenu: 작성자용 편집/삭제 드롭다운 메뉴의 표시 여부.
-    // MoreHorizontal 버튼 클릭 시 토글.
-    // true: 메뉴 드롭다운 표시 (EDIT, DELETE 버튼)
     const [showMenu, setShowMenu] = useState(false);
 
     // ---------------------------------------------------------
+    // [달개(Badge) 관련 상태 변수]
+    //
+    // badgeTypes: 백엔드 BADGE_TYPES 테이블에서 가져온 달개 유형 목록
+    //   → badgeService.getAllTypes() 호출로 로드
+    //   → 달개 부여 버튼 그리드를 렌더링하는 데 사용
+    //   → 각 항목: { id, name, emoji, sortOrder, description }
+    //
+    // badges: 현재 앨범에 달린 달개의 유형별 집계 데이터
+    //   → badgeService.getAlbumDalgae(albumId) 또는 toggleAlbumDalgae() 응답으로 갱신
+    //   → 각 항목: { emoji: "❤️", name: "좋아요", count: 5 }
+    //   → "Badges Collected" 섹션에서 이모지 + 개수를 표시하는 데 사용
+    //
+    // myBadges: 현재 로그인 사용자가 이 앨범에 남긴 달개 이모지 문자열 배열
+    //   → 예: ["❤️", "💪"]
+    //   → 달개 버튼 중 내가 선택한 것을 강조 스타일(bg-black)로 표시하는 데 사용
+    //   → includes() 메서드로 특정 이모지가 내 달개인지 판별
+    //
+    // togglingBadge: 현재 토글 API 호출 중인 달개 유형 ID
+    //   → null이면 토글 중 아님 → 모든 달개 버튼 클릭 가능
+    //   → 숫자면 해당 ID의 토글이 진행 중 → 중복 클릭 방지 (disabled 처리)
+    //   → API 응답 후 다시 null로 초기화
+    // ---------------------------------------------------------
+    const [badgeTypes, setBadgeTypes] = useState([]);
+    const [badges, setBadges] = useState([]);
+    const [myBadges, setMyBadges] = useState([]);
+    const [togglingBadge, setTogglingBadge] = useState(null);
+
+    // 친구(글벗) 관련 상태
+    const [friendStatus, setFriendStatus] = useState('none'); // 'none' | 'pending' | 'accepted'
+    const [isRequesting, setIsRequesting] = useState(false);
+
+    console.log('[SnapDetailPage] rawSnap =', rawSnap);
+    console.log('[SnapDetailPage] isLoading =', isLoading);
+    console.log('[SnapDetailPage] error =', error);
+    console.log('[SnapDetailPage] showMenu =', showMenu);
+    console.log('[SnapDetailPage] badgeTypes =', badgeTypes);
+    console.log('[SnapDetailPage] badges =', badges);
+    console.log('[SnapDetailPage] myBadges =', myBadges);
+    console.log('[SnapDetailPage] togglingBadge =', togglingBadge);
+    console.log('[SnapDetailPage] friendStatus =', friendStatus);
+    console.log('[SnapDetailPage] isRequesting =', isRequesting);
+
+    // ---------------------------------------------------------
     // [useEffect #1] 스냅 상세 데이터 패칭
-    // 실행 시점: 컴포넌트 마운트 시 및 id(URL 파라미터) 변경 시
-    //
-    // 동작 순서:
-    //   [1] setIsLoading(true): 로딩 화면 표시
-    //   [2] setError(null): 이전 에러 초기화
-    //   [3] setImgIndex(0): 캐러셀 인덱스 초기화 (다른 스냅으로 이동 시 첫 번째 이미지부터 시작)
-    //   [4] fetchSnapDetail(id) 호출
-    //       → API: GET /api/albums/:id
-    //       → snapService 내부에서 apiClient 사용
-    //   [5] 성공: setRawSnap(data) → 원본 데이터 저장 → snap 파생 변수에서 변환
-    //   [6] 실패: setError(err) → 에러 화면 표시
-    //   [7] finally: setIsLoading(false) → 로딩 화면 종료
-    //
-    // 클린업: 없음 (간단한 단일 요청으로 취소 패턴 미적용)
     // ---------------------------------------------------------
     useEffect(() => {
-        // TODO: setIsLoading(true), setError(null), setImgIndex(0) 먼저 호출
-        // TODO: fetchSnapDetail(id) 호출 → 성공 시 setRawSnap(), 실패 시 setError()
-        // 힌트: finally에서 setIsLoading(false) 호출
+        console.log('[useEffect #1] 스냅 상세 조회 시작, id =', id);
+
+        setIsLoading(true);
+        setError(null);
+        setImgIndex(0);
+        fetchSnapDetail(id)
+            .then(res => {
+                console.log('[useEffect #1] fetchSnapDetail 성공, res =', res);
+                setRawSnap(res);
+            })
+            .catch(err => {
+                console.log('[useEffect #1] fetchSnapDetail 실패, err =', err);
+                setError(err);
+            })
+            .finally(() => {
+                console.log('[useEffect #1] 스냅 상세 조회 종료');
+                setIsLoading(false);
+            });
     }, [id]);
 
     // ---------------------------------------------------------
-    // [파생 데이터] rawSnap → snap 구조 변환
-    // rawSnap이 null이면 snap도 null (로딩/에러 상태에서 렌더링 차단).
+    // [useEffect #2] 달개 유형 목록 로드 (컴포넌트 마운트 시 1회)
     //
-    // 변환 내용:
-    // - images: rawSnap.photos 배열을 slotIndex 오름차순 정렬 후 photoUrl만 추출.
-    //   (.slice()로 원본 배열 변경 없이 정렬, 정렬 키 없으면 0으로 처리)
-    // - user: 사용자 관련 필드를 정규화된 user 객체로 묶음
-    //   (id와 userId 모두 rawSnap.userId로 설정, 일부 컴포넌트가 둘 다 참조할 수 있어서)
-    // - description: rawSnap.bodyText (스냅 본문 텍스트)
-    // - badges: rawSnap.badges (받은 달개 배열, 없으면 빈 배열)
-    // - likedByMe: rawSnap.likedByMe (좋아요 여부)
-    // - myBadge: rawSnap.myBadge (내가 전달한 달개 이모지, 없으면 null)
+    // badgeService.getAllTypes()를 호출하여 백엔드 BADGE_TYPES 테이블의
+    // 모든 달개 유형을 가져온다.
+    // 이 데이터는 "Give a badge" 섹션의 달개 버튼 그리드를 렌더링하는 데 사용된다.
+    //
+    // 응답 형태 (배열):
+    // [
+    //   { id: 1, category: 'BADGE', title: '좋아요', emoji: '❤️', ... },
+    //   { id: 2, category: 'BADGE', title: '슬퍼요', emoji: '😢', ... },
+    //   ...
+    // ]
+    //
+    // title 필드를 달개 버튼의 라벨로 사용하고,
+    // id 필드를 handleGiveBadge()에 전달하여 토글 API의 badgeTypeId로 사용한다.
     // ---------------------------------------------------------
+    useEffect(() => {
+        console.log('[useEffect #2] 달개 유형 목록 조회 시작');
+
+        badgeService.getAllTypes()
+            .then(res => {
+                console.log('[useEffect #2] getAllTypes 성공, res =', res);
+                setBadgeTypes(res);
+            })
+            .catch(err => {
+                console.log('[useEffect #2] getAllTypes 실패, err =', err);
+                setBadgeTypes([]);
+            });
+    }, []);
+
+    // ---------------------------------------------------------
+    // [useEffect #3] 앨범 달개 데이터 로드
+    //
+    // rawSnap이 로드된 후, badgeService.getAlbumDalgae(id)를 호출하여
+    // 해당 앨범의 달개 집계와 내가 남긴 달개 목록을 가져온다.
+    //
+    // rawSnap.badges에도 달개 데이터가 있지만, 이는 앨범 상세 API의
+    // 초기 데이터이고, 로그인 사용자의 myBadges 정보가 정확하지 않을 수 있다.
+    // 따라서 별도로 /api/badges/albums/{albumId} 엔드포인트를 호출하여
+    // 최신 달개 데이터를 가져온다.
+    //
+    // 응답 형태:
+    // {
+    //   badges: [{ emoji: "❤️", name: "좋아요", count: 3 }, ...],
+    //   myBadges: ["❤️", "💪"]
+    // }
+    // ---------------------------------------------------------
+    useEffect(() => {
+        if (!rawSnap) return;
+
+        console.log('[useEffect #3] rawSnap 로드됨, rawSnap =', rawSnap);
+        console.log('[useEffect #3] rawSnap.badges 초기 세팅 =', rawSnap.badges);
+
+        // rawSnap에서 초기 달개 데이터를 먼저 설정 (빠른 렌더링)
+        setBadges(rawSnap.badges || []);
+
+        console.log('[useEffect #3] getAlbumDalgae 호출, id =', id);
+
+        // 이후 별도 API로 정확한 달개 데이터를 가져와 덮어씌움
+        badgeService.getAlbumDalgae(id)
+            .then(res => {
+                console.log('[useEffect #3] getAlbumDalgae 성공, res =', res);
+                setBadges(res.badges || []);
+                setMyBadges(res.myBadges || []);
+            })
+            .catch(err => {
+                console.log('[useEffect #3] getAlbumDalgae 실패, err =', err);
+            });
+    }, [rawSnap, id]);
+
+    // ---------------------------------------------------------
+    // [useEffect #4] 친구 관계 확인
+    // rawSnap 로드 후, 작성자와의 친구 관계를 확인한다.
+    // ---------------------------------------------------------
+    useEffect(() => {
+        if (!rawSnap || !authUser?.id) return;
+        const authorId = rawSnap.userId;
+        if (authUser.id === authorId) return; // 본인 게시글이면 스킵
+
+        console.log('[useEffect #4] 친구 관계 확인 시작');
+        console.log('[useEffect #4] authorId =', authorId);
+        console.log('[useEffect #4] rawSnap.username =', rawSnap.username);
+
+        const checkFriendship = async () => {
+            try {
+                const friends = await friendService.listFriends();
+                console.log('[useEffect #4] listFriends 결과 =', friends);
+
+                const isFriend = Array.isArray(friends) && friends.some(
+                    f => String(f.friendId) === String(authorId)
+                );
+                console.log('[useEffect #4] isFriend =', isFriend);
+
+                if (isFriend) {
+                    console.log('[useEffect #4] 이미 글벗 상태');
+                    setFriendStatus('accepted');
+                    return;
+                }
+                // 내가 보낸 요청 중 대기 중인지 확인 (searchUsers로 확인)
+                // searchUsers는 isPending 필드를 반환
+                const results = await friendService.searchUsers(rawSnap.username);
+                console.log('[useEffect #4] searchUsers 결과 =', results);
+
+                const target = Array.isArray(results) && results.find(
+                    u => String(u.userId) === String(authorId)
+                );
+                console.log('[useEffect #4] target 사용자 =', target);
+
+                if (target?.isPending) {
+                    console.log('[useEffect #4] 친구 요청 대기중 상태');
+                    setFriendStatus('pending');
+                } else if (target?.isFriend) {
+                    console.log('[useEffect #4] 친구 수락 상태');
+                    setFriendStatus('accepted');
+                } else {
+                    console.log('[useEffect #4] 친구 아님');
+                    setFriendStatus('none');
+                }
+            } catch (err) {
+                console.log('[useEffect #4] 친구 관계 확인 실패, err =', err);
+                setFriendStatus('none');
+            }
+        };
+        checkFriendship();
+    }, [rawSnap, authUser?.id]);
+
+    // 친구 요청 핸들러
+    const handleFriendRequest = async () => {
+        console.log('[handleFriendRequest] 호출');
+        console.log('[handleFriendRequest] isRequesting =', isRequesting);
+        console.log('[handleFriendRequest] friendStatus =', friendStatus);
+        console.log('[handleFriendRequest] rawSnap.userId =', rawSnap?.userId);
+
+        if (isRequesting || friendStatus !== 'none') return;
+        setIsRequesting(true);
+        try {
+            await friendService.sendRequest(rawSnap.userId);
+            console.log('[handleFriendRequest] sendRequest 성공');
+            setFriendStatus('pending');
+            showAlert('글벗 요청을 보냈습니다.', '완료', 'success');
+        } catch (e) {
+            console.log('[handleFriendRequest] sendRequest 실패, e =', e);
+            if (e?.response?.status === 409) {
+                showAlert('이미 요청했거나 글벗입니다.', '알림', 'alert');
+                setFriendStatus('pending');
+            } else {
+                showAlert('글벗 요청에 실패했습니다.', '알림', 'alert');
+            }
+        } finally {
+            console.log('[handleFriendRequest] 요청 종료');
+            setIsRequesting(false);
+        }
+    };
+
+    // ---------------------------------------------------------
+    // [파생 데이터] rawSnap → snap 구조 변환
+    // ---------------------------------------------------------
+    const savedLayoutType = getSavedAlbumLayout(id);
+
     const snap = rawSnap ? {
         ...rawSnap,
-        // photos 배열을 slotIndex 순서로 정렬 후 URL만 추출
-        images: (rawSnap.photos || [])
-            .slice()
-            .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-            .map(p => p.photoUrl),
-        // 사용자 정보를 정규화된 객체로 변환
+        layoutType: savedLayoutType ?? rawSnap.layoutType,
+        photos: sortAlbumPhotos(rawSnap.photos || []),
+        images: sortAlbumPhotos(rawSnap.photos || []).map((photo) => photo.photoUrl || photo.thumbUrl),
         user: {
             id: rawSnap.userId,
             userId: rawSnap.userId,
@@ -166,54 +331,98 @@ export default function SnapDetailPage() {
             info: rawSnap.recordDate ?? '',
         },
         description: rawSnap.bodyText ?? '',
-        badges: rawSnap.badges ?? [],
-        likedByMe: rawSnap.likedByMe ?? false,
-        myBadge: rawSnap.myBadge ?? null,
     } : null;
 
+    console.log('[SnapDetailPage] 파생 snap =', snap);
+
     // ---------------------------------------------------------
-    // [handleGiveBadge] 달개 전달 핸들러 (현재 미구현)
-    // 8가지 달개 버튼 클릭 시 호출됨.
-    // 현재는 "달개 전달 기능은 준비 중입니다." 알림만 표시.
-    // 향후 구현 예정: API 호출로 실제 달개 전달 처리.
+    // [handleGiveBadge] 달개 토글 핸들러
+    //
+    // ── 동작 흐름 ──
+    // [1] togglingBadge가 null이 아니면 이미 토글 중이므로 무시 (중복 클릭 방지)
+    // [2] setTogglingBadge(badgeTypeId): 로딩 표시 시작 (해당 버튼에 opacity 적용)
+    // [3] badgeService.toggleAlbumDalgae(앨범ID, 달개유형ID) 호출
+    //     → 백엔드: POST /api/badges/albums/{albumId}/toggle?badgeTypeId=N
+    //     → 이미 같은 달개를 남겼으면 삭제(REMOVED), 없으면 생성(ADDED)
+    // [4] 응답 데이터로 badges, myBadges 상태를 갱신
+    //     → badges: 갱신된 달개 집계 → "Badges Collected" 섹션 업데이트
+    //     → myBadges: 내 달개 목록 → 달개 버튼 강조 스타일 업데이트
+    // [5] finally: setTogglingBadge(null) → 로딩 표시 해제
+    //
+    // ── useCallback 사용 이유 ──
+    // handleGiveBadge는 달개 버튼의 onClick에 전달되는 함수인데,
+    // 매 렌더링마다 새로운 함수가 생성되면 불필요한 리렌더링이 발생할 수 있다.
+    // useCallback으로 감싸서 id, togglingBadge가 변경될 때만 새 함수를 생성한다.
     // ---------------------------------------------------------
-    const handleGiveBadge = () => {
-        showAlert('달개 전달 기능은 준비 중입니다.', '알림');
-    };
+    const handleGiveBadge = useCallback(async (badgeTypeId) => {
+        console.log('[handleGiveBadge] 클릭된 badgeTypeId =', badgeTypeId);
+        console.log('[handleGiveBadge] 현재 togglingBadge =', togglingBadge);
+        console.log('[handleGiveBadge] 현재 id =', id);
+
+        // 같은 달개를 연속으로 누를 때만 무시 (다른 달개는 동시 가능)
+        if (togglingBadge === badgeTypeId) {
+            console.log('[handleGiveBadge] 이미 해당 달개 토글 중이라 return');
+            return;
+        }
+        setTogglingBadge(badgeTypeId);
+        console.log('[handleGiveBadge] togglingBadge 세팅 =', badgeTypeId);
+        try {
+            // 백엔드 토글 API 호출: 같은 달개가 있으면 삭제, 없으면 생성
+            const result = await badgeService.toggleAlbumDalgae(id, badgeTypeId);
+            console.log('[handleGiveBadge] toggleAlbumDalgae 성공, result =', result);
+
+            // 응답으로 받은 최신 달개 데이터로 상태 갱신 → UI 즉시 반영
+            setBadges(result.badges || []);
+            setMyBadges(result.myBadges || []);
+        } catch (e) {
+            console.log('[handleGiveBadge] toggleAlbumDalgae 실패, e =', e);
+            showAlert('달개 전달에 실패했습니다.', '알림', 'alert');
+        } finally {
+            // 토글 완료 후 로딩 상태 해제
+            console.log('[handleGiveBadge] 토글 종료, togglingBadge 초기화');
+            setTogglingBadge(null);
+        }
+    }, [id, togglingBadge, showAlert]);
 
     // ---------------------------------------------------------
     // [handleDelete] 스냅 삭제 핸들러
-    // 동작 순서:
-    //   [1] showConfirm("정말로 이 스냅을 삭제하시겠습니까?", 콜백, "스냅 삭제")
-    //       → 사용자가 확인을 누르면 콜백 실행
-    //   [2] (확인 시) postService.deletePost(id) 호출
-    //       → API: DELETE /api/albums/:id (또는 /api/posts/:id, postService 내부 구현에 따라 다름)
-    //   [3] 성공: "삭제되었습니다." 알림 → navigate('/') 메인 피드로 이동
-    //   [4] 실패: "삭제에 실패했습니다." 알림
     // ---------------------------------------------------------
     const handleDelete = () => {
-        // TODO: [1] showConfirm("정말로 이 스냅을 삭제하시겠습니까?", async 콜백, "스냅 삭제") 호출
-        // TODO: [2] 콜백 내부: postService.deletePost(id) 호출
-        // TODO: [3] 성공 시 showAlert('삭제되었습니다.', ...) + navigate('/')
-        // TODO: [4] 실패 시 showAlert('삭제에 실패했습니다.')
+        console.log('[handleDelete] 삭제 버튼 클릭, id =', id);
+        showConfirm({
+            message: '정말로 이 게시글을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+            title: '게시글 삭제',
+            type: 'alert',
+            confirmText: '삭제',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    await postService.deletePost(id);
+                    console.log('[handleDelete] deletePost 성공');
+                    showAlert('게시글이 삭제되었습니다.', '완료', 'success');
+                    navigate('/');
+                } catch (e) {
+                    console.log('[handleDelete] deletePost 실패, e =', e);
+                    showAlert('게시글 삭제에 실패했습니다.', '오류', 'alert',);
+                }
+            },
+        });
     };
 
     // ---------------------------------------------------------
     // [조기 반환 렌더링]
-    // isLoading: 전체 화면 로딩 텍스트 ("Loading Snap..." + pulse 애니메이션)
-    // error 또는 snap이 null: "Snap Not Found" 에러 화면 + "GO BACK" 버튼
     // ---------------------------------------------------------
     if (isLoading) return <ResponsiveLayout showTabs={false}><div className="p-20 text-center font-bold italic opacity-20 animate-pulse uppercase tracking-widest">Loading Snap...</div></ResponsiveLayout>;
 
     if (error || !snap) return (
         <ResponsiveLayout showTabs={false}>
             <div className="p-20 text-center">
-                <p className="text-[#a3b0c1] font-black italic tracking-widest uppercase mb-4">Snap Not Found</p>
+                <p className="text-[#a3b0c1] font-black italic tracking-widest uppercase mb-4">해당 스토리를 찾지 못했습니다.</p>
                 <button
                     onClick={() => navigate(-1)}
                     className="h-10 px-6 bg-black text-white rounded-full text-[12px] font-black italic tracking-widest uppercase"
                 >
-                    GO BACK
+                    이전 페이지로....
                 </button>
             </div>
         </ResponsiveLayout>
@@ -221,38 +430,21 @@ export default function SnapDetailPage() {
 
     // ---------------------------------------------------------
     // [파생 값 계산]
-    // isAuthor: 현재 로그인 사용자(authUser.id)와 스냅 작성자(snap.user.id)가 같으면 true
-    //           → true: 편집/삭제 메뉴 표시
-    //           → false: "Follow" 버튼 표시
-    // myBadge: 내가 이미 전달한 달개 이모지 (null이면 전달 안 함)
-    //          → 달개 버튼 중 내가 선택한 것은 강조 스타일(bg-black) 적용
-    // totalBadges: 모든 달개의 count 합산 → "TOTAL N" 표시에 사용
     // ---------------------------------------------------------
-    const isAuthor = authUser?.id === snap?.user?.id;
-    const myBadge = snap?.myBadge ?? null;
-    const totalBadges = (snap?.badges || []).reduce((acc, curr) => acc + (curr.count || 0), 0);
+    const isAuthor = String(authUser?.id) === String(snap?.user?.id);
+    // totalBadges: badges 배열의 모든 count를 합산 → "TOTAL N" 표시에 사용
+    const totalBadges = badges.reduce((acc, curr) => acc + (curr.count || 0), 0);
 
-    // ---------------------------------------------------------
-    // [JSX 렌더링]
-    // ResponsiveLayout: showTabs={false} → 하단 탭바 숨김 (상세 페이지에서는 탭 불필요)
-    // ---------------------------------------------------------
+    console.log('[SnapDetailPage] isAuthor =', isAuthor);
+    console.log('[SnapDetailPage] totalBadges =', totalBadges);
+
     return (
         <ResponsiveLayout showTabs={false}>
             <div className="bg-white dark:bg-[#101215] min-h-screen">
 
-                {/* ── 작성자 정보 헤더 ─────────────────────────────────
-                    sticky top-[60px]: 스크롤 시 상단에 고정 (TopNav 아래, z-20)
-                    [왼쪽] 작성자 아바타 + 이름 + 날짜 → /friend/:userId 로 이동하는 Link
-                    [오른쪽]
-                    - isAuthor === true: MoreHorizontal 버튼 → showMenu 토글
-                      showMenu가 true이면 드롭다운 메뉴 표시:
-                        - "EDIT": /snap/:id/edit 로 이동
-                        - "DELETE": handleDelete() 호출
-                    - isAuthor === false: "Follow" 버튼 (현재 기능 미구현)
-                ─────────────────────────────────────────────────────── */}
-                {/* User Header */}
+
+                {/* ── 작성자 정보 헤더 ── */}
                 <div className="flex justify-between items-center px-4 py-4 sticky top-[60px] bg-white dark:bg-[#1c1f24] z-20 border-b border-[#f3f3f3] dark:border-[#292e35]">
-                    {/* 작성자 아바타 + 이름/날짜 (클릭 시 작성자 프로필로 이동) */}
                     <Link to={`/friend/${snap?.user?.id || snap?.user?.userId}`} className="flex items-center gap-3 hover:opacity-70 transition-opacity">
                         <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#f3f3f3]">
                             <img
@@ -268,68 +460,88 @@ export default function SnapDetailPage() {
                         </div>
                     </Link>
 
-                    {/* 오른쪽 액션: 작성자면 메뉴, 타인이면 팔로우 버튼 */}
                     <div className="flex items-center gap-2">
                         {isAuthor ? (
-                            /* 작성자 전용: 점 3개 메뉴 버튼 + 드롭다운 */
                             <div className="relative">
-                                <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-[#ccd3db] h-8 w-8 flex items-center justify-center bg-[#f3f3f3] rounded-full hover:text-black transition-colors">
+                                <button onClick={() => {
+                                    console.log('[UI] 더보기 메뉴 클릭, 현재 showMenu =', showMenu);
+                                    setShowMenu(!showMenu);
+                                }} className="p-2 text-[#ccd3db] h-8 w-8 flex items-center justify-center bg-[#f3f3f3] rounded-full hover:text-black transition-colors">
                                     <MoreHorizontal size={20} />
                                 </button>
-                                {/* 드롭다운 메뉴: showMenu가 true일 때만 표시 */}
                                 {showMenu && (
                                     <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-[#1c1f24] border border-[#f3f3f3] dark:border-[#292e35] shadow-xl rounded-lg z-30 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                        {/* EDIT: 스냅 수정 페이지로 이동 */}
-                                        <button onClick={() => navigate(`/snap/${id}/edit`)} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 hover:bg-[#fafafa] dark:hover:bg-[#292e35]"><Edit2 size={14} /> EDIT</button>
-                                        {/* DELETE: 삭제 확인 모달 후 삭제 API 호출 */}
-                                        <button onClick={handleDelete} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} /> DELETE</button>
+                                        <button onClick={() => {
+                                            console.log('[UI] EDIT 클릭, 이동 경로 =', `/snap/${id}/edit`);
+                                            navigate(`/snap/${id}/edit`);
+                                        }} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 hover:bg-[#fafafa] dark:hover:bg-[#292e35]"><Edit2 size={14} /> 수정</button>
+                                        <button onClick={handleDelete} className="w-full px-4 py-3 text-[13px] font-bold flex items-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={14} /> 삭제</button>
                                     </div>
                                 )}
                             </div>
+                        ) : friendStatus === 'accepted' ? (
+                            <button disabled className="h-8 px-4 bg-gray-200 text-gray-600 rounded-full text-[12px] font-black italic tracking-widest uppercase flex items-center gap-1 cursor-default">
+                                글벗
+                            </button>
+                        ) : friendStatus === 'pending' ? (
+                            <button disabled className="h-8 px-4 bg-gray-400 text-white rounded-full text-[12px] font-black italic tracking-widest uppercase flex items-center gap-1 opacity-60 cursor-not-allowed">
+                                요청 대기중
+                            </button>
                         ) : (
-                            /* 비작성자: Follow 버튼 (현재 기능 미구현) */
-                            <button className="h-8 px-4 bg-black text-white rounded-full text-[12px] font-black italic tracking-widest uppercase flex items-center gap-1 hover:scale-105 active:scale-95 transition-all">
-                                <Plus size={12} /> Follow
+                            <button
+                                onClick={handleFriendRequest}
+                                disabled={isRequesting}
+                                className="h-8 px-4 bg-black text-white rounded-full text-[12px] font-black italic tracking-widest uppercase flex items-center gap-1 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                <Plus size={12} /> ADD글벗
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* ── 이미지 캐러셀 ────────────────────────────────────
-                    현재 imgIndex에 해당하는 이미지를 전체 너비로 표시.
-                    이미지 로드 실패 시: DEFAULT_POST_IMAGE로 대체.
-                    사진이 2장 이상일 때만 좌/우 버튼과 인덱스 표시 렌더링:
-                    - ChevronLeft 버튼: Math.max(0, i-1) → 첫 번째에서 비활성화(disabled)
-                    - ChevronRight 버튼: Math.min(length-1, i+1) → 마지막에서 비활성화
-                    - 우측 하단 인덱스 뱃지: "{imgIndex+1} / {총 사진 수}"
-                ─────────────────────────────────────────────────────── */}
-                {/* Image Carousel */}
-                <div className="relative w-full bg-[#f9f9f9] dark:bg-[#101215]">
+                {/* ── 이미지 캐러셀 ── */}
+                <div className="bg-[#f9f9f9] dark:bg-[#101215] p-3 md:p-4">
+                    <div className="mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-[#1c1f24] shadow-sm">
+                        <div className="aspect-[4/5] md:aspect-[16/10]">
+                            <AlbumPhotoLayout
+                                photos={snap.photos}
+                                layoutType={snap.layoutType}
+                                fallbackImageUrl={DEFAULT_POST_IMAGE}
+                                imageClassName="object-cover"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {false && <>
+                <div className="relative w-full bg-[#f9f9f9] dark:bg-[#101215]" style={{ height: '60vh' }}>
                     <img
                         src={snap.images[imgIndex] || DEFAULT_POST_IMAGE}
-                        className="w-full h-auto object-contain"
+                        className="w-full h-full object-contain"
                         onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
                     />
-                    {/* 사진이 2장 이상일 때만 캐러셀 컨트롤 렌더링 */}
                     {snap.images.length > 1 && (
                         <>
-                            {/* 이전 이미지 버튼 (첫 번째 이미지에서 비활성화) */}
                             <button
-                                onClick={() => setImgIndex(i => Math.max(0, i - 1))}
+                                onClick={() => {
+                                    console.log('[UI] 이전 이미지 클릭, 현재 imgIndex =', imgIndex);
+                                    setImgIndex(i => Math.max(0, i - 1));
+                                }}
                                 disabled={imgIndex === 0}
                                 className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center disabled:opacity-30"
                             >
                                 <ChevronLeft size={18} />
                             </button>
-                            {/* 다음 이미지 버튼 (마지막 이미지에서 비활성화) */}
                             <button
-                                onClick={() => setImgIndex(i => Math.min(snap.images.length - 1, i + 1))}
+                                onClick={() => {
+                                    console.log('[UI] 다음 이미지 클릭, 현재 imgIndex =', imgIndex);
+                                    setImgIndex(i => Math.min(snap.images.length - 1, i + 1));
+                                }}
                                 disabled={imgIndex === snap.images.length - 1}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 text-white rounded-full flex items-center justify-center disabled:opacity-30"
                             >
                                 <ChevronRight size={18} />
                             </button>
-                            {/* 현재 이미지 위치 표시 뱃지: "1 / 3" 형태 */}
                             <div className="absolute bottom-4 right-4 z-10 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-black italic tracking-widest uppercase">
                                 {imgIndex + 1} / {snap.images.length}
                             </div>
@@ -337,12 +549,8 @@ export default function SnapDetailPage() {
                     )}
                 </div>
 
-                {/* ── 연관 상품 가로 스크롤 ────────────────────────────
-                    snap.products 배열이 있을 때 표시 (없으면 빈 영역).
-                    overflow-x-auto + scrollbar-hide: 가로 스크롤 가능, 스크롤바 숨김.
-                    각 상품 카드: 이미지 + 브랜드명 + 상품명 + "BUY NOW" 클릭 가능.
-                ─────────────────────────────────────────────────────── */}
-                {/* Products */}
+                {/* ── 연관 상품 ── */}
+                </>}
                 <div className="flex overflow-x-auto gap-4 px-4 py-6 scrollbar-hide border-b border-[#f3f3f3] dark:border-[#292e35]">
                     {snap?.products?.map(p => (
                         <div key={p.id} className="shrink-0 w-[260px] flex gap-4 bg-[#fafafa] dark:bg-[#1c1f24] p-3 rounded-xl border border-[#f3f3f3] dark:border-[#292e35] relative group cursor-pointer hover:border-black dark:hover:border-[#e5e5e5] transition-all">
@@ -357,73 +565,132 @@ export default function SnapDetailPage() {
                     ))}
                 </div>
 
-                {/* ── 본문 텍스트 + 태그 + 달개 시스템 ────────────────
-                    p-6 패딩 컨테이너 내부:
-
-                    [본문 텍스트]
-                    snap.description (rawSnap.bodyText): 스냅 본문 텍스트 표시
-
-                    [태그 목록]
-                    snap.tags 배열 → 각 태그를 "#태그" 형태로 파란색으로 표시
-
-                    [달개 시스템 (Badge System)]
-                    - "Badges Collected" 헤딩 + "TOTAL N" 표시
-                    - 현재 받은 달개 목록: 이모지 + 개수
-                      (없으면 "No Badges Yet" 텍스트)
-                    - "Give a badge" 섹션: AVAILABLE_BADGES 8개를 4열 그리드로 표시
-                      - 각 버튼: 이모지 + 이름
-                      - 내가 이미 선택한 달개(myBadge === ab.emoji): 강조 스타일(bg-black)
-                      - 클릭 시: handleGiveBadge() → "준비 중" 알림
-                ─────────────────────────────────────────────────────── */}
+                {/* ── 본문 텍스트 + 태그 + 달개 시스템 ── */}
                 <div className="p-6">
-                    {/* 스냅 본문 텍스트 */}
                     <p className="text-[15px] leading-relaxed mb-6 font-medium text-[#424a54]">{snap?.description}</p>
 
-                    {/* 태그 목록: #태그명 형태로 파란색 표시 */}
                     <div className="flex flex-wrap gap-2 mb-10">
                         {snap?.tags?.map(t => <span key={t} className="text-[#0078ff] text-[15px] font-bold">#{t}</span>)}
                     </div>
 
-                    {/* 달개(Badge) 시스템 섹션 */}
+                    {/* ── 달개(Badge) 시스템 섹션 ──────────────────────────
+        이 섹션은 두 영역으로 구성된다:
+
+        [1] Badges Collected (수집된 달개 목록)
+            - badges 배열을 순회하며 각 달개의 이모지와 개수를 표시
+            - badges가 빈 배열이면 "No Badges Yet" 메시지 표시
+            - totalBadges: 모든 달개의 count 합산 → "TOTAL N" 표시
+
+        [2] Give a badge (달개 부여 버튼 그리드)
+            - badgeTypes 배열(백엔드 BADGE_TYPES)을 4열 그리드로 표시
+            - 각 버튼: 이모지 + 유형명(title)
+            - myBadges.includes(bt.emoji)가 true이면:
+              → 내가 이미 이 달개를 남긴 상태 → bg-black 강조 스타일
+            - 클릭 시 handleGiveBadge(bt.id) 호출
+              → 토글: 이미 있으면 삭제(REMOVED), 없으면 생성(ADDED)
+            - togglingBadge === bt.id 이면 opacity-50으로 로딩 표시
+
+        [작성자 본인 제한]
+            - isAuthor === true 이면 달개 부여 영역 전체를 opacity-40으로 흐리게 표시
+            - 클릭 차단 오버레이(z-10)로 버튼 클릭을 물리적으로 막음
+            - 버튼에 disabled 처리 추가 (이중 차단)
+            - isSelected 강조 스타일 적용 안 함 (본인은 선택 상태 없음)
+            - "본인 게시글에는 달개를 부여할 수 없습니다" 안내 문구 표시
+    ─────────────────────────────────────────────────────── */}
                     <div className="bg-[#fafafa] dark:bg-[#1c1f24] rounded-2xl p-6 border border-[#f3f3f3] dark:border-[#292e35]">
-                        {/* 달개 헤더: Award 아이콘 + "Badges Collected" + 총 개수 */}
+
+                        {/* 달개 헤더: Award 아이콘 + "달개 부여하기" + 총 개수 */}
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
-                                <Award className="text-black" size={20} />
-                                <h3 className="text-[15px] font-black italic tracking-widest uppercase">Badges Collected</h3>
+                                <Award className="text-black dark:text-white" size={20} />
+                                <h3 className="text-[15px] font-black italic tracking-widest uppercase">달개 부여하기</h3>
                             </div>
-                            <span className="text-[13px] font-black italic tracking-tighter text-black">TOTAL {totalBadges}</span>
+                            <span className="text-[13px] font-black italic tracking-tighter text-black dark:text-white">총계 {totalBadges}</span>
                         </div>
 
-                        {/* 수집된 달개 목록: 이모지 + 개수 표시 */}
+                        {/* 수집된 달개 목록: badges 배열의 각 항목을 이모지 + 개수로 표시
+            badges가 빈 배열이면 "No Badges Yet" 텍스트 표시 */}
                         <div className="flex flex-wrap gap-3 mb-8">
-                            {snap.badges?.length > 0 ? snap.badges.map(b => (
+                            {badges.length > 0 ? badges.map(b => (
                                 <div key={b.emoji} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#292e35] rounded-lg border border-[#f3f3f3] dark:border-[#424a54] shadow-sm">
                                     <span className="text-xl">{b.emoji}</span>
                                     <span className="text-[12px] font-black italic tracking-tighter">{b.count}</span>
                                 </div>
-                            )) : <p className="text-[12px] text-[#ccd3db] font-bold italic tracking-widest text-center w-full py-4 uppercase">No Badges Yet</p>}
+                            )) : (
+                                <p className="text-[12px] text-[#ccd3db] font-bold italic tracking-widest text-center w-full py-4 uppercase">
+                                    No Badges Yet
+                                </p>
+                            )}
                         </div>
 
-                        {/* 달개 전달 섹션: 8가지 달개를 4열 그리드로 표시 */}
-                        <p className="text-[12px] font-black italic tracking-widest uppercase text-[#ccd3db] mb-4 text-center">Give a badge</p>
-                        <div className="grid grid-cols-4 gap-3 max-w-[360px] mx-auto">
-                            {AVAILABLE_BADGES.map(ab => (
-                                <button
-                                    key={ab.emoji}
-                                    onClick={() => handleGiveBadge(ab.emoji)}
-                                    /* 내가 이미 선택한 달개는 강조 스타일, 나머지는 기본 스타일 */
-                                    className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${myBadge === ab.emoji ? 'bg-black text-[#e5e5e5] shadow-xl scale-110' : 'bg-white dark:bg-[#292e35] border border-[#f3f3f3] dark:border-[#424a54] text-[#ccd3db] hover:border-black dark:hover:border-[#e5e5e5] hover:text-black dark:hover:text-[#e5e5e5]'}`}
-                                >
-                                    <span className="text-2xl">{ab.emoji}</span>
-                                    <span className="text-[10px] font-bold uppercase tracking-tighter">{ab.name}</span>
-                                </button>
-                            ))}
+                        {/* 달개 부여 섹션:
+            isAuthor일 때:
+              - 래퍼 div에 opacity-40 + cursor-not-allowed 로 흐리게 표시
+              - 절대 위치 오버레이(z-10)로 버튼 클릭을 물리적으로 차단
+              - "본인 게시글에는 달개를 부여할 수 없습니다" 안내 문구 노출
+            isAuthor가 아닐 때:
+              - 정상 동작, myBadges 기반 isSelected 강조 스타일 적용
+              - handleGiveBadge(bt.id) 호출로 토글 API 실행 */}
+                        <div className={`relative ${isAuthor ? 'opacity-40 cursor-not-allowed' : ''}`}>
+
+                            {/* 작성자 본인일 때만 렌더링되는 클릭 차단 오버레이.
+                z-10으로 버튼 그리드 위에 올라가 모든 클릭 이벤트를 흡수.
+                중앙에 안내 문구를 표시하여 왜 비활성화됐는지 사용자에게 알림. */}
+                            {isAuthor && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center">
+                                    <span className="text-[11px] font-black italic tracking-widest uppercase text-[#424a54] dark:text-[#a3b0c1] bg-white/80 dark:bg-[#1c1f24]/80 px-4 py-2 rounded-full border border-[#f3f3f3] dark:border-[#292e35]">
+                                        본인 게시글에는 달개를 부여할 수 없습니다
+                                    </span>
+                                </div>
+                            )}
+
+                            <p className="text-[12px] font-black italic tracking-widest uppercase text-[#ccd3db] mb-4 text-center">
+                                부여할 달개를 선택하세요
+                            </p>
+
+                            {/* 달개 유형 버튼 그리드 (4열)
+                - isAuthor가 아닐 때: myBadges.includes(bt.emoji)로 isSelected 판별
+                - isAuthor일 때: isSelected 항상 false (강조 스타일 미적용)
+                - disabled 조건: togglingBadge 진행 중 OR 작성자 본인 (이중 차단)
+                - togglingBadge === bt.id: 해당 버튼만 opacity-50 로딩 표시 */}
+                            <div className="grid grid-cols-4 gap-3 max-w-[360px] mx-auto">
+                                {badgeTypes.map(bt => {
+                                    // myBadges 배열에 이 달개의 이모지가 포함되어 있으면 내가 이미 선택한 달개
+                                    // isAuthor이면 본인 게시글이므로 선택 상태를 표시하지 않음
+                                    const isSelected = !isAuthor && myBadges.includes(bt.emoji);
+                                    return (
+                                        <button
+                                            key={bt.id}
+                                            onClick={() => {
+                                                // 작성자 본인이면 클릭 무시 (오버레이가 막지만 이중 방어)
+                                                if (isAuthor) return;
+                                                handleGiveBadge(bt.id);
+                                            }}
+                                            // togglingBadge 진행 중이거나 작성자 본인이면 버튼 비활성화
+                                            disabled={togglingBadge === bt.id || isAuthor}
+                                            className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all ${isSelected
+                                                    ? 'bg-black text-[#e5e5e5] shadow-xl scale-110'
+                                                    : 'bg-white dark:bg-[#292e35] border border-[#f3f3f3] dark:border-[#424a54] text-[#ccd3db]'
+                                                } ${
+                                                // 비작성자일 때만 hover 스타일 적용
+                                                !isAuthor
+                                                    ? 'hover:border-black dark:hover:border-[#e5e5e5] hover:text-black dark:hover:text-[#e5e5e5]'
+                                                    : ''
+                                                } ${
+                                                // 현재 토글 중인 달개 버튼만 흐리게 표시
+                                                togglingBadge === bt.id ? 'opacity-50' : ''
+                                                }`}
+                                        >
+                                            <span className="text-2xl">{bt.emoji}</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-tighter">{bt.title || bt.name}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 하단 여백: 내비게이션 바와 콘텐츠가 겹치지 않도록 */}
                 <div className="h-20"></div>
             </div>
         </ResponsiveLayout>

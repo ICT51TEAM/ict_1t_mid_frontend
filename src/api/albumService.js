@@ -114,47 +114,74 @@ export const albumService = {
    */
   // payload: { userId, title, bodyText, recordDate, visibility, layoutType, photoIds, slotIndexes, tags }
   createAlbum: async (payload) => {
+    console.log('[albumService.createAlbum] 호출');
+    console.log('[albumService.createAlbum] payload =', payload);
+
     // TODO: POST /albums 를 호출하고 data를 반환하세요.
     const response = await apiClient.post('/albums', payload);
-    const data=response.data;
+    console.log('[albumService.createAlbum] response =', response);
+
+    const data = response.data;
+    console.log('[albumService.createAlbum] data =', data);
+
     return data;
     // 힌트: const { data } = await apiClient.post('/albums', payload); return data;
   },
 
   /**
-   * [2] 앨범 상세 조회
-   *
-   * 특정 앨범 ID로 해당 앨범의 모든 상세 정보를 가져온다.
-   * 사진 목록, 태그, 작성자 정보, 레이아웃 등 앨범 렌더링에 필요한
-   * 모든 데이터가 포함된다.
-   *
-   * @param {number|string} albumId - 조회할 앨범의 고유 ID
-   *   URL 경로 파라미터로 사용되므로 숫자 또는 숫자형 문자열 모두 가능
-   *
-   * @returns {Promise<Object>} 앨범 상세 데이터 (AlbumDetailResponse)
-   *   {
-   *     albumId    : number,
-   *     userId     : number,
-   *     username   : string,
-   *     title      : string,
-   *     bodyText   : string,
-   *     recordDate : string,
-   *     layoutType : string,
-   *     visibility : string,
-   *     photos     : [{ photoId, photoUrl, thumbUrl, slotIndex }],
-   *     tags       : string[],
-   *     createdAt  : string
-   *   }
-   *
-   * HTTP: GET /api/albums/{albumId}
-   * 인증 필요: 예 (PRIVATE 앨범은 작성자 본인만 조회 가능)
-   * 성공: 200 OK
-   * 실패: 401 (미인증), 403 (접근 권한 없음), 404 (앨범 없음)
-   */
-  getAlbumDetail: async (albumId) => {
-    // TODO: GET /albums/{albumId} 를 호출하고 data를 반환하세요.
-    const response = await apiClient.get(`/albums/${albumId}`)
+     * 앨범(사진 구성) 수정 API
+     * @param {number} postId - 게시글 ID
+     * @param {Array} photoIds - 유지될 사진 ID 배열
+     * @param {Array} slotIndexes - 사진이 위치할 슬롯 인덱스 배열
+     */
+  updateAlbum: async (albumId, updateData) => {
+    const response = await apiClient.put(`/albums/${albumId}`, updateData);
     return response.data;
+  },
+
+
+  /**
+  * [2] 앨범 상세 조회
+  *
+  * 특정 앨범 ID로 해당 앨범의 모든 상세 정보를 가져온다.
+  * 사진 목록, 태그, 작성자 정보, 레이아웃 등 앨범 렌더링에 필요한
+  * 모든 데이터가 포함된다.
+  *
+  * @param {number|string} albumId - 조회할 앨범의 고유 ID
+  *   URL 경로 파라미터로 사용되므로 숫자 또는 숫자형 문자열 모두 가능
+  *
+  * @returns {Promise<Object>} 앨범 상세 데이터 (AlbumDetailResponse)
+  *   {
+  *     albumId    : number,
+  *     userId     : number,
+  *     username   : string,
+  *     title      : string,
+  *     bodyText   : string,
+  *     recordDate : string,
+  *     layoutType : string,
+  *     visibility : string,
+  *     photos     : [{ photoId, photoUrl, thumbUrl, slotIndex }],
+  *     tags       : string[],
+  *     createdAt  : string
+  *   }
+  *
+  * HTTP: GET /api/albums/{albumId}
+  * 인증 필요: 예 (PRIVATE 앨범은 작성자 본인만 조회 가능)
+  * 성공: 200 OK
+  * 실패: 401 (미인증), 403 (접근 권한 없음), 404 (앨범 없음)
+  */
+  getAlbumDetail: async (albumId) => {
+    console.log('[albumService.getAlbumDetail] 호출');
+    console.log('[albumService.getAlbumDetail] albumId =', albumId);
+
+    // TODO: GET /albums/{albumId} 를 호출하고 data를 반환하세요.
+    const response = await apiClient.get(`/albums/${albumId}`);
+    console.log('[albumService.getAlbumDetail] response =', response);
+
+    const data = response.data;
+    console.log('[albumService.getAlbumDetail] data =', data);
+
+    return data;
     // 힌트: const { data } = await apiClient.get(`/albums/${albumId}`); return data;
   },
 };

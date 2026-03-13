@@ -86,8 +86,9 @@ import { ArrowLeft, Grid, Loader2, Plus } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { friendService } from '@/api/friendService';
 import apiClient from '@/api/apiClient';
-import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
 import { useAlert } from '@/context/AlertContext';
+import AlbumPreviewLink from '@/components/feed/AlbumPreviewLink';
 
 export default function FriendProfilePage() {
     // URL 파라미터에서 대상 유저 ID 추출
@@ -143,6 +144,8 @@ export default function FriendProfilePage() {
      * true 이면 글벗 버튼에 Loader2 스피너 표시 및 버튼 disabled.
      */
     const [isRequesting, setIsRequesting] = useState(false);
+    const getPostAuthorId = (post) => String(post?.authorId ?? post?.userId ?? '');
+    const getPostId = (post) => post?.albumId ?? post?.id;
 
     /**
      * @state requestStatus
@@ -223,7 +226,7 @@ export default function FriendProfilePage() {
         // [API 2] apiClient.get('/albums/feed', ... )
         apiClient.get('/albums/feed', { params: { type: 'photo' } })
             .then(response => {
-                const filtered = (response.data || []).filter(post => String(post.authorId) === String(friendId));
+                const filtered = (response.data || []).filter((post) => getPostAuthorId(post) === String(friendId));
                 setUserPosts(filtered);
             })
             .catch(() => setUserPosts([]))
@@ -277,8 +280,6 @@ export default function FriendProfilePage() {
             }
             // [3] 친구 신청 동작 (아무 관계가 없는 경우)
             else if (requestStatus === 'none') {
-                const response = await friendService.sendRequest(friendId);
-
                 await friendService.sendRequest(friendId);
                 // 성공 시 상태를 즉시 pending으로 변경하여 중복 클릭 방지
                 setRequestStatus('pending');
@@ -288,15 +289,13 @@ export default function FriendProfilePage() {
             console.error('친구 요청 오류:', error);
 
             // [4] 서버에서 보낸 구체적인 에러 메시지 추출
-            // java.lang.IllegalArgumentException 메시지가 error.response.data에 담겨 옵니다.
-            const errorMessage = error.response?.data || '오류가 발생했습니다. 다시 시도해주세요.';
-            const serverMessage = error.response?.data;
+            const errorData = error.response?.data;
+            const errorMessage = typeof errorData === 'string' ? errorData : (errorData?.message || '');
+
             // 만약 이미 요청된 상태라는 에러라면 화면 상태를 갱신해주는 것이 좋습니다.
-            if (errorMessage.includes("이미 친구이거나 요청이 진행 중")) {
-                showAlert(serverMessage || '이미 처리된 요청입니다.', '알림', 'info');
-                if (serverMessage?.includes("이미")) {
-                    setRequestStatus('pending');
-                }
+            if (errorMessage && errorMessage.includes("이미 친구이거나 요청이 진행 중")) {
+                showAlert(errorMessage || '이미 처리된 요청입니다.', '알림', 'info');
+                setRequestStatus('pending');
             } else {
                 showAlert('오류가 발생했습니다. 잠시 후 다시 시도해주세요.', '오류', 'alert');
             }
@@ -482,18 +481,16 @@ export default function FriendProfilePage() {
                     ) : userPosts.length > 0 ? (
                         /* 게시물 썸네일 그리드 (3열, 3:4 비율) */
                         userPosts.map((post) => (
-                            <div
-                                key={post.id}
-                                onClick={() => navigate(`/snap/${post.id}`)}
-                                className="w-1/3 p-0.5 aspect-[3/4] relative group cursor-pointer overflow-hidden"
-                            >
-                                <img
-                                    src={getImageUrl(post.imageUrl) || DEFAULT_POST_IMAGE}
-                                    alt="post"
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
-                                />
-                            </div>
+                            <AlbumPreviewLink
+                                key={getPostId(post)}
+                                album={post}
+                                to={`/snap/${getPostId(post)}`}
+                                containerClassName="w-1/3 p-0.5"
+                                linkClassName="group block"
+                                mediaClassName="aspect-[3/4]"
+                                imageClassName="transition-transform duration-500 group-hover:scale-105"
+                                preferThumb={true}
+                            />
                         ))
                     ) : (
                         /* 게시물 없음 */

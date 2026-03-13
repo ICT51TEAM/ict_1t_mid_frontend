@@ -22,7 +22,7 @@
  * [피드 목록 조회 파라미터 (getPosts)]
  *   {
  *     type        : string,   // 콘텐츠 유형 필터 (예: 'photo')
- *     friendsOnly : boolean,  // true=친구 글만, false=전체
+ *     visibility  : string,   // 공개 범위 필터 (예: 'FRIENDS' | 'PRIVATE' | 'MINE')
  *     tag         : string,   // 해시태그 필터 (선택)
  *     page        : number,   // 페이지 번호 (Spring Pageable 기준, 0부터 시작)
  *     size        : number    // 페이지당 항목 수
@@ -70,14 +70,14 @@
  *
  * ─────────────────────────────────────────────────────────
  * [미구현 기능 처리 방식]
- *   updatePost(_id, _postData):
+ *   updatePost(id, _postData):
  *     → throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.')
  *     → 파라미터에 _ prefix를 붙여 미사용 파라미터임을 명시
  *
- *   deletePost(_id):
+ *   deletePost(id):
  *     → throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.')
  *
- *   toggleLike(_id):
+ *   toggleLike(id):
  *     → console.warn 출력 후 반환 (에러 throw 없음, UI 응답성 유지)
  *
  * ─────────────────────────────────────────────────────────
@@ -90,6 +90,7 @@
  *   - src/pages/write/CreatePhotoAlbumPage.jsx: createPost() 대신 albumService 직접 사용
  */
 import apiClient from './apiClient';
+import { albumService } from './albumService';
 
 /**
  * postService 객체
@@ -108,7 +109,7 @@ export const postService = {
      *
      * @param {Object}  params              - 쿼리 파라미터 객체 (선택, 없으면 undefined)
      * @param {string}  params.type         - 콘텐츠 유형 필터 (예: 'photo')
-     * @param {boolean} params.friendsOnly  - true=친구 앨범만, false=전체 공개 앨범
+     * @param {string}  params.visibility   - 공개 범위 필터 ('FRIENDS' | 'PRIVATE' | 'MINE')
      * @param {string}  params.tag          - 해시태그 필터 (예: '봄')
      * @param {number}  params.page         - 페이지 번호 (0부터 시작)
      * @param {number}  params.size         - 페이지당 항목 수
@@ -116,13 +117,19 @@ export const postService = {
      * @returns {Promise<Array>} 앨범 피드 아이템 배열
      *   [{ albumId, userId, username, profileImageUrl, title, thumbUrl, recordDate, tags, badgeCount, createdAt }]
      *
-     * HTTP: GET /api/albums/feed?type=photo&friendsOnly=false&tag=봄&page=0&size=20
+     * HTTP: GET /api/albums/feed?type=photo&visibility=MINE&tag=봄&page=0&size=20
      * 인증 필요: 예
      * 성공: 200 OK
      */
     getPosts: async (params) => {
+        console.log('[postService.getPosts] 호출');
+        console.log('[postService.getPosts] params =', params);
+
         // TODO: GET /albums/feed 를 호출하고 response.data를 반환하세요.
         const response = await apiClient.get('/albums/feed', { params });
+        console.log('[postService.getPosts] response =', response);
+        console.log('[postService.getPosts] response.data =', response.data);
+
         return response.data;
         // 힌트: params 객체가 URL 쿼리 파라미터로 자동 변환됩니다.
         //       apiClient.get('/albums/feed', { params }) → response.data
@@ -134,6 +141,10 @@ export const postService = {
      * 특정 앨범 ID로 해당 앨범의 상세 정보를 조회한다.
      * 앨범에 포함된 모든 사진, 태그, 본문, 작성자 정보가 반환된다.
      * albumService.getAlbumDetail()과 동일한 엔드포인트를 호출한다.
+     *
+     * 현재는 postService가 직접 /albums/{id}를 호출하지 않고,
+     * albumService.getAlbumDetail(id)를 재사용하여 상세 조회 책임을
+     * albumService로 일원화한다.
      *
      * @param {number|string} id - 조회할 앨범의 고유 ID
      *
@@ -152,17 +163,22 @@ export const postService = {
      *     createdAt   : string
      *   }
      *
-     * HTTP: GET /api/albums/{id}
+     * HTTP: 내부적으로 albumService.getAlbumDetail(id) 호출
      * 인증 필요: 예
      * 성공: 200 OK
      * 실패: 404 Not Found (앨범 없음), 403 Forbidden (접근 권한 없음)
      */
-    // [2] 스냅(앨범) 상세 조회 → GET /api/albums/{id}
+    // [2] 스냅(앨범) 상세 조회 → albumService.getAlbumDetail(id) 재사용
     getPost: async (id) => {
-        // TODO: GET /albums/{id} 를 호출하고 response.data를 반환하세요.
-        const response = await apiClient.get(`/albums/${id}`);
-        return response.data;
-        // 힌트: apiClient.get(`/albums/${id}`) → response.data
+        console.log('[postService.getPost] 호출');
+        console.log('[postService.getPost] id =', id);
+
+        // TODO: albumService.getAlbumDetail(id)를 호출하고 결과를 반환하세요.
+        const data = await albumService.getAlbumDetail(id);
+        console.log('[postService.getPost] albumService.getAlbumDetail 결과 =', data);
+
+        return data;
+        // 힌트: const data = await albumService.getAlbumDetail(id); return data;
     },
 
     /**
@@ -189,33 +205,43 @@ export const postService = {
     // [3] 스냅 생성 — CreatePhotoAlbumPage에서는 photoService + albumService 직접 사용
     //     이 메서드는 호환성 유지용으로 남겨둠
     createPost: async (postData) => {
+        console.log('[postService.createPost] 호출');
+        console.log('[postService.createPost] postData =', postData);
+
         // TODO: POST /albums 를 호출하고 response.data를 반환하세요
         const response = await apiClient.post('/albums', postData);
+        console.log('[postService.createPost] response =', response);
+        console.log('[postService.createPost] response.data =', response.data);
+
         return response.data;
         // 힌트: apiClient.post('/albums', postData) → response.data
     },
-
     /**
-     * [4] 스냅(앨범) 수정 — 현재 백엔드 미구현
-     *
-     * 기존 앨범의 내용(제목, 본문, 태그 등)을 수정하는 기능이지만,
-     * 백엔드 앨범 수정 엔드포인트(PUT /api/albums/{id})가 아직 구현되지 않았다.
-     * 이 함수를 호출하면 항상 Error를 throw한다.
-     * 호출하는 컴포넌트는 반드시 try-catch로 에러를 처리해야 한다.
-     *
-     * @param {number|string} _id       - 수정할 앨범의 ID (미사용, _ prefix)
-     * @param {Object}        _postData - 수정할 데이터 객체 (미사용, _ prefix)
-     *
-     * @returns {never} 항상 Error를 throw
-     * @throws {Error} '스냅 수정 기능은 아직 지원되지 않습니다.'
-     *
-     * HTTP: 미구현 (PUT /api/albums/{id} 엔드포인트 없음)
-     */
+ * [4] 스냅(앨범) 수정 — 현재 백엔드 미구현
+ *
+ * 기존 앨범의 내용(제목, 본문, 태그 등)을 수정하는 기능이지만,
+ * 백엔드 앨범 수정 엔드포인트(PUT /api/albums/{id})가 아직 구현되지 않았다.
+ * 이 함수를 호출하면 항상 Error를 throw한다.
+ * 호출하는 컴포넌트는 반드시 try-catch로 에러를 처리해야 한다.
+ *
+ * @param {number|string} id       - 수정할 앨범의 ID (미사용, _ prefix)
+ * @param {Object}        _postData - 수정할 데이터 객체 (미사용, _ prefix)
+ *
+ * @returns {never} 항상 Error를 throw
+ * @throws {Error} '스냅 수정 기능은 아직 지원되지 않습니다.'
+ *
+ * HTTP: 미구현 (PUT /api/albums/{id} 엔드포인트 없음)
+ */
     // [4] 스냅 수정 — 백엔드 앨범 수정 엔드포인트 미구현
-    updatePost: async (_id, _postData) => {
-        // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
-        // 힌트: throw new Error('스냅 수정 기능은 아직 지원되지 않습니다.')
+    updatePost: async (id, _postData) => {
+        console.log('[postService.updatePost] 호출');
+        console.log('[postService.updatePost] id =', id);
+        console.log('[postService.updatePost] _postData =', _postData);
+
         const response = await apiClient.put(`/albums/${id}`, postData);
+        console.log('[postService.updatePost] response =', response);
+        console.log('[postService.updatePost] response.data =', response.data);
+
         return response.data;
     },
 
@@ -226,7 +252,7 @@ export const postService = {
      * 백엔드 앨범 삭제 엔드포인트(DELETE /api/albums/{id})가 아직 구현되지 않았다.
      * 이 함수를 호출하면 항상 Error를 throw한다.
      *
-     * @param {number|string} _id - 삭제할 앨범의 ID (미사용, _ prefix)
+     * @param {number|string} id - 삭제할 앨범의 ID (미사용, _ prefix)
      *
      * @returns {never} 항상 Error를 throw
      * @throws {Error} '스냅 삭제 기능은 아직 지원되지 않습니다.'
@@ -234,10 +260,14 @@ export const postService = {
      * HTTP: 미구현 (DELETE /api/albums/{id} 엔드포인트 없음)
      */
     // [5] 스냅 삭제 — 백엔드 앨범 삭제 엔드포인트 미구현
-    deletePost: async (_id) => {
-        // TODO: 백엔드 미구현 상태이므로 항상 에러를 throw하세요.
-        // 힌트: throw new Error('스냅 삭제 기능은 아직 지원되지 않습니다.')
+    deletePost: async (id) => {
+        console.log('[postService.deletePost] 호출');
+        console.log('[postService.deletePost] id =', id);
+
         const response = await apiClient.delete(`/albums/${id}`);
+        console.log('[postService.deletePost] response =', response);
+        console.log('[postService.deletePost] response.data =', response.data);
+
         return response.data;
     },
 
@@ -250,14 +280,17 @@ export const postService = {
      * console.warn만 출력한 후 조용히 반환한다.
      * → UI 응답성을 유지하면서 미구현 상태를 알린다.
      *
-     * @param {number|string} _id - 좋아요를 토글할 앨범의 ID (미사용, _ prefix)
+     * @param {number|string} id - 좋아요를 토글할 앨범의 ID (미사용, _ prefix)
      *
      * @returns {Promise<void>} undefined (에러 없이 반환)
      *
      * HTTP: 미구현 (POST /api/albums/{id}/like 등의 엔드포인트 없음)
      */
     // [6] 좋아요 토글 — 백엔드 미구현
-    toggleLike: async (_id) => {
+    toggleLike: async (id) => {
+        console.log('[postService.toggleLike] 호출');
+        console.log('[postService.toggleLike] id =', id);
+
         // TODO: 미구현 상태를 개발자에게 알리되 에러는 throw하지 마세요.
         console.warn('toggleLike: 백엔드 미구현 기능입니다.');
         // 힌트: console.warn('toggleLike: 백엔드 미구현 기능입니다.') 출력 후 그냥 반환

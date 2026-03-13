@@ -103,7 +103,10 @@ export default function BadgeInfoModal({ isOpen, onClose }) {
 
     setIsLoading(true);
     badgeService.getAllTypes()
-      .then(setBadgeTypes)    //badgeTypes를 나중에 화면에 뿌린다
+      .then(data => {
+        console.log('[badgeTypes] 불러오기:', data?.length, '개');
+        setBadgeTypes(data);
+      })
       .catch(() => setBadgeTypes([]))
       .finally(() => setIsLoading(false));
   }, [isOpen]);

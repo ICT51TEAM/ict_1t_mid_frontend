@@ -37,7 +37,8 @@ import { userService } from '@/api/userService';
 import { postService } from '@/api/postService';
 import { friendService } from '@/api/friendService';
 import { useAuth } from '@/context/AuthContext';
-import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
+import AlbumPreviewLink from '@/components/feed/AlbumPreviewLink';
 
 export default function ProfilePage() {
     console.log('ProfilePage 렌더링됨'); // 컴포넌트 진입 확인
@@ -63,11 +64,16 @@ export default function ProfilePage() {
      * API 응답 후 getMyProfile() 성공 시 최신 데이터로 교체됨.
      */
     const [user, setUser] = useState(() => {
-        if (!authUser) return null;
-        return {
+        if (!authUser) {
+            console.log('[user] authUser 없음 → null');
+            return null;
+        }
+        const initialUser = {
             ...authUser,
             level: Math.floor((authUser.totalBadges || 0) / 5) + 1,
         };
+        console.log('[user] 초기값:', initialUser);
+        return initialUser;
     });
 
     /**
@@ -97,6 +103,8 @@ export default function ProfilePage() {
      * Promise.allSettled 완료 후 finally에서 false로 설정.
      */
     const [postsLoading, setPostsLoading] = useState(true);
+    const getPostAuthorId = (post) => String(post?.authorId ?? post?.userId ?? '');
+    const getPostId = (post) => post?.albumId ?? post?.id;
 
     // -------------------------------------------------------------------------
     // [useEffect: 데이터 로드]
@@ -117,7 +125,7 @@ export default function ProfilePage() {
      *       성공: setUser(최신 프로필 데이터) - level 필드도 응답에 포함되어야 함
      *       실패: authUser 기반 초기값 유지 (lazy initializer에서 설정한 값)
      *
-     *   [1] postService.getPosts({ type: 'photo' }) → GET /api/posts?type=photo
+     *   [1] postService.getPosts({ type: 'photo', visibility: 'MINE' }) → GET /api/albums/feed?type=photo&visibility=MINE
      *       성공: 응답 배열에서 authorId === authUser.id인 게시글만 필터링하여 저장
      *       실패: 빈 배열([]) 유지
      *
@@ -141,7 +149,7 @@ export default function ProfilePage() {
             // TODO: [1] setPostsLoading(true) 호출
             // TODO: [2] Promise.allSettled([
             //             userService.getMyProfile(),
-            //             postService.getPosts({ type: 'photo' }),
+            //             postService.getPosts({ type: 'photo', visibility: 'MINE' }),
             //             friendService.listFriends()
             //           ]) 병렬 호출
             // TODO: [3] profileResult.status === 'fulfilled'이면 setUser(profileResult.value)
@@ -161,7 +169,7 @@ export default function ProfilePage() {
             try{
                 const [profileResult, postsResult, friendsResult] = await Promise.allSettled([ //결과다 받아 끝날때까지 기다릴테니까
                 withTimeout(userService.getMyProfile(), 'profile'), //내거 가져오는 API 일까? 아니면 수정필요
-                withTimeout(postService.getPosts({ type: 'photo' }), 'posts'), //전체 가져오는 API 일까? 아니면 수정필요
+                withTimeout(postService.getPosts({ type: 'photo', visibility: 'MINE' }), 'posts'), //내 프로필에서는 내 공개범위 전체 글을 가져오도록 명시
                 withTimeout(friendService.listFriends(), 'friends') //내거 가져오는 API 일까? 아니면 수정필요
                 ]);
 
@@ -174,7 +182,7 @@ export default function ProfilePage() {
                     setUser(profileResult.value);
                 }
                 if (postsResult.status === 'fulfilled') {
-                    setPosts(postsResult.value.filter(post => post.authorId === authUser.id));
+                    setPosts((postsResult.value || []).filter((post) => getPostAuthorId(post) === String(authUser.id)));
                 }
                 if (friendsResult.status === 'fulfilled') {
                     setFriendCount(friendsResult.value.length);
@@ -263,7 +271,7 @@ export default function ProfilePage() {
                             {/* 게시글 수: 로딩 중이면 '-' 표시, 완료 후 실제 개수 표시 */}
                             <div className="flex flex-col items-center md:items-start cursor-pointer" onClick={() => navigate('/profile')}>
                                 <span className="text-[18px] font-black italic tracking-tighter">{postsLoading ? '-' : posts.length}</span>
-                                <span className="text-[11px] font-black text-[#ccd3db] uppercase tracking-widest">Posts</span>
+                                <span className="text-[11px] font-black text-[#ccd3db] uppercase tracking-widest">게시글수</span>
                             </div>
                             {/* 레벨: 클릭 시 /badges 이동, user.level이 없으면 1 기본값 */}
                             <div className="flex flex-col items-center md:items-start cursor-pointer" onClick={() => navigate('/badges')}>
@@ -371,18 +379,17 @@ export default function ProfilePage() {
                     ) : posts.length > 0 ? (
                         // 게시글 존재: 3열 그리드 렌더링
                         posts.map((post, i) => (
-                            <div
-                                key={post.id}
-                                onClick={() => navigate(`/snap/${post.id}`)}
-                                className="w-1/3 p-0.5 aspect-[3/4] relative group cursor-pointer overflow-hidden"
+                            <AlbumPreviewLink
+                                key={getPostId(post)}
+                                album={post}
+                                to={`/snap/${getPostId(post)}`}
+                                containerClassName="w-1/3 p-0.5"
+                                linkClassName="group block"
+                                mediaClassName="aspect-[3/4]"
+                                imageClassName="transition-transform duration-500 group-hover:scale-105"
+                                preferThumb={true}
                             >
                                 {/* 게시글 썸네일 이미지: hover 시 scale-105 확대 */}
-                                <img
-                                    src={getImageUrl(post.imageUrl) || DEFAULT_POST_IMAGE}
-                                    alt="post"
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
-                                />
                                 {/* hover 시 어두운 오버레이 제거, 기본 상태에서는 약한 어둠 적용 */}
                                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-all pointer-events-none"></div>
                                 {/* TOP 뱃지: 인덱스 0,1,2 (처음 3개 게시글)에만 표시 */}
@@ -391,7 +398,7 @@ export default function ProfilePage() {
                                         TOP
                                     </div>
                                 )}
-                            </div>
+                            </AlbumPreviewLink>
                         ))
                     ) : (
                         // 게시글 없음: 빈 상태 안내

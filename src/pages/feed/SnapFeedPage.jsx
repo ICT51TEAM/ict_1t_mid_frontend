@@ -9,10 +9,11 @@
  * 전체 / 글벗(팔로잉) 필터 토글로 표시 범위를 조절할 수 있다.
  *
  * @주요_기능
- * 1. 데이터 패칭: GET /api/albums/feed?type=photo&friendsOnly=...&tag=...
- * 2. 필터 토글: '전체'(all) 또는 '글벗'(following) 탭으로 전환
- *    - 'all': friendsOnly=false (파라미터 생략)
- *    - 'following': friendsOnly=true (팔로잉 사용자 스냅만 표시)
+ * 1. 데이터 패칭: GET /api/albums/feed?type=photo&visibility=...&tag=...
+ * 2. 필터 토글: '전체'(all), '글벗'(following), '나만'(mine) 탭으로 전환
+ *    - 'all': visibility 생략 (다른 사용자는 전체공개, 본인 글은 공개범위 무관)
+ *    - 'following': visibility=FRIENDS (팔로잉 사용자 스냅만 표시)
+ *    - 'mine': visibility=MINE (내가 작성한 스냅 전체 표시)
  * 3. 태그 검색: URL ?q=태그명 → API tag 파라미터로 전달
  *    - 검색 중에는 필터 UI 대신 검색 키워드 + 삭제 버튼 표시
  * 4. 클라이언트 사이드 페이지네이션 (무한 스크롤):
@@ -26,7 +27,7 @@
  * - allItems     {Array}   - 백엔드에서 받아온 스냅 전체 배열 (페이지네이션 전 원본 데이터)
  * - displayCount {number}  - 현재 화면에 표시할 스냅 수 (초기: 20, 스크롤 시 +20씩 증가)
  * - loading      {boolean} - 데이터 패칭 중 여부 ("Loading..." 텍스트 표시용)
- * - filter       {string}  - 현재 필터 상태: 'all' 또는 'following'
+ * - filter       {string}  - 현재 필터 상태: 'all' | 'following' | 'mine'
  *
  * @searchParams (URL 쿼리 파라미터)
  * - q {string} - 태그 검색어. 없으면 빈 문자열('')로 처리.
@@ -64,16 +65,19 @@ export default function SnapFeedPage() {
     // ---------------------------------------------------------
 
     // filter: 현재 활성화된 피드 필터.
-    //   'all'       → 전체 스냅 표시 (friendsOnly=false)
-    //   'following' → 팔로잉 사용자 스냅만 표시 (friendsOnly=true)
+    //   'all'       → 전체 스냅 표시 (다른 사용자는 전체공개, 본인 글은 공개범위 무관)
+    //   'following' → 팔로잉 사용자 스냅만 표시
+    //   'mine'      → 내가 작성한 스냅 전체 표시
     const [filter, setFilter] = useState('all');
 
 
 
     // API 파라미터 매핑
+    //   'following' → 글벗 공개 피드
+    //   'mine'      → 내 스냅 전체(공개범위 무관)
     const getVisibility = () => {
         if (filter === 'following') return 'FRIENDS';
-        if (filter === 'mine') return 'PRIVATE';
+        if (filter === 'mine') return 'MINE';
         return undefined; // 전체
     };
 
@@ -108,10 +112,10 @@ export default function SnapFeedPage() {
     //   [2] setLoading(true): 로딩 UI 표시
     //   [3] setDisplayCount(20): 페이지네이션 카운터 초기화
     //       (필터/검색 변경 시 이전 결과의 페이지 위치를 리셋)
-    //   [4] apiClient.get('/albums/feed', { params: { type: 'photo', friendsOnly: ..., tag: ... } })
+    //   [4] apiClient.get('/albums/feed', { params: { type: 'photo', visibility: ..., tag: ... } })
     //       → API: GET /api/albums/feed
     //       → params.type: 'photo' (사진 타입 스냅만 요청)
-    //       → params.friendsOnly: filter === 'following' → true, 'all' → false
+    //       → params.visibility: filter에 따라 FRIENDS | MINE | undefined
     //       → params.tag: searchQuery가 있으면 전달, 없으면 undefined (파라미터 생략)
     //   [5] 성공: !cancelled 확인 후 setAllItems(res.data 배열)
     //       (cancelled가 true이면 이미 언마운트됐으므로 setState 호출 생략)
@@ -220,7 +224,7 @@ export default function SnapFeedPage() {
                             </div>
                         ) : (
                             /* 일반 모드: 현재 필터 이름 표시 */
-                            filter === 'all' ? 'All Snaps' : filter === 'following' ? 'Following' : 'Private'
+                            filter === 'all' ? '전체' : filter === 'following' ? '글벗' : '나만'
                         )}
                     </span>
                 </div>
@@ -234,14 +238,14 @@ export default function SnapFeedPage() {
                     >
                         전체
                     </button>
-                    {/* "글벗" 버튼: 클릭 시 filter = 'following' → friendsOnly=true */}
+                    {/* "글벗" 버튼: 클릭 시 filter = 'following' → visibility=FRIENDS */}
                     <button
                         onClick={() => setFilter('following')}
                         className={`px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 ${filter === 'following' ? 'bg-black text-white shadow-md' : 'text-[#a3b0c1] hover:text-black dark:hover:text-white'}`}
                     >
                         글벗
                     </button>
-                    {/* "내 스냅" 버튼: 클릭 시 filter = 'mine' → visibility=PRIVATE */}
+                    {/* "내 스냅" 버튼: 클릭 시 filter = 'mine' → visibility=MINE */}
                     <button
                         onClick={() => setFilter('mine')}
                         className={`px-4 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 ${filter === 'mine' ? 'bg-black text-white shadow-md' : 'text-[#a3b0c1] hover:text-black dark:hover:text-white'}`}
@@ -273,7 +277,7 @@ export default function SnapFeedPage() {
                     /* 3열 매이슨리 그리드: CSS columns-3으로 자동 높이 배분 */
                     <div className="columns-3 gap-1 px-1">
                         {snaps.map((snap) => (
-                            <SnapCard key={snap.id} snap={snap} />
+                            <SnapCard key={snap.albumId ?? snap.id} snap={snap} />
                         ))}
                     </div>
                 )}

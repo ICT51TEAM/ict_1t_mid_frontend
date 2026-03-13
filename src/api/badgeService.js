@@ -181,10 +181,11 @@ export const badgeService = {
                 emoji: tc.emoji || '🏅',
                 count: tc.count || 0
             }));
+            console.log('[뱃지 getMyStats] 응답:', { badgesCount, calculatedLevel, recentBadges });
             return { totalBadges: badgesCount, recentBadges, level: calculatedLevel, typeCounts: data.typeCounts || [] };
             //객체반환이고 recentBadges는 단축프로퍼티
         } catch (error) {
-            console.warn(error);
+            console.warn('[뱃지 getMyStats] 실패, 기본값 반환:', error);
             return { level: 1, totalBadges: 0, recentBadges: [], typeCounts: [] };
         }
     },
@@ -234,9 +235,10 @@ export const badgeService = {
                 emoji: tc.emoji || '🏅',
                 count: tc.count || 0
             }));
+            console.log('[뱃지 getUserStats]', userId, ':', { badgesCount, calculatedLevel });
             return { totalBadges: badgesCount, recentBadges, level: calculatedLevel, typeCounts: data.typeCounts || [] };
         } catch (error) {
-            console.warn(error);
+            console.warn('[뱃지 getUserStats] 실패:', error);
             return { level: 1, totalBadges: 0, recentBadges: [], typeCounts: [] };
         }
     },
@@ -274,9 +276,10 @@ export const badgeService = {
         //   } catch(error) { console.warn(...); return { content: [], totalPages: 0 } }
         try {
             const response = await apiClient.get('/badges/ranking/global', { params }); //params는 페이지번호,크기
+            console.log('[뱃지 globalRanking] 응답:', response.data?.content?.length, '명');
             return response.data;
         } catch (error) {
-            console.warn(error);
+            console.warn('[뱃지 globalRanking] 실패:', error);
             return { content: [], totalPages: 0 };
         }
     },
@@ -313,9 +316,10 @@ export const badgeService = {
         //   } catch(error) { console.warn(...); return { content: [], totalPages: 0 } }
         try {
             const response = await apiClient.get('/badges/ranking/friends', { params }); //params는 페이지번호,크기
+            console.log('[friendsRanking] 응답:', response.data?.content?.length, '명');
             return response.data;
         } catch (error) {
-            console.warn(error);
+            console.warn('[friendsRanking] 실패:', error);
             return { content: [], totalPages: 0 };
         }
     },
@@ -365,15 +369,17 @@ export const badgeService = {
         //   }
         try {
             const response = await apiClient.get('/badges/types');
-            return response.data.map(type => ({
+            const mapped = response.data.map(type => ({
                 id: type.id,
                 category: 'BADGE',
                 title: type.name || '달개',
                 description: type.description || '',
                 emoji: type.emoji || '🏅'
             }));
+            console.log('[badgeTypes] 응답:', mapped.length, '개');
+            return mapped;
         } catch (error) {
-            console.warn(error);
+            console.warn('[badgeTypes] 실패:', error);
             return [];
         }
     },
@@ -398,17 +404,37 @@ export const badgeService = {
     //     //   try { response = await apiClient.get('/albums/latest-friend'); return response.data }
     //     //   catch(error) { console.warn(...); return null }
 
+    getGlobalStats: async () => {
+        try {
+            const response = await apiClient.get('/badges/stats/global');
+            const data = response.data || {};
+            const badgesCount = data.totalCount || data.totalBadges || 0;
+            const recentBadges = (data.typeCounts || []).map((tc, idx) => ({
+                id: idx + 1,
+                name: tc.typeName || tc.name || '달개',
+                emoji: tc.emoji || '🏅',
+                count: tc.count || 0
+            }));
+            return { totalBadges: badgesCount, recentBadges, typeCounts: data.typeCounts || [] };
+        } catch (error) {
+            console.warn('[뱃지 getGlobalStats] 실패:', error);
+            return { totalBadges: 0, recentBadges: [], typeCounts: [] };
+        }
+    },
+
     toggleAlbumDalgae: async (albumId, badgeTypeId) => {
         const response = await apiClient.post(
             `/badges/albums/${albumId}/toggle`,
             null,
             { params: { badgeTypeId } } // 전달할 데이터가 하나라 바디대신 쿼리스트링으로
         );
+        console.log('[toggleDalgae] albumId:', albumId, '/ badgeTypeId:', badgeTypeId, '/ 응답:', response.data);
         return response.data;
     },
 
     getAlbumDalgae: async (albumId) => {
         const response = await apiClient.get(`/badges/albums/${albumId}`);
+        console.log('[getAlbumDalgae] albumId:', albumId, '/ 응답:', response.data);
         return response.data;
     }
 };

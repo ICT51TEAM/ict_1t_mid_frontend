@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file QnaPage.jsx
  * @route /settings/qna
  * @description 서비스 관련 질문을 작성하고 기존 Q&A 목록을 조회하는 게시판 페이지.
@@ -64,11 +64,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { ArrowLeft, Plus, MessageCircle, ChevronDown, ChevronUp, User, HelpCircle, Pencil, Trash2 } from 'lucide-react';
+
+import { ArrowLeft, Plus, MessageCircle, ChevronDown, ChevronUp, User, HelpCircle, Pencil, Trash2, Check, X } from 'lucide-react';
+
 import { qnaService } from '@/api/qnaService';
+import { useAuth } from '@/context/AuthContext';
+import { useAlert } from '@/context/AlertContext';
 
 export default function QnaPage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const { showAlert, showConfirm } = useAlert();
 
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
@@ -81,9 +87,6 @@ export default function QnaPage() {
      *   { id, userId, userName, title, content, date, isExpanded, comments[] }
      */
     const [qnas, setQnas] = useState([]);
-    const [editingId, setEditingId] = useState(null);
-    const [editTitle, setEditTitle] = useState('');
-    const [editContent, setEditContent] = useState('');
 
     /**
      * isLoading: Q&A 목록 초기 로드 중 여부.
@@ -151,7 +154,7 @@ export default function QnaPage() {
                 const items = (data?.content ?? data ?? []).map((q) => ({
                     id: q.id,
                     userId: q.userId ?? '',
-                    userName: (q.username ?? q.userId ?? 'USER').toString().toUpperCase(),
+                    userName: (q.username ?? 'USER').toString().toUpperCase(),
                     title: q.title,
                     content: q.content,
                     date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
@@ -159,6 +162,14 @@ export default function QnaPage() {
                     comments: [],
                 }));
                 setQnas(items);
+                const commentsMap = {};
+                await Promise.all(
+                    items.map(async (q) => {
+                        const data = await qnaService.getComments(q.id);
+                        commentsMap[q.id] = data;
+                    })
+                );
+                setComments(commentsMap);
             } catch (e) {
                 console.error('QnA 목록 로드 실패', e);
             } finally {
@@ -210,7 +221,6 @@ export default function QnaPage() {
                 content: created.content,
                 date: created.createdAt ? created.createdAt.slice(0, 10).replace(/-/g, '.') : '',
                 isExpanded: false,
-                comments: [],
             };
             setQnas([newQna, ...qnas]);
         } catch (e) {
@@ -223,37 +233,6 @@ export default function QnaPage() {
         }
     };
 
-    // 1. 수정 모드 시작 (기본값 채우기)
-    const handleEditStart = (q) => {
-        setEditingId(q.id);
-        setEditTitle(q.title);
-        setEditContent(q.content);
-    };
-
-    // 2. 서버에 수정 요청 (updateQna 호출)
-    const handleUpdate = async (id) => {
-        if (!editTitle || !editContent) return;
-        try {
-            const updated = await qnaService.updateQna(id, { title: editTitle, content: editContent });
-            setQnas(qnas.map(q => q.id === id ? { ...q, title: updated.title, content: updated.content } : q));
-            setEditingId(null);
-        } catch (e) {
-            alert('수정에 실패했습니다.');
-        }
-    };
-
-    // 3. 서버에 삭제 요청 (deleteQna 호출)
-    const handleDelete = async (id) => {
-        if (!window.confirm('정말 삭제하시겠습니까?')) return;
-        try {
-            await qnaService.deleteQna(id);
-            setQnas(qnas.filter(q => q.id !== id));
-        } catch (e) {
-            alert('삭제에 실패했습니다.');
-        }
-    };
-
-
     // -------------------------------------------------------------------------
     // [답변(댓글) 관련 상태 및 핸들러]
     // -------------------------------------------------------------------------
@@ -265,6 +244,11 @@ export default function QnaPage() {
      * handleAddComment에서 해당 qnaId 키의 값을 ''로 초기화.
      */
     const [commentText, setCommentText] = useState({});
+
+    // 수정 모드 상태
+    const [editingId, setEditingId] = useState(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editContent, setEditContent] = useState('');
 
     /**
      * handleAddComment: 특정 Q&A에 답변을 로컬에서 추가하는 함수.
@@ -283,15 +267,125 @@ export default function QnaPage() {
      *      - date: 현재 날짜를 ISO 형식에서 'YYYY.MM.DD'로 변환
      *   3. setCommentText: 해당 qnaId 입력값을 '' 로 초기화
      */
-    const handleAddComment = (qnaId) => {
-        // TODO: [1] text = commentText[qnaId]로 해당 Q&A의 입력값 취득
-        // TODO: [2] text가 비어있으면 즉시 return
-        // TODO: [3] setQnas()로 해당 qnaId 항목의 comments 배열에 새 댓글 객체 추가:
-        //           { id: Date.now(), userName: 'ME', content: text,
-        //             date: new Date().toISOString().slice(0, 10).replace(/-/g, '.') }
-        //           힌트: qnas.map(q => q.id === qnaId ? { ...q, comments: [...] } : q)
-        // TODO: [4] setCommentText({ ...commentText, [qnaId]: '' })로 해당 입력값 초기화
-        // 주의: 백엔드 답변 API가 미구현 상태 → 서버 저장 없이 로컬 상태에만 반영됨
+
+    const [comments, setComments] = useState({});
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editingCommentText, setEditingCommentText] = useState('');
+
+    const handleAddComment = async (qnaId) => {
+        const text = commentText[qnaId]?.trim();
+        if (!text) return;
+
+        try {
+            const created = await qnaService.createComment(qnaId, text);
+            setComments(prev => ({
+                ...prev,
+                [qnaId]: [...(prev[qnaId] ?? []), created]
+            }));
+            setCommentText(prev => ({ ...prev, [qnaId]: '' }));
+        } catch (e) {
+            console.error('댓글 등록 실패', e);
+        }
+    };
+
+    const handleEditComment = (comment) => {
+        setEditingCommentId(comment.id);
+        setEditingCommentText(comment.content);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingCommentId(null);
+        setEditingCommentText('');
+    };
+
+    const handleUpdateComment = async (qnaId, commentId) => {
+        const text = editingCommentText.trim();
+        if (!text) return;
+
+        try {
+            // 백엔드에 댓글 수정 API가 없으므로 삭제 후 재생성
+            await qnaService.deleteComment(commentId);
+            const created = await qnaService.createComment(qnaId, text);
+            setComments(prev => ({
+                ...prev,
+                [qnaId]: (prev[qnaId] ?? []).map(c => c.id === commentId ? created : c)
+            }));
+            setEditingCommentId(null);
+            setEditingCommentText('');
+        } catch (e) {
+            console.error('댓글 수정 실패', e);
+            alert('댓글 수정에 실패했습니다.');
+        }
+    };
+
+    const handleDeleteComment = async (qnaId, commentId) => {
+        if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
+
+        try {
+            await qnaService.deleteComment(commentId);
+            setComments(prev => ({
+                ...prev,
+                [qnaId]: (prev[qnaId] ?? []).filter(c => c.id !== commentId)
+            }));
+        } catch (e) {
+            console.error('댓글 삭제 실패', e);
+            alert('댓글 삭제에 실패했습니다.');
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // [수정/삭제 핸들러]
+    // -------------------------------------------------------------------------
+
+    const currentUserId = user?.id;
+
+    const startEdit = (q) => {
+        setEditingId(q.id);
+        setEditTitle(q.title);
+        setEditContent(q.content);
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditTitle('');
+        setEditContent('');
+    };
+
+    const handleUpdate = async () => {
+        if (!editTitle || !editContent) return;
+        try {
+            const updated = await qnaService.updateQna(editingId, { title: editTitle, content: editContent });
+            setQnas(qnas.map(q => q.id === editingId ? {
+                ...q,
+                title: updated.title,
+                content: updated.content,
+            } : q));
+            showAlert('질문이 수정되었습니다.', '완료', 'success');
+            cancelEdit();
+        } catch (e) {
+            console.error('QnA 수정 실패', e);
+            showAlert('질문 수정에 실패했습니다.', '오류', 'alert');
+        }
+    };
+
+    const handleDelete = (id) => {
+        showConfirm({
+            message: '정말로 이 질문을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+            title: '질문 삭제',
+            type: 'alert',
+            confirmText: '삭제',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    await qnaService.deleteQna(id);
+                    setQnas(qnas.filter(q => q.id !== id));
+                    showAlert('질문이 삭제되었습니다.', '완료', 'success');
+                } catch (e) {
+                    console.error('QnA 삭제 실패', e);
+                    showAlert('질문 삭제에 실패했습니다.', '오류', 'alert');
+                }
+            },
+        });
     };
 
     // -------------------------------------------------------------------------
@@ -386,17 +480,21 @@ export default function QnaPage() {
                         - 카드 본문 (isExpanded=true일 때만 표시):
                             질문 본문 (14px, 줄간격 relaxed, pre-wrap)
                             [답변 섹션]
-                              MessageCircle 아이콘 + "Answers ({q.comments.length})"
+                              MessageCircle 아이콘 + "답변 ({q.comments.length})"
                               답변 목록: 각 답변 카드 (ADMIN이면 파란 글씨)
-                              답변 없음: "No answers yet"
+                              답변 없음: "답변 대기 중"
                               [답변 입력 폼]
-                                텍스트 입력 + SUBMIT 버튼
-                                SUBMIT 클릭 → handleAddComment(q.id)
+                                텍스트 입력 + 등록 버튼
+                                등록 클릭 → handleAddComment(q.id)
                                 ※ 로컬 반영만, 서버 저장 없음
                     ============================================================ */}
                     {/* Q&A List */}
                     <div className="flex flex-col gap-3">
-                        {qnas.map(q => (
+                        {qnas.map(q => {
+                            const isAuthor = String(currentUserId) === String(q.userId);
+                            const isEditing = editingId === q.id;
+
+                            return (
                             <div key={q.id} className="bg-white dark:bg-[#1c1f24] rounded-2xl border border-[#f3f3f3] dark:border-[#292e35] overflow-hidden transition-all shadow-sm hover:border-[#ccd3db]">
                                 {/* 카드 헤더: 클릭 시 해당 항목 펼침/접힘 토글 */}
                                 <div
@@ -409,6 +507,10 @@ export default function QnaPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
+                                            {/* 본인 게시글이면 ME 뱃지 표시 */}
+                                            {isAuthor && (
+                                                <span className="text-[10px] font-black italic tracking-tighter text-white bg-black dark:bg-[#e5e5e5] dark:text-black px-1.5 py-0.5 rounded">ME</span>
+                                            )}
                                             {/* 작성자명: 이탤릭 대문자 회색 */}
                                             <span className="text-[11px] font-black italic tracking-tighter text-[#a3b0c1] uppercase">{q.userName}</span>
                                             {/* 작성 날짜 */}
@@ -417,14 +519,59 @@ export default function QnaPage() {
                                         {/* 질문 제목: 한 줄 줄임 표시(truncate) */}
                                         <h3 className="text-[15px] font-bold text-black dark:text-[#e5e5e5] truncate">{q.title}</h3>
                                     </div>
-                                    {/* 펼침 방향 화살표: isExpanded에 따라 Up/Down */}
-                                    <div className="text-[#ccd3db]">
-                                        {q.isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                    {/* 본인 게시글: 수정/삭제 버튼 + 펼침 화살표 */}
+                                    <div className="flex items-center gap-1">
+                                        {isAuthor && (
+                                            <>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); startEdit(q); }}
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#e5e5e5] dark:border-[#292e35] text-[12px] font-bold text-black dark:text-[#e5e5e5] hover:bg-[#f3f3f3] dark:hover:bg-[#292e35] transition-colors"
+                                                >
+                                                    <Pencil size={13} />
+                                                    수정
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(q.id); }}
+                                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#e5e5e5] dark:border-[#292e35] text-[12px] font-bold text-black dark:text-[#e5e5e5] hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 hover:border-red-300 transition-colors"
+                                                >
+                                                    <Trash2 size={13} />
+                                                    삭제
+                                                </button>
+                                            </>
+                                        )}
+                                        <div className="text-[#ccd3db]">
+                                            {q.isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* 카드 본문: isExpanded=true일 때만 렌더링 */}
-                                {q.isExpanded && (
+                                {/* 수정 폼: 수정 모드일 때 표시 */}
+                                {isEditing && (
+                                    <div className="px-5 pb-5 border-t border-[#f3f3f3] dark:border-[#292e35] animate-in fade-in duration-300">
+                                        <div className="pt-4">
+                                            <input
+                                                type="text"
+                                                value={editTitle}
+                                                onChange={e => setEditTitle(e.target.value)}
+                                                className="w-full mb-3 p-3 bg-[#f3f3f3] dark:bg-[#292e35] text-black dark:text-[#e5e5e5] rounded-xl text-[14px] font-bold outline-none border border-transparent focus:border-black dark:focus:border-[#e5e5e5]"
+                                                placeholder="제목을 입력하세요"
+                                            />
+                                            <textarea
+                                                value={editContent}
+                                                onChange={e => setEditContent(e.target.value)}
+                                                className="w-full h-32 p-3 bg-[#f3f3f3] dark:bg-[#292e35] text-black dark:text-[#e5e5e5] rounded-xl text-[14px] font-medium outline-none border border-transparent focus:border-black dark:focus:border-[#e5e5e5] resize-none"
+                                                placeholder="질문 내용을 입력하세요"
+                                            />
+                                            <div className="flex gap-2 mt-3">
+                                                <button onClick={cancelEdit} className="flex-1 h-10 rounded-xl bg-[#f3f3f3] dark:bg-[#292e35] dark:text-[#e5e5e5] font-bold text-[13px]">취소</button>
+                                                <button onClick={handleUpdate} className="flex-1 h-10 rounded-xl bg-black text-white font-black italic tracking-widest uppercase text-[13px]">수정</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 카드 본문: isExpanded=true이고 수정 모드가 아닐 때만 렌더링 */}
+                                {q.isExpanded && !isEditing && (
                                     <div className="px-5 pb-5 border-t border-[#fcfcfc] animate-in fade-in duration-300">
                                         {/* 질문 본문 텍스트 */}
                                         <div className="py-4 text-[14px] leading-relaxed text-[#424a54] font-medium whitespace-pre-wrap">
@@ -436,29 +583,58 @@ export default function QnaPage() {
                                             {/* 답변 섹션 헤더: MessageCircle 아이콘 + 답변 수 */}
                                             <div className="flex items-center gap-2 mb-4">
                                                 <MessageCircle size={14} className="text-black" />
-                                                <span className="text-[12px] font-black italic tracking-widest uppercase">Answers ({q.comments.length})</span>
+                                                <span className="text-[12px] font-black italic tracking-widest uppercase">답변 ({(comments[q.id] ?? []).length})</span>
                                             </div>
 
                                             {/* 답변 목록 */}
                                             <div className="flex flex-col gap-4 mb-6">
-                                                {q.comments.length > 0 ? q.comments.map(c => (
+                                            {(comments[q.id] ?? []).length > 0 
+                                                ? (comments[q.id] ?? []).map((c) => (
                                                     <div key={c.id} className="bg-[#f9f9fa] dark:bg-[#101215] p-4 rounded-xl border border-[#f3f3f3] dark:border-[#292e35]">
                                                         <div className="flex justify-between items-center mb-1">
-                                                            {/* 답변 작성자: ADMIN이면 파란색, 그 외 검정 */}
-                                                            <span className={`text-[11px] font-black italic tracking-tighter uppercase ${c.userName === 'ADMIN' ? 'text-blue-600' : 'text-black'}`}>
-                                                                {c.userName}
+                                                            <span className={`text-[11px] font-black italic tracking-tighter uppercase ${c.username === 'ADMIN' ? 'text-blue-600' : 'text-black'}`}>
+                                                                {c.username}
                                                             </span>
-                                                            <span className="text-[10px] text-[#ccd3db] font-bold">{c.date}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-[#ccd3db] font-bold">{c.createdAt?.slice(0, 10).replace(/-/g, '.')}</span>
+                                                                {editingCommentId !== c.id && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <button onClick={() => handleEditComment(c)} className="p-1 text-[#a3b0c1] hover:text-black dark:hover:text-[#e5e5e5] transition-colors">
+                                                                            <Pencil size={12} />
+                                                                        </button>
+                                                                        <button onClick={() => handleDeleteComment(q.id, c.id)} className="p-1 text-[#a3b0c1] hover:text-red-500 transition-colors">
+                                                                            <Trash2 size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        <p className="text-[13px] font-medium text-[#424a54]">{c.content}</p>
+                                                        {editingCommentId === c.id ? (
+                                                            <div className="flex gap-2 mt-1">
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingCommentText}
+                                                                    onChange={e => setEditingCommentText(e.target.value)}
+                                                                    className="flex-1 h-9 px-3 bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-lg text-[13px] font-medium outline-none border border-[#ccd3db] dark:border-[#424a54] focus:border-black dark:focus:border-[#e5e5e5]"
+                                                                />
+                                                                <button onClick={() => handleUpdateComment(q.id, c.id)} className="p-1.5 text-green-600 hover:text-green-700 transition-colors">
+                                                                    <Check size={16} />
+                                                                </button>
+                                                                <button onClick={handleCancelEdit} className="p-1.5 text-[#a3b0c1] hover:text-red-500 transition-colors">
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[13px] font-medium text-[#424a54]">{c.content}</p>
+                                                        )}
                                                     </div>
                                                 )) : (
                                                     // 답변 없음 빈 상태
-                                                    <p className="text-[12px] text-[#ccd3db] font-bold italic text-center py-2 uppercase">No answers yet</p>
+                                                    <p className="text-[12px] text-[#ccd3db] font-bold italic text-center py-2 uppercase">답변 대기 중</p>
                                                 )}
                                             </div>
 
-                                            {/* 답변 입력 폼: 텍스트 입력 + SUBMIT 버튼
+                                            {/* 답변 입력 폼: 텍스트 입력 + 등록 버튼
                                                 ※ 로컬 반영만 (백엔드 답변 API 미구현) */}
                                             {/* Comment Input */}
                                             <div className="flex gap-2">
@@ -469,19 +645,20 @@ export default function QnaPage() {
                                                     onChange={e => setCommentText({ ...commentText, [q.id]: e.target.value })}
                                                     className="flex-1 h-10 px-4 bg-[#f3f3f3] dark:bg-[#292e35] text-black dark:text-[#e5e5e5] rounded-xl text-[13px] font-medium outline-none border border-transparent focus:border-black dark:focus:border-[#e5e5e5]"
                                                 />
-                                                {/* SUBMIT 버튼: handleAddComment(q.id) 호출 */}
+                                                {/* 등록 버튼: handleAddComment(q.id) 호출 */}
                                                 <button
                                                     onClick={() => handleAddComment(q.id)}
                                                     className="px-4 h-10 bg-black text-white rounded-xl text-[11px] font-black italic tracking-widest uppercase"
                                                 >
-                                                    SUBMIT
+                                                    등록
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* ============================================================
