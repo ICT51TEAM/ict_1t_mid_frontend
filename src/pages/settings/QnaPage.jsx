@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file QnaPage.jsx
  * @route /settings/qna
  * @description 서비스 관련 질문을 작성하고 기존 Q&A 목록을 조회하는 게시판 페이지.
@@ -64,7 +64,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
-import { ArrowLeft, Plus, MessageCircle, ChevronDown, ChevronUp, User, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Plus, MessageCircle, ChevronDown, ChevronUp, User, HelpCircle, Pencil, Trash2 } from 'lucide-react';
 import { qnaService } from '@/api/qnaService';
 
 export default function QnaPage() {
@@ -81,6 +81,9 @@ export default function QnaPage() {
      *   { id, userId, userName, title, content, date, isExpanded, comments[] }
      */
     const [qnas, setQnas] = useState([]);
+    const [editingId, setEditingId] = useState(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editContent, setEditContent] = useState('');
 
     /**
      * isLoading: Q&A 목록 초기 로드 중 여부.
@@ -147,8 +150,8 @@ export default function QnaPage() {
                 const data = await qnaService.getQnas(1, 20);
                 const items = (data?.content ?? data ?? []).map((q) => ({
                     id: q.id,
-                    userId: q.authorId ?? '',
-                    userName: (q.authorName ?? q.authorId ?? 'USER').toString().toUpperCase(),
+                    userId: q.userId ?? '',
+                    userName: (q.username ?? q.userId ?? 'USER').toString().toUpperCase(),
                     title: q.title,
                     content: q.content,
                     date: q.createdAt ? q.createdAt.slice(0, 10).replace(/-/g, '.') : '',
@@ -201,8 +204,8 @@ export default function QnaPage() {
             const created = await qnaService.createQna({ title: newTitle, content: newContent });
             const newQna = {
                 id: created.id,
-                userId: created.authorId ?? '',
-                userName: (created.authorName ?? 'ME').toString().toUpperCase(),
+                userId: created.userId ?? '',
+                userName: (created.username ?? 'ME').toString().toUpperCase(),
                 title: created.title,
                 content: created.content,
                 date: created.createdAt ? created.createdAt.slice(0, 10).replace(/-/g, '.') : '',
@@ -219,6 +222,37 @@ export default function QnaPage() {
             setIsWriting(false);
         }
     };
+
+    // 1. 수정 모드 시작 (기본값 채우기)
+    const handleEditStart = (q) => {
+        setEditingId(q.id);
+        setEditTitle(q.title);
+        setEditContent(q.content);
+    };
+
+    // 2. 서버에 수정 요청 (updateQna 호출)
+    const handleUpdate = async (id) => {
+        if (!editTitle || !editContent) return;
+        try {
+            const updated = await qnaService.updateQna(id, { title: editTitle, content: editContent });
+            setQnas(qnas.map(q => q.id === id ? { ...q, title: updated.title, content: updated.content } : q));
+            setEditingId(null);
+        } catch (e) {
+            alert('수정에 실패했습니다.');
+        }
+    };
+
+    // 3. 서버에 삭제 요청 (deleteQna 호출)
+    const handleDelete = async (id) => {
+        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+        try {
+            await qnaService.deleteQna(id);
+            setQnas(qnas.filter(q => q.id !== id));
+        } catch (e) {
+            alert('삭제에 실패했습니다.');
+        }
+    };
+
 
     // -------------------------------------------------------------------------
     // [답변(댓글) 관련 상태 및 핸들러]

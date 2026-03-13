@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file qnaService.js
  * @description Q&A 게시판 CRUD(목록 조회, 생성, 수정, 삭제) API를 담당하는 서비스 파일
  *
