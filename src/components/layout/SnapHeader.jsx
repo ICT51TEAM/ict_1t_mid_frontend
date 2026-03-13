@@ -64,6 +64,8 @@ import { useAuth } from '@/context/AuthContext';
 import { notificationService } from '@/api/notificationService';
 // 🚩 [추가] 유저 설정 조회 API 서비스 (ReferenceError 해결)
 import { userService } from '@/api/userService';
+import { useAlert } from '@/context/AlertContext';
+
 
 /**
  * @component SnapHeader
@@ -105,7 +107,6 @@ export default function SnapHeader() {
      *   - 컴포넌트 언마운트 또는 isAuthenticated 변경 시:
      *     clearInterval(interval)로 폴링 타이머를 해제해 메모리 누수 방지
      */
-
     useEffect(() => {
         // TODO: setInterval로 30초마다 notificationService.getUnreadCount() 호출해
         //       setUnreadCount() 업데이트, 클린업에서 clearInterval 호출
@@ -137,13 +138,15 @@ export default function SnapHeader() {
                 }
 
                 const data = await notificationService.getAll();
-                const count = Array.isArray(data)
+                const newCount = Array.isArray(data)
                     ? data.filter(n => !(n.isRead ?? n.read)).length
                     : 0;
                 console.log("🔄 [폴링 중] 이전 알림수:", lastCountRef.current, " / 현재  알림수:", newCount);
 
                 if (lastCountRef.current !== null && newCount > lastCountRef.current) {
                     console.log("🔔 알림창 띄우기 시도!");
+
+                    setNotiRefreshTag(prev => prev + 1);
 
                     const diff = newCount - lastCountRef.current;
                     console.log(`🔔 알림 발생! 차이: ${diff}`);

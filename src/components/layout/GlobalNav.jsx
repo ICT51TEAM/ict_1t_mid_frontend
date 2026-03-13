@@ -201,7 +201,7 @@ export default function GlobalNav() {
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="SEARCH"
+                                placeholder="#태그 검색"
                                 className="bg-[#222] text-white text-[11px] font-black italic tracking-widest px-4 py-1.5 rounded-full outline-none border border-transparent focus:border-white/30 w-[140px] transition-all focus:w-[200px] placeholder:text-gray-500"
                             />
                             {/* 검색 제출 버튼: 입력창 우측 내부에 절대 위치
