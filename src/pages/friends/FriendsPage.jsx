@@ -306,8 +306,6 @@ export default function FriendsPage() {
             // [4] setReceivedRequests 으로 목록에서 제거
             setReceivedRequests(prev => prev.filter(req => req.friendshipId !== friendshipId));
 
-
-            setNotiRefreshTag(prev => prev + 1);
             // [5] 성공 알림 표시
             showAlert(`${acceptedUser?.username || '사용자'}님과 글벗이 되었습니다!`, '완료', 'success');
         } catch (error) {
