@@ -182,7 +182,7 @@ export default function CreatePage() {
                                 {/* 카드 좌측: 아이콘 + 텍스트 */}
                                 <div className="flex items-center gap-6 z-10">
                                     {/* 아이콘 박스 */}
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${type.id === 'photo' ? 'bg-white/10 border-white/20' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${type.id === 'photo' ? 'bg-white/10 border-white/20' : 'bg-white/10 border-white/20'}`}>
                                         <type.icon size={32} />
                                     </div>
                                     <div className="space-y-1">
