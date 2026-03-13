@@ -86,8 +86,9 @@ import { ArrowLeft, Grid, Loader2, Plus } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { friendService } from '@/api/friendService';
 import apiClient from '@/api/apiClient';
-import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
 import { useAlert } from '@/context/AlertContext';
+import AlbumPreviewLink from '@/components/feed/AlbumPreviewLink';
 
 export default function FriendProfilePage() {
     // URL 파라미터에서 대상 유저 ID 추출
@@ -143,6 +144,8 @@ export default function FriendProfilePage() {
      * true 이면 글벗 버튼에 Loader2 스피너 표시 및 버튼 disabled.
      */
     const [isRequesting, setIsRequesting] = useState(false);
+    const getPostAuthorId = (post) => String(post?.authorId ?? post?.userId ?? '');
+    const getPostId = (post) => post?.albumId ?? post?.id;
 
     /**
      * @state requestStatus
@@ -223,7 +226,7 @@ export default function FriendProfilePage() {
         // [API 2] apiClient.get('/albums/feed', ... )
         apiClient.get('/albums/feed', { params: { type: 'photo' } })
             .then(response => {
-                const filtered = (response.data || []).filter(post => String(post.authorId) === String(friendId));
+                const filtered = (response.data || []).filter((post) => getPostAuthorId(post) === String(friendId));
                 setUserPosts(filtered);
             })
             .catch(() => setUserPosts([]))
@@ -478,18 +481,16 @@ export default function FriendProfilePage() {
                     ) : userPosts.length > 0 ? (
                         /* 게시물 썸네일 그리드 (3열, 3:4 비율) */
                         userPosts.map((post) => (
-                            <div
-                                key={post.id}
-                                onClick={() => navigate(`/snap/${post.id}`)}
-                                className="w-1/3 p-0.5 aspect-[3/4] relative group cursor-pointer overflow-hidden"
-                            >
-                                <img
-                                    src={getImageUrl(post.imageUrl) || DEFAULT_POST_IMAGE}
-                                    alt="post"
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
-                                />
-                            </div>
+                            <AlbumPreviewLink
+                                key={getPostId(post)}
+                                album={post}
+                                to={`/snap/${getPostId(post)}`}
+                                containerClassName="w-1/3 p-0.5"
+                                linkClassName="group block"
+                                mediaClassName="aspect-[3/4]"
+                                imageClassName="transition-transform duration-500 group-hover:scale-105"
+                                preferThumb={true}
+                            />
                         ))
                     ) : (
                         /* 게시물 없음 */

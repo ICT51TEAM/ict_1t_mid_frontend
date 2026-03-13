@@ -37,7 +37,8 @@ import { userService } from '@/api/userService';
 import { postService } from '@/api/postService';
 import { friendService } from '@/api/friendService';
 import { useAuth } from '@/context/AuthContext';
-import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
+import AlbumPreviewLink from '@/components/feed/AlbumPreviewLink';
 
 export default function ProfilePage() {
     console.log('ProfilePage 렌더링됨'); // 컴포넌트 진입 확인
@@ -102,6 +103,8 @@ export default function ProfilePage() {
      * Promise.allSettled 완료 후 finally에서 false로 설정.
      */
     const [postsLoading, setPostsLoading] = useState(true);
+    const getPostAuthorId = (post) => String(post?.authorId ?? post?.userId ?? '');
+    const getPostId = (post) => post?.albumId ?? post?.id;
 
     // -------------------------------------------------------------------------
     // [useEffect: 데이터 로드]
@@ -179,7 +182,7 @@ export default function ProfilePage() {
                     setUser(profileResult.value);
                 }
                 if (postsResult.status === 'fulfilled') {
-                    setPosts(postsResult.value.filter(post => post.authorId === authUser.id));
+                    setPosts((postsResult.value || []).filter((post) => getPostAuthorId(post) === String(authUser.id)));
                 }
                 if (friendsResult.status === 'fulfilled') {
                     setFriendCount(friendsResult.value.length);
@@ -376,18 +379,17 @@ export default function ProfilePage() {
                     ) : posts.length > 0 ? (
                         // 게시글 존재: 3열 그리드 렌더링
                         posts.map((post, i) => (
-                            <div
-                                key={post.id}
-                                onClick={() => navigate(`/snap/${post.id}`)}
-                                className="w-1/3 p-0.5 aspect-[3/4] relative group cursor-pointer overflow-hidden"
+                            <AlbumPreviewLink
+                                key={getPostId(post)}
+                                album={post}
+                                to={`/snap/${getPostId(post)}`}
+                                containerClassName="w-1/3 p-0.5"
+                                linkClassName="group block"
+                                mediaClassName="aspect-[3/4]"
+                                imageClassName="transition-transform duration-500 group-hover:scale-105"
+                                preferThumb={true}
                             >
                                 {/* 게시글 썸네일 이미지: hover 시 scale-105 확대 */}
-                                <img
-                                    src={getImageUrl(post.imageUrl) || DEFAULT_POST_IMAGE}
-                                    alt="post"
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
-                                />
                                 {/* hover 시 어두운 오버레이 제거, 기본 상태에서는 약한 어둠 적용 */}
                                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-all pointer-events-none"></div>
                                 {/* TOP 뱃지: 인덱스 0,1,2 (처음 3개 게시글)에만 표시 */}
@@ -396,7 +398,7 @@ export default function ProfilePage() {
                                         TOP
                                     </div>
                                 )}
-                            </div>
+                            </AlbumPreviewLink>
                         ))
                     ) : (
                         // 게시글 없음: 빈 상태 안내

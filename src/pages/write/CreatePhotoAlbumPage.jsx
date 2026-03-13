@@ -80,6 +80,7 @@ import { ArrowLeft, X, Calendar, Loader2, ImagePlus } from 'lucide-react';
 import { photoService } from '@/api/photoService';
 import { albumService } from '@/api/albumService';
 import { useAlert } from '@/context/AlertContext';
+import { saveAlbumLayout } from '@/utils/albumLayoutStore';
 
 /**
  * @constant layouts
@@ -408,6 +409,7 @@ export default function CreatePhotoAlbumPage() {
       console.log('[handleComplete] createAlbum result =', result);
 
       showAlert(result?.message || '스냅이 게시되었습니다!', '게시 완료', 'success');
+      saveAlbumLayout(result?.albumId, getLayoutType(selectedLayout));
       navigate(`/snap/${result.albumId}`, { state: { fromPage: 'create' } });
     } catch (e) {
       console.log('[handleComplete] 실패 e =', e);
