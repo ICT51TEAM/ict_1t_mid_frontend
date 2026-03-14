@@ -84,7 +84,7 @@ export default function SnapHeader() {
         user,
         logout,
         notiRefreshTag,
-        refreshNotifications } = useAuth();
+        triggerNotiRefresh: refreshNotifications } = useAuth();
     const { showAlert, showConfirm } = useAlert();
 
     // ── 함수: handleLogout ────────────────────────────────────────────────────

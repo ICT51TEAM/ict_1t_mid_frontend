@@ -128,7 +128,7 @@ export default function FriendsPage() {
      * (현재 UI에서 직접 사용되지 않지만 향후 로딩 인디케이터 용도로 예약됨)
      */
     const [isSearching, setIsSearching] = useState(false);
-    const { user, refreshNotifications } = useAuth();
+    const { user, triggerNotiRefresh: refreshNotifications } = useAuth();
 
     /**
      * @useEffect 1 - 글벗 목록 및 대기 요청 초기 로드
