@@ -97,6 +97,7 @@ export default function GlobalNav() {
         { name: '글벗', path: '/friends' }, // 친구 목록 페이지
         { name: '달개', path: '/badges' },  // 배지 목록 페이지
         { name: '금융', path: '/finance' }, // 금융 정보 페이지
+        { name: '설정', path: '/profile' }, // 설정(마이) 페이지
     ];
 
     // ── 함수: handleLogout ────────────────────────────────────────────────────
@@ -235,8 +236,6 @@ export default function GlobalNav() {
                             </button>
                         </form>
 
-                        {/* MY 링크: /profile 페이지로 이동 */}
-                        <Link to="/profile" className="text-[12px] font-black italic tracking-widest hover:text-white transition-colors">설정</Link>
                     </div>
 
                     {/* ── 로그인/로그아웃 버튼: 인증 상태에 따라 분기 ──────────

@@ -186,8 +186,8 @@ export default function CanvasEditor() {
             const file = dataUrlToFile(modalDataUrl);
             const url = modalDataUrl;
 
-            // 2. 목적지 결정: id가 있으면 수정페이지, 없으면 등록페이지
-            const returnUrl = location.state?.returnPath || `/snap/${location.state?.albumId}/edit`;
+            // 2. 목적지 결정: albumId가 있으면 수정페이지, 없으면 등록페이지
+            const returnUrl = location.state?.returnPath || (albumId ? `/snap/${albumId}/edit` : '/create-photo-album');
 
             console.log("실제 이동할 경로(returnUrl):", returnUrl);
 
