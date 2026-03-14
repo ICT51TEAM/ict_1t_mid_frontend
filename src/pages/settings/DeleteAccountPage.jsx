@@ -47,12 +47,12 @@ import { useAlert } from '@/context/AlertContext';
 export default function DeleteAccountPage() {
     const navigate = useNavigate();
 
-    const {showAlert, showConfirm} = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
-    const {logout, user: authUser} = useAuth();
-
-    const isKakaoUser = authUser?.provider === 'KAKAO';
-    const CONFIRM_PHRASE = '계정을 영구 삭제합니다';
+    const { logout } = useAuth();
+    // -------------------------------------------------------------------------
+    // [상태 변수 선언]
+    // -------------------------------------------------------------------------
 
     const [password, setPassword] = useState('');
     const [confirmText, setConfirmText] = useState('');
@@ -86,10 +86,6 @@ export default function DeleteAccountPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (isKakaoUser && confirmText !== CONFIRM_PHRASE) {
-            showAlert('확인 문구가 일치하지 않습니다.', '입력 오류', 'alert');
-            return;
-        }
 
         showConfirm({
             message: '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
@@ -99,19 +95,29 @@ export default function DeleteAccountPage() {
             cancelText: '취소',
             onConfirm: async () => {
                 try {
-                    const deletePassword = isKakaoUser ? 'KAKAO_SOCIAL_DELETE' : password;
-                    await userService.deleteAccount({ password: deletePassword });
+                    // 1. 서버에 삭제 요청
+                    await userService.deleteAccount({ password });
+
+                    // 2. 성공 시 처리
                     showAlert('탈퇴 처리가 완료되었습니다.', '탈퇴 완료', 'success');
                     logout();
                     navigate('/login');
                 } catch (error) {
-                    const message = error.response?.data?.message || '탈퇴 처리 중 오류가 발생했습니다.';
-                    showAlert(message, '탈퇴 실패', 'alert');
+                    // 3. 에러 발생 시 (비밀번호 불일치 등)
+                    console.error('탈퇴 처리 중 에러:', error);
+
+                    // 서버에서 보낸 에러 메시지가 있으면 사용하고, 없으면 기본 메시지 출력
+                    const serverMessage = error.response?.data?.message;
+                    const displayMessage = serverMessage === "비밀번호가 일치하지 않습니다"
+                        ? serverMessage
+                        : "비밀번호가 일치하지 않습니다. 다시 확인해주세요.";
+
+                    showAlert(displayMessage, '인증 실패', 'alert');
+                    setPassword(''); // 입력했던 비밀번호 초기화
                 }
             }
         });
     };
-
     // -------------------------------------------------------------------------
     // [JSX 렌더링]
     // -------------------------------------------------------------------------

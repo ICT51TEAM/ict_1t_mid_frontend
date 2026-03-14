@@ -149,15 +149,29 @@ export default function SnapHeader() {
             return;
         }
 
+        let isFetching = false;
+
         const fetchUnread = async () => {
+            if (isFetching) return; // 이미 실행 중이면 차단
+            isFetching = true;
+
             try {
                 // localStorage에 값이 없으면 서버에서 가져오기
                 let notiEnabled = localStorage.getItem('notificationEnabled');
 
                 if (notiEnabled === null) {
-                    const settings = await userService.getSettings();
-                    notiEnabled = String(settings.notificationEnabled ?? true);
-                    localStorage.setItem('notificationEnabled', notiEnabled);
+                    try {
+                        const settings = await userService.getSettings();
+                        // 서버에서 받은 값 저장 (notificationEnabled 필드명 확인 필요)
+                        notiEnabled = String(settings.notificationEnabled ?? settings.pushNotification ?? true);
+                        localStorage.setItem('notificationEnabled', notiEnabled);
+                    } catch (err) {
+                        // 2. 서버 에러(500) 시 기본값 설정하여 무한 재시도 방지
+                        console.warn("설정 로딩 실패, 기본값(true) 사용:", err);
+                        notiEnabled = 'true';
+                        // 에러가 나도 일단 값을 넣어두어 다음 폴링 때 getSettings를 또 호출하지 않게 함
+                        localStorage.setItem('notificationEnabled', 'true');
+                    }
                 }
 
                 if (notiEnabled === 'false') {
@@ -208,7 +222,10 @@ export default function SnapHeader() {
                 setUnreadCount(newCount);
             } catch (e) {
                 console.error("알림을 가져오는 중 오류 발생:", e);
+            } finally {
+                isFetching = false; // 실행 완료 후 해제
             }
+
         };
         fetchUnread();
 
@@ -221,7 +238,7 @@ export default function SnapHeader() {
             console.log("🛑 폴링 중단");
             clearInterval(interval);
         };
-    }, [isAuthenticated, notiRefreshTag, location.pathname, navigate]);
+    }, [isAuthenticated, notiRefreshTag]);
 
     // ─── JSX 렌더링 ────────────────────────────────────────────────────────────
     return (

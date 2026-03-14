@@ -393,11 +393,11 @@ export default function ProfilePage() {
                                 {/* hover 시 어두운 오버레이 제거, 기본 상태에서는 약한 어둠 적용 */}
                                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-all pointer-events-none"></div>
                                 {/* TOP 뱃지: 인덱스 0,1,2 (처음 3개 게시글)에만 표시 */}
-                                {i < 3 && (
+                                {/*i < 3 && (
                                     <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-black italic px-1.5 py-0.5 tracking-tighter shadow-lg">
                                         TOP
                                     </div>
-                                )}
+                                )*/}
                             </AlbumPreviewLink>
                         ))
                     ) : (
