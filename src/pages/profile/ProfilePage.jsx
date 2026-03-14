@@ -284,9 +284,9 @@ export default function ProfilePage() {
                     {/* lg 이상 화면에서만 표시되는 액션 버튼 영역 */}
                     <div className="hidden lg:flex flex-col gap-3 w-[220px]">
                         {/* MESSAGE 버튼: disabled 상태 (기능 미구현, 준비 중) */}
-                        <button disabled className="w-full h-12 bg-black text-white rounded-[4px] font-black italic tracking-widest uppercase text-[17px] opacity-40 cursor-not-allowed">MESSAGE (준비중)</button>
+                        <button disabled className="w-full h-12 bg-black text-white rounded-[4px] font-black italic tracking-widest uppercase text-[17px] opacity-40 cursor-not-allowed">쪽지 (준비중)</button>
                         {/* Friends 버튼: 클릭 시 /friends 이동 */}
-                        <button onClick={() => navigate('/friends')} className="w-full h-12 border-2 border-black dark:border-[#e5e5e5] rounded-[4px] font-black italic tracking-widest uppercase text-[17px] hover:bg-black hover:text-white dark:hover:bg-[#e5e5e5] dark:hover:text-black transition-all">Friends</button>
+                        <button onClick={() => navigate('/friends')} className="w-full h-12 border-2 border-black dark:border-[#e5e5e5] rounded-[4px] font-black italic tracking-widest uppercase text-[20px] hover:bg-black hover:text-white dark:hover:bg-[#e5e5e5] dark:hover:text-black transition-all">글 벗</button>
                     </div>
                 </div>
 
