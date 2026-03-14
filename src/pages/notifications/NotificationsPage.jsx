@@ -128,7 +128,7 @@ export default function NotificationsPage() {
      */
     useEffect(() => {
         loadNotifications();
-    }, []);
+    }, [notiRefreshTag]);
 
     // -------------------------------------------------------------------------
     // [추가된 핸들러 함수: 개별 알림 읽음 처리]
@@ -286,8 +286,8 @@ export default function NotificationsPage() {
                                 onClick={() => handleReadOne(noti.id, noti.isRead)}
                                 // 미읽음 항목: 파란 배경 강조 및 cursor-pointer 적용
                                 className={`flex items-start gap-4 px-6 py-5 border-b border-[#f3f3f3] dark:border-[#292e35] transition-colors ${!noti.isRead
-                                        ? 'bg-blue-50/30 dark:bg-blue-900/10 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
-                                        : 'bg-transparent'
+                                    ? 'bg-blue-50/30 dark:bg-blue-900/10 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+                                    : 'bg-transparent'
                                     }`}
                             >
                                 <div className="mt-1">{getIcon(noti.type)}</div>

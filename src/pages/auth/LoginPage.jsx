@@ -174,6 +174,7 @@ export default function LoginPage() {
                         type="password"
                         placeholder="비밀번호"
                         value={password}
+                        autoComplete="current-password"
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-black dark:focus:border-[#e5e5e5] transition-colors"
                         required

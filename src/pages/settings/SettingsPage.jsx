@@ -55,6 +55,7 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, ChevronRight, LogOut, Shield, Trash2, Bell, Smartphone, FileText, X, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { userService } from '@/api/userService';
+import { useAlert } from '@/context/AlertContext';
 
 export default function SettingsPage() {
     const navigate = useNavigate();
@@ -133,17 +134,39 @@ export default function SettingsPage() {
      *   2. 확인(OK) 클릭 시 → navigate('/login'): 로그인 페이지로 이동
      *   3. 취소 클릭 시 → 아무 동작 없음
      */
+    const { showAlert, showConfirm } = useAlert();
     const { logout } = useAuth();
 
     const handleLogout = () => {
-        if (window.confirm('로그아웃 하시겠습니까?')) {
-            // TODO: 실제 서비스 운영 시 AuthContext의 logout() 함수를 호출하여 
-            //       localStorage의 토큰을 삭제하고 전역 인증 상태를 null로 초기화해야 함.
-            console.log('[logout] 실행전');
-            logout();
-            console.log('[logout] 실행후');
-            navigate('/login');
-        }
+        showConfirm({
+            title: '로그아웃',
+            message: '정말 로그아웃 하시겠습니까?',
+            type: 'info',
+            confirmText: '로그아웃',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    // 1. 🎯 먼저 홈으로 이동! 
+                    // 아직 logout() 전이라 isAuthenticated가 true이므로 
+                    // ProtectedRoute가 가로채지 않습니다.
+                    window.location.href = '/';
+
+                    // 2. 페이지 이동이 시작된 직후에 로그아웃 처리
+                    await logout();
+
+                    // 3. 알림 표시
+                    showAlert('로그아웃되었습니다.', '성공', 'success');
+
+                } catch (error) {
+                    console.error(error);
+                    showAlert('오류가 발생했습니다.', '오류', 'error');
+                }
+            },
+            onCancel: () => {
+                // 💡 아무것도 하지 않으면 현재 페이지/상태가 그대로 유지됩니다.
+                console.log('사용자가 로그아웃을 취소함: 리렌더링 없이 현재 페이지 유지');
+            }
+        });
     };
 
     // -------------------------------------------------------------------------
@@ -188,7 +211,7 @@ export default function SettingsPage() {
         userService.getSettings().then(data => {
             console.log('[settings] 불러오기:', data);
             setIsNotificationEnabled(data.notificationEnabled ?? true);
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     const toggleNotification = async () => {
@@ -204,7 +227,7 @@ export default function SettingsPage() {
                 themeColor: null,
             });
             console.log('[notification] 저장 성공:', newVal);
-        } catch(e) {
+        } catch (e) {
             console.warn('알림 설정 저장 실패', e);
         }
     };
