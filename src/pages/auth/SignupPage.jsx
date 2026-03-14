@@ -198,8 +198,12 @@ export default function SignupPage() {
                                 className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-black dark:focus:border-[#e5e5e5] transition-colors"
                                 value={formData.username}
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                maxLength={20}
                                 required
                             />
+                            <p className="text-[11px] text-gray-400 dark:text-[#6b7a90] ml-1 mt-1">
+                                1~20자 이내로 입력해주세요 ({formData.username?.length || 0}/20)
+                            </p>
                         </div>
 
                         {/* 비밀번호: 새로 설정할 비밀번호 */}

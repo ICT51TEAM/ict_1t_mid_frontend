@@ -51,9 +51,11 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Crown } from 'lucide-react';
 import { badgeService } from '@/api/badgeService';
 import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
+import { useAuth } from '@/context/AuthContext';
 
 export default function BadgeRankingPage() {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
 
     /**
      * @state ranking
@@ -110,9 +112,32 @@ export default function BadgeRankingPage() {
                     console.log('[ranking] GLOBAL:', ranking.length, '명');
                     setRanking(ranking);
                 } else {
-                    const data = await badgeService.getFriendsRanking();
-                    const ranking = Array.isArray(data?.content) ? data.content : [];
-                    console.log('[ranking] FRIENDS:', ranking.length, '명');
+                    const [data, globalData] = await Promise.all([
+                        badgeService.getFriendsRanking(),
+                        badgeService.getGlobalRanking({ size: 100 })
+                    ]);
+                    let ranking = Array.isArray(data?.content) ? data.content : [];
+                    const globalList = Array.isArray(globalData?.content) ? globalData.content : [];
+
+                    // 전체 랭킹에서 본인 데이터 찾기 (전체 랭킹과 동일한 값 사용)
+                    const myId = currentUser?.id || currentUser?.userId;
+                    const meInGlobal = globalList.find(u => u.userId === myId);
+
+                    // 본인이 친구 랭킹에 없으면 추가
+                    const alreadyIncluded = ranking.some(u => u.userId === myId);
+                    if (!alreadyIncluded && currentUser) {
+                        ranking = [...ranking, meInGlobal || {
+                            userId: myId,
+                            username: currentUser.username,
+                            profileImageUrl: currentUser.profileImageUrl || currentUser.profileImage,
+                            totalBadges: 0,
+                        }];
+                    }
+
+                    // totalBadges 내림차순 정렬
+                    ranking.sort((a, b) => (b.totalBadges || 0) - (a.totalBadges || 0));
+
+                    console.log('[ranking] FRIENDS:', ranking.length, '명 (본인 포함)');
                     setRanking(ranking);
                 }
             } catch (error) {

@@ -49,7 +49,7 @@ const getBaseUrl = () => {
 const apiClient = axios.create({
   baseURL: getBaseUrl(),
   withCredentials: true,
-  timeout: 10000, // 10초 타임아웃 - 이 시간 안에 응답 없으면 에러 처리
+  timeout: 30000, // 30초 타임아웃 - 이 시간 안에 응답 없으면 에러 처리
   headers: {
     'Content-Type': 'application/json',
   },
