@@ -332,9 +332,19 @@ export const userService = {
      * 성공: 200 OK
      */
     getSettings: async () => {
-        const response = await apiClient.get('/users/me/settings');
-        console.log('[getSettings] 응답:', response.data);
-        return response.data;
+        try {
+            const response = await apiClient.get('/api/users/settings');
+            return response.data;
+        } catch (error) {
+            // 500 에러가 나더라도 콘솔에 경고만 찍고 기본 설정값 반환
+            console.warn("서버 설정을 불러올 수 없어 기본 설정을 적용합니다.");
+            return {
+                notificationEnabled: true,
+                themeColor: '#ffffff',
+                labFeaturesEnabled: false,
+                bgmUrl: null
+            };
+        }
     },
 
     /**
