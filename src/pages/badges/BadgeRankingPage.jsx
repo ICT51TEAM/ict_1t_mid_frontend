@@ -185,7 +185,19 @@ export default function BadgeRankingPage() {
         return (
             <div className="flex flex-col">
                 {ranking.map((user, idx) => (
-                    <div key={user.userId || user.id || idx} className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35]">
+                    <div
+                        key={user.userId || user.id || idx}
+                        className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35] cursor-pointer active:bg-gray-50 dark:active:bg-[#292e35] transition-colors"
+                        onClick={() => {
+                            const userId = user.userId || user.id;
+                            const myId = currentUser?.id || currentUser?.userId;
+                            if (userId === myId) {
+                                navigate('/profile');
+                            } else {
+                                navigate(`/friend/${userId}`);
+                            }
+                        }}
+                    >
                         <div className="flex items-center gap-4">
                             {/* 순위 표시: 1위 = Crown 아이콘(노란색), 2위+ = 숫자 */}
                             <div className="w-6 text-[14px] font-black italic text-[#ccd3db]">

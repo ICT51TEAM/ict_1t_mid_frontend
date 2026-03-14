@@ -44,12 +44,15 @@ import { userService } from '@/api/userService';
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 
+const CONFIRM_PHRASE = '계정을 삭제합니다';
+
 export default function DeleteAccountPage() {
     const navigate = useNavigate();
 
     const { showAlert, showConfirm } = useAlert();
 
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
+    const isKakaoUser = user?.provider === 'KAKAO';
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
     // -------------------------------------------------------------------------
