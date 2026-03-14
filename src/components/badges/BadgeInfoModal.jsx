@@ -177,7 +177,7 @@ export default function BadgeInfoModal({ isOpen, onClose }) {
               <h3 className="text-2xl font-black italic tracking-tighter text-white dark:text-black uppercase mb-3">마음을 잇는 장식, 달개</h3>
               {/* 달개 개념 설명 (반투명 내부 박스) */}
               <p className="text-[13px] text-white/70 dark:text-black/60 font-medium leading-relaxed bg-white/5 dark:bg-black/5 p-4 rounded-xl border border-white/10 dark:border-black/5">
-                '달개'는 배지의 순우리말입니다. 당신의 소중한 기록과 성장을 상징하며, 무신사 SNAP에서의 영향력을 증명하는 특별한 엠블럼입니다.
+                '달개'는 배지의 순우리말입니다. 당신의 소중한 기록과 성장을 상징하며, MYMORY에서의 영향력을 증명하는 특별한 엠블럼입니다.
               </p>
             </div>
           </div>
