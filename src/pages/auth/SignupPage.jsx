@@ -102,13 +102,16 @@ export default function SignupPage() {
                 password: formData.password
             });
 
-            const token = loginResponse.token; // 응답받은 토큰 저장
+            console.log('실제 로그인 응답:', loginResponse);
+
+            const token = loginResponse.accessToken; // 응답받은 토큰 저장
             const userData = loginResponse.user || loginResponse; // 응답데이터 저장
 
             if (token && userData) {
-                authLogin(token, userData); // 토큰&사용자 정보 저장
+                authLogin(token, null, userData); // 토큰&사용자 정보 저장
                 showAlert('회원 가입을 환영합니다.', '회원 가입 성공', 'success');
-                navigate('/', { replace: true }); // 피드 페이지로 이동
+                //window.location.href = '/';
+                navigate('/', { replace: true });
             }
         }
         catch (err) {

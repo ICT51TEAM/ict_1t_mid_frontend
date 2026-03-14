@@ -104,7 +104,7 @@ export default function DeleteAccountPage() {
                     // 2. 성공 시 처리
                     showAlert('탈퇴 처리가 완료되었습니다.', '탈퇴 완료', 'success');
                     logout();
-                    navigate('/login');
+                    navigate('/', { replace: true });
                 } catch (error) {
                     console.error('탈퇴 처리 중 에러:', error);
 
