@@ -169,7 +169,7 @@ export default function ProfilePage() {
             try{
                 const [profileResult, postsResult, friendsResult] = await Promise.allSettled([ //결과다 받아 끝날때까지 기다릴테니까
                 withTimeout(userService.getMyProfile(), 'profile'), //내거 가져오는 API 일까? 아니면 수정필요
-                withTimeout(postService.getPosts({ type: 'photo', visibility: 'MINE' }), 'posts'), //내 프로필에서는 내 공개범위 전체 글을 가져오도록 명시
+                withTimeout(postService.getPosts({ type: 'photo' }), 'posts'), //내 프로필에서는 전체 피드에서 authorId로 필터링
                 withTimeout(friendService.listFriends(), 'friends') //내거 가져오는 API 일까? 아니면 수정필요
                 ]);
 

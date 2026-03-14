@@ -182,11 +182,21 @@ export const AuthProvider = ({ children }) => {
         throw new Error(`데이터 부족 - 토큰: ${!!newAccessToken}, 유저: ${!!userData}`);
       }
     } catch (error) {
-      console.log('세션이 만료되었습니다. 로그인 페이지로 이동합니다.', error);
-      handleLogoutCleanUp();
-      // 보호된 경로(로그인 제외)에서 접근 시 로그인으로 튕겨냄
-      if (location.pathname !== '/login' && location.pathname !== '/signup') {
-        navigate('/login', { replace: true });
+      console.error('인증 확인 중 오류 발생:', error);
+
+      // 1. 서버 응답이 401(Unauthorized)인 경우에만 로그아웃 처리 및 이동
+      if (error.response?.status === 401) {
+        handleLogoutCleanUp();
+        if (location.pathname !== '/login' && location.pathname !== '/signup') {
+          navigate('/login', { replace: true });
+        }
+      } else {
+        // 2. 단순 네트워크 에러나 다른 에러일 경우, 
+        // 기존에 로컬스토리지에 유저 정보가 있다면 일단 유지 (세션 유지 시도)
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
       }
     } finally {
       isVerifying.current = false;
@@ -207,12 +217,12 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     setUser,
-    login,    
+    login,
     logout,
     checkAuth,
     updateUser,
     notiRefreshTag,      // 알림 태그
-    refreshNotifications // 알림 갱신 함수
+    triggerNotiRefresh: refreshNotifications // 알림 갱신 함수
   };
 
   // isLoading이 true일 때 실제 App 내용을 숨김 (보안 가드)

@@ -7,6 +7,7 @@ export default function SnapCard({ snap }) {
   return (
     <AlbumPreviewLink
       album={snap}
+      skipFetch={true}
       to={`/snap/${snapId}`}
       containerClassName="relative break-inside-avoid mb-2"
       linkClassName="group block"

@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Stage, Layer, Text, Image as KonvaImage, Transformer } from 'react-konva';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import {
-    Image as ImageIcon, Type, Trash2,
-    Layers, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown,
-    X, Eye, Download, Send, CheckCircle,
+    ArrowLeft, Type, Image as ImageIcon, Layers, Trash2, Eye, 
+  CheckCircle, X, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown
 } from 'lucide-react';
 import { useAlert } from '@/context/AlertContext';
 
@@ -70,7 +69,7 @@ function SaveActionModal({ dataUrl, onClose, onDownload, onSendToAlbum }) {
                         onClick={onSendToAlbum}
                         className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-2xl text-sm font-bold transition-colors"
                     >
-                        <Send size={16} /> 포토앨범에 추가
+                        <Send size={16} /> 사진첩에 추가
                     </button>
                 </div>
             </div>
@@ -88,6 +87,7 @@ function SaveActionModal({ dataUrl, onClose, onDownload, onSendToAlbum }) {
 // ═════════════════════════════════════════════════════════════════════
 export default function CanvasEditor() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { showAlert } = useAlert();
 
     const [elements, setElements] = useState([
@@ -139,6 +139,19 @@ export default function CanvasEditor() {
         if (dataUrl) setModalDataUrl(dataUrl);
     };
 
+    // ── 이미지를 클릭했을 때 호출되는 함수 ─────────────────────────────────────────────────
+    const handleSelectImage = (imageUrl, index) => {
+        navigate('/create-canvas', {
+            state: {
+                initialImage: imageUrl,
+                albumId: id,        // 현재 수정 중인 게시물 ID (useParams에서 가져온 것)
+                editIndex: index,   // 몇 번째 사진을 수정 중인지
+                mode: 'edit'
+            }
+        });
+    };
+
+
     // ── 저장 버튼 — 미리보기와 동일한 모달 표시 ──────────────────────
     const handleSave = () => {
         const dataUrl = exportCanvas();
@@ -159,16 +172,50 @@ export default function CanvasEditor() {
     // ── 모달: 포토앨범으로 이동 ──────────────────────────────────────
     // CreatePhotoAlbumPage가 기대하는 형태:
     //   location.state.canvasFile = { url: string, file: File }
-    const handleSendToAlbum = () => {
-        if (!modalDataUrl) return;
-        const file = dataUrlToFile(modalDataUrl);
-        const url = URL.createObjectURL(file);   // 로컬 Blob URL (미리보기용)
-        setModalDataUrl(null);
-        navigate('/create-photo-album', {
-            state: {
-                canvasFile: { url, file },
-            },
-        });
+    const handleSendToAlbum = async () => {
+        try {
+            if (!modalDataUrl) return;
+
+            // 1. 수정 페이지에서 넘겨준 albumId와 인덱스 확인
+            const albumId = location.state?.albumId;
+            const editIndex = location.state?.editIndex;
+
+            console.log("보내기 전 데이터 확인:", { albumId, editIndex });
+
+            const file = dataUrlToFile(modalDataUrl);
+            const url = modalDataUrl;
+
+            // 2. 목적지 결정: id가 있으면 수정페이지, 없으면 등록페이지
+            const returnUrl = location.state?.returnPath || `/snap/${location.state?.albumId}/edit`;
+
+            console.log("실제 이동할 경로(returnUrl):", returnUrl);
+
+            setModalDataUrl(null);
+            showAlert('편집이 완료되었습니다!', '알림', 'success');
+
+            // 3. setTimeout 구문 교정
+            setTimeout(() => {
+                navigate(returnUrl, {
+                    state: {
+                        canvasFile: {
+                            url: url,
+                            file: file,
+                            editIndex: location.state?.editIndex
+                        }, // 👈 1. 여기 쉼표가 있는지 확인!
+                        albumId: location.state?.albumId, // 👈 2. 여기 쉼표가 있는지 확인!
+                        returnPath: location.state?.returnPath, // 👈 3. 여기 쉼표가 있는지 확인!
+
+                        // 💡 받았던 보관함을 그대로 다시 돌려줍니다.
+                        preservedData: location.state?.preservedData
+                    },
+                    replace: true // 뒤로가기 시 캔버스가 다시 나오지 않게 함
+                });
+            }, 500); // 0.5초 뒤 이동
+
+        } catch (error) {
+            console.error(error);
+            showAlert('저장에 실패했습니다.', '이미지 저장 실패', 'alert');
+        }
     };
 
     // ── 텍스트 더블클릭: 편집 모드 진입 ──────────────────────────────
@@ -286,6 +333,37 @@ export default function CanvasEditor() {
         return () => window.removeEventListener('resize', onResize);
     }, []);
 
+    // ── 외부에서 전달받은 이미지 로드 ──────────────────────────────────────
+    useEffect(() => {
+        const imageUrl = location.state?.initialImage;
+
+        if (imageUrl && stageSize.width > 0) {
+            console.log("🎨 이미지 로딩 시작:", imageUrl);
+            const imgEl = new window.Image();
+            imgEl.src = imageUrl;
+            imgEl.crossOrigin = "Anonymous";
+
+            imgEl.onload = () => {
+                const newImg = {
+                    id: 'initial-bg',
+                    type: 'image',
+                    image: imgEl,
+                    x: 0,
+                    y: 0,
+                    width: stageSize.width,
+                    height: (imgEl.height / imgEl.width) * stageSize.width,
+                    draggable: true,
+                };
+                setElements(prev => {
+                    // 이미 initial-bg가 있다면 중복 추가 방지
+                    if (prev.find(el => el.id === 'initial-bg')) return prev;
+                    return [newImg, ...prev];
+                });
+            };
+        }
+    }, [location.state?.initialImage, stageSize.width]);
+
+
     // ── Transformer 연결 ──────────────────────────────────────────────
     useEffect(() => {
         if (selectedId && trRef.current) {
@@ -302,69 +380,69 @@ export default function CanvasEditor() {
         <ResponsiveLayout showTabs={false}>
             <div className="min-h-screen bg-gray-50 dark:bg-[#101215] pb-20 font-sans">
 
-                {/* ── 상단 툴바 ── */}
-                <div className="h-16 bg-white dark:bg-[#1c1f24] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm">
-                    <div className="flex gap-2">
+                {/* ── 1. 상단 네비게이션 헤더 ── */}
+                <div className="flex items-center justify-between h-14 px-4 bg-white dark:bg-[#1c1f24] border-b border-[#e5e5e5] dark:border-[#292e35] sticky top-0 z-[60] transition-colors duration-300">
+                    <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                        <ArrowLeft size={24} className="dark:text-white" />
+                    </button>
+                    <h1 className="font-bold text-[16px] dark:text-white">이미지 캔버스</h1>
+                    <div className="w-10" />
+                </div>
+
+                {/* ── 2. 편집 툴바 (헤더 아래에 고정) ── */}
+                <div className="h-16 bg-white dark:bg-[#1c1f24] border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sticky top-14 z-50 shadow-sm">
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
                         <button
                             onClick={() => setElements(prev => [...prev, {
                                 id: Date.now().toString(), type: 'text', text: '새 문구 입력',
-                                x: 20, y: Math.floor(Math.random() * 200) + 80,
-                                fontSize: 24, fill: '#333333', fontWeight: 'normal', fontFamily: 'sans-serif', fontStyle: 'normal',
+                                x: 50, y: 50, fontSize: 24, fill: '#333333',
+                                fontWeight: 'normal', fontFamily: 'sans-serif', fontStyle: 'normal',
                             }])}
-                            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
                         >
                             <Type size={15} /> 텍스트
                         </button>
 
                         <input type="file" id="img-up" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                        <label htmlFor="img-up" className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl cursor-pointer dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <label htmlFor="img-up" className="flex items-center gap-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-xl cursor-pointer dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0">
                             <ImageIcon size={15} /> 이미지
                         </label>
 
                         <button
                             onClick={() => setShowLayers(v => !v)}
-                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-colors ${showLayers ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-colors shrink-0 ${showLayers ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                         >
                             <Layers size={15} /> 레이어
                         </button>
 
                         {selectedId && (
-                            <button onClick={handleDelete} className="flex items-center gap-1.5 text-xs font-bold bg-red-100 text-red-600 px-3 py-2 rounded-xl hover:bg-red-200 transition-colors">
+                            <button onClick={handleDelete} className="flex items-center gap-1.5 text-xs font-bold bg-red-100 text-red-600 px-3 py-2 rounded-xl hover:bg-red-200 transition-colors shrink-0">
                                 <Trash2 size={15} /> 삭제
                             </button>
                         )}
                     </div>
 
-                    {/* 우측: 미리보기 + 저장 — 둘 다 같은 모달을 띄움 */}
-                    <div className="flex gap-2 shrink-0">
-                        <button
-                            onClick={handlePreview}
-                            className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
-                        >
-                            <Eye size={15} /> 미리보기
+                    <div className="flex gap-2 shrink-0 ml-2">
+                        <button onClick={handlePreview} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-xl text-xs font-bold transition-colors">
+                            <Eye size={15} />
                         </button>
-                        <button
-                            onClick={handleSave}
-                            className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
-                        >
-                            <CheckCircle size={15} /> 저장
+                        <button onClick={handleSave} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                            저장
                         </button>
                     </div>
                 </div>
 
                 <div className="max-w-md mx-auto py-6 px-4">
-
                     {/* ── 레이어 패널 ── */}
                     {showLayers && (
-                        <div className="mb-3 bg-white dark:bg-[#1c1f24] rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div className="mb-4 bg-white dark:bg-[#1c1f24] rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                                 <span className="text-sm font-bold dark:text-white flex items-center gap-2">
                                     <Layers size={14} /> 레이어 순서
-                                    <span className="text-xs text-gray-400 font-normal">(위 = 앞에 표시)</span>
                                 </span>
                                 <button onClick={() => setShowLayers(false)} className="text-gray-400 hover:text-gray-600"><X size={15} /></button>
                             </div>
-                            <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                            <div className="max-h-60 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700/50">
                                 {[...elements].reverse().map((el, revIdx) => {
                                     const realIdx = elements.length - 1 - revIdx;
                                     const isTop = realIdx === elements.length - 1;
@@ -377,35 +455,29 @@ export default function CanvasEditor() {
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 <span className="text-lg">{el.type === 'text' ? '✏️' : '🖼️'}</span>
-                                                <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[140px]">
+                                                <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
                                                     {el.type === 'text' ? el.text : `이미지 #${el.id.slice(-4)}`}
                                                 </span>
                                             </div>
                                             <div className="flex gap-1 shrink-0">
-                                                {[
-                                                    { dir: 'top', Icon: ChevronsUp, disabled: isTop, cls: 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-800' },
-                                                    { dir: 'up', Icon: ChevronUp, disabled: isTop, cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
-                                                    { dir: 'down', Icon: ChevronDown, disabled: isBottom, cls: 'dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' },
-                                                    { dir: 'bottom', Icon: ChevronsDown, disabled: isBottom, cls: 'text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' },
-                                                ].map(({ dir, Icon, disabled, cls }) => (
-                                                    <button key={dir} onClick={(e) => { e.stopPropagation(); moveLayer(el.id, dir); }}
-                                                        disabled={disabled} className={`p-1 rounded disabled:opacity-25 disabled:cursor-not-allowed ${cls}`}>
-                                                        <Icon size={13} />
-                                                    </button>
-                                                ))}
+                                                <button onClick={(e) => { e.stopPropagation(); moveLayer(el.id, 'top'); }} disabled={isTop} className="p-1 text-blue-500 disabled:opacity-20"><ChevronsUp size={14} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); moveLayer(el.id, 'up'); }} disabled={isTop} className="p-1 dark:text-gray-300 disabled:opacity-20"><ChevronUp size={14} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); moveLayer(el.id, 'down'); }} disabled={isBottom} className="p-1 dark:text-gray-300 disabled:opacity-20"><ChevronDown size={14} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); moveLayer(el.id, 'bottom'); }} disabled={isBottom} className="p-1 text-red-400 disabled:opacity-20"><ChevronsDown size={14} /></button>
                                             </div>
                                         </div>
                                     );
                                 })}
-                                {elements.length === 0 && <div className="px-4 py-6 text-center text-xs text-gray-400">요소가 없습니다</div>}
                             </div>
                         </div>
                     )}
 
-                    {/* ── 캔버스 ── */}
-                    <div ref={containerRef} className="relative w-full bg-white shadow-2xl rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4' }}>
+                    {/* ── 캔버스 영역 ── */}
+                    <div ref={containerRef} className="relative w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800" style={{ aspectRatio: '3/4' }}>
                         <Stage
-                            width={stageSize.width} height={stageSize.height} ref={stageRef}
+                            width={stageSize.width}
+                            height={stageSize.height}
+                            ref={stageRef}
                             onMouseDown={(e) => {
                                 if (e.target === e.target.getStage()) {
                                     setSelectedId(null);
@@ -425,29 +497,33 @@ export default function CanvasEditor() {
                                             onClick={() => setSelectedId(el.id)}
                                             onDblClick={(e) => handleTextDblClick(e, el)}
                                             visible={editingId !== el.id}
-                                            onDragEnd={(e) => setElements(prev => prev.map(it => it.id === el.id ? { ...it, x: e.target.x(), y: e.target.y() } : it))}
+                                            onDragEnd={(e) => {
+                                                setElements(prev => prev.map(it => it.id === el.id ? { ...it, x: e.target.x(), y: e.target.y() } : it));
+                                            }}
                                         />
                                     ) : (
                                         <KonvaImage
                                             key={el.id} image={el.image} x={el.x} y={el.y} width={el.width} height={el.height}
-                                            draggable
+                                            draggable={el.id !== 'initial-bg'}
                                             ref={node => { shapeRefs.current[el.id] = node; }}
                                             onClick={() => setSelectedId(el.id)}
-                                            onDragEnd={(e) => setElements(prev => prev.map(it => it.id === el.id ? { ...it, x: e.target.x(), y: e.target.y() } : it))}
+                                            onDragEnd={(e) => {
+                                                setElements(prev => prev.map(it => it.id === el.id ? { ...it, x: e.target.x(), y: e.target.y() } : it));
+                                            }}
                                         />
                                     )
                                 )}
-                                {selectedId && !editingId && <Transformer ref={trRef} />}
+                                {selectedId && !editingId && <Transformer ref={trRef} keepRatio={true} />}
                             </Layer>
                         </Stage>
 
                         {/* 텍스트 편집 오버레이 */}
                         {editingId && (
-                            <div className="absolute inset-0 z-[100]">
-                                <div style={{ position: 'absolute', top: textareaPos.top, left: textareaPos.left, zIndex: 1001, minWidth: 120 }}>
-                                    <div onMouseDown={handleTextareaDragStart} className="flex items-center justify-between bg-blue-500 text-white text-[10px] px-2 py-1 rounded-t-lg cursor-move select-none">
-                                        <span>✥ 드래그로 이동</span>
-                                        <button onMouseDown={(e) => e.stopPropagation()} onClick={handleTextSubmit} className="bg-white text-blue-600 rounded px-1.5 py-0.5 font-bold text-[10px] hover:bg-blue-50">확인</button>
+                            <div className="absolute inset-0 z-[100] bg-black/10">
+                                <div style={{ position: 'absolute', top: textareaPos.top, left: textareaPos.left, zIndex: 1001 }}>
+                                    <div onMouseDown={handleTextareaDragStart} className="flex items-center justify-between bg-blue-600 text-white text-[10px] px-2 py-1 rounded-t-lg cursor-move">
+                                        <span>✥ 드래그하여 이동</span>
+                                        <button onClick={handleTextSubmit} className="bg-white text-blue-600 rounded px-1.5 font-bold">확인</button>
                                     </div>
                                     <textarea
                                         ref={textareaRef} autoFocus value={editingValue}
@@ -459,62 +535,45 @@ export default function CanvasEditor() {
                                         style={{
                                             width: textareaPos.width, height: textareaPos.height,
                                             fontSize: `${textStyle.fontSize}px`, color: textStyle.fill,
-                                            fontWeight: textStyle.fontWeight, fontFamily: textStyle.fontFamily, fontStyle: textStyle.fontStyle,
-                                            background: 'rgba(255,255,255,0.97)',
-                                            border: '2px dashed #3b82f6', borderTop: 'none',
-                                            outline: 'none', padding: '8px', lineHeight: 1.3,
-                                            resize: 'both', overflow: 'auto', whiteSpace: 'pre-wrap',
-                                            display: 'block', borderRadius: '0 0 8px 8px',
+                                            fontWeight: textStyle.fontWeight, fontFamily: textStyle.fontFamily,
+                                            background: 'white', border: '2px solid #2563eb', borderTop: 'none',
+                                            outline: 'none', padding: '8px', lineHeight: 1.3, resize: 'none'
                                         }}
                                     />
                                 </div>
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1c1f24] shadow-2xl rounded-2xl px-4 py-3 flex gap-4 items-center border border-gray-100 dark:border-gray-700"
-                                    style={{ zIndex: 1002 }} onMouseDown={(e) => e.stopPropagation()}>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-[9px] text-gray-400 mb-1">크기</span>
-                                        <input type="number" value={textStyle.fontSize} min={8} max={120}
-                                            onChange={(e) => setTextStyle(s => ({ ...s, fontSize: Number(e.target.value) }))}
-                                            className="w-12 border-b outline-none text-center bg-transparent dark:text-white text-sm" />
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-[9px] text-gray-400 mb-1">색상</span>
-                                        <input type="color" value={textStyle.fill}
-                                            onChange={(e) => setTextStyle(s => ({ ...s, fill: e.target.value }))}
-                                            className="w-8 h-8 cursor-pointer bg-transparent border-none rounded" />
-                                    </div>
+
+                                {/* 하단 스타일 툴바 */}
+                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1c1f24] shadow-2xl rounded-2xl px-4 py-3 flex gap-3 items-center border border-gray-200" style={{ zIndex: 1002 }}>
+                                    <input type="number" value={textStyle.fontSize} className="w-12 text-center border-b dark:bg-transparent dark:text-white"
+                                        onChange={(e) => setTextStyle(s => ({ ...s, fontSize: Number(e.target.value) }))} />
+                                    <input type="color" value={textStyle.fill} onChange={(e) => setTextStyle(s => ({ ...s, fill: e.target.value }))} className="w-6 h-6" />
                                     <button onClick={() => setTextStyle(s => ({ ...s, fontWeight: s.fontWeight === 'bold' ? 'normal' : 'bold' }))}
-                                        className={`w-8 h-8 rounded-lg font-bold text-sm transition-colors ${textStyle.fontWeight === 'bold' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-white'}`}>B</button>
-                                    <button onClick={() => setTextStyle(s => ({ ...s, fontStyle: s.fontStyle === 'italic' ? 'normal' : 'italic' }))}
-                                        className={`w-8 h-8 rounded-lg italic text-sm transition-colors ${textStyle.fontStyle === 'italic' ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-white'}`}>I</button>
-                                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
-                                    <button onClick={handleTextSubmit} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">완료</button>
+                                        className={`w-8 h-8 rounded ${textStyle.fontWeight === 'bold' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}>B</button>
+                                    <button onClick={handleTextSubmit} className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">완료</button>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* 선택 요소 정보바 */}
-                    {selectedEl && !editingId && (
-                        <div className="mt-3 bg-white dark:bg-[#1c1f24] rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm border border-gray-100 dark:border-gray-700">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {selectedEl.type === 'text' ? `📝 "${selectedEl.text.slice(0, 20)}${selectedEl.text.length > 20 ? '…' : ''}"` : '🖼️ 이미지'}
-                                <span className="ml-2 text-gray-300">선택됨</span>
-                            </span>
-                            <span className="text-[10px] text-gray-400">더블클릭 = 편집 · 드래그 = 이동</span>
+                    {/* 선택 요소 정보 */}
+                    {selectedId && !editingId && (
+                        <div className="mt-4 bg-white dark:bg-[#1c1f24] rounded-xl px-4 py-2.5 flex items-center justify-between border border-gray-100 dark:border-gray-700">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">요소가 선택되었습니다.</span>
+                            <span className="text-[10px] text-gray-400">더블클릭하여 텍스트 수정</span>
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* ── 미리보기 / 저장 공용 모달 ── */}
-            {modalDataUrl && (
-                <SaveActionModal
-                    dataUrl={modalDataUrl}
-                    onClose={() => setModalDataUrl(null)}
-                    onDownload={handleDownload}
-                    onSendToAlbum={handleSendToAlbum}
-                />
-            )}
+                {/* 모달 */}
+                {modalDataUrl && (
+                    <SaveActionModal
+                        dataUrl={modalDataUrl}
+                        onClose={() => setModalDataUrl(null)}
+                        onDownload={handleDownload}
+                        onSendToAlbum={handleSendToAlbum}
+                    />
+                )}
+            </div>
         </ResponsiveLayout>
     );
-}
+};

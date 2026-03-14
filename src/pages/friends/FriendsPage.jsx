@@ -456,7 +456,7 @@ export default function FriendsPage() {
                                 </div>
                             ))
                         ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-20"><Users size={64} className="mb-4" /><p>Empty Crew</p></div>
+                            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-20"><Users size={64} className="mb-4" /><p>글벗이 없어요</p></div>
                         )
                     ) : (
                         /* --- 요청 관리 (RECEIVED & SENT) --- */
@@ -472,7 +472,7 @@ export default function FriendsPage() {
                                             <img src={getImageUrl(req.profileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover" />
                                             <div className="flex flex-col">
                                                 <span className="font-black italic text-[15px] tracking-tighter uppercase">{req.username}</span>
-                                                <span className="text-[11px] text-[#a3b0c1]">Incoming Request</span>
+                                                <span className="text-[11px] text-[#a3b0c1]">받은 요청...</span>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
@@ -496,10 +496,10 @@ export default function FriendsPage() {
                                             <img src={getImageUrl(req.profileImageUrl) || DEFAULT_AVATAR} className="w-12 h-12 rounded-2xl object-cover opacity-60" />
                                             <div className="flex flex-col">
                                                 <span className="font-black italic text-[15px] tracking-tighter uppercase text-[#a3b0c1]">{req.username}</span>
-                                                <span className="text-[11px] text-[#ccd3db]">Waiting for approval...</span>
+                                                <span className="text-[11px] text-[#ccd3db]">수락을 기다리는 중...</span>
                                             </div>
                                         </div>
-                                        <button onClick={() => handleCancelSentRequest(req.friendshipId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">CANCEL</button>
+                                        <button onClick={() => handleCancelSentRequest(req.friendshipId)} className="h-9 px-4 border border-red-100 text-red-400 text-[11px] font-black rounded hover:bg-red-50 transition-colors">취소</button>
                                     </div>
                                 ))
                             ) : (

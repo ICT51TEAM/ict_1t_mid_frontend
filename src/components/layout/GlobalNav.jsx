@@ -87,7 +87,7 @@ export default function GlobalNav() {
     // isAuthenticated: 로그인 여부 boolean
     // logout: 로컬스토리지 초기화 + user 상태 null 처리
     const { isAuthenticated, logout } = useAuth();
-    const { showAlert } = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
     // ── 상수: 좌측 내비게이션 링크 목록 ─────────────────────────────────────
     // 순서대로 렌더링됨. path는 활성 여부 판별과 <Link to> 속성에 모두 사용.
@@ -106,12 +106,36 @@ export default function GlobalNav() {
      *              AuthContext의 logout()으로 인증 상태를 초기화하고
      *              /login 페이지로 이동한다.
      */
-    const handleLogout = async () => {
-        // AuthContext의 logout: localStorage 토큰·유저 정보 삭제 + user 상태 null
-        await logout();
-        // 로그아웃 후 로그인 페이지로 리다이렉트
-        showAlert('로그아웃되었습니다.', '로그아웃', 'success');
-        navigate('/login');
+    const handleLogout = () => {
+        showConfirm({
+            title: '로그아웃',
+            message: '정말 로그아웃 하시겠습니까?',
+            type: 'info',
+            confirmText: '로그아웃',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    // 1. 🎯 먼저 홈으로 이동! 
+                    // 아직 logout() 전이라 isAuthenticated가 true이므로 
+                    // ProtectedRoute가 가로채지 않습니다.
+                    window.location.href = '/';
+
+                    // 2. 페이지 이동이 시작된 직후에 로그아웃 처리
+                    await logout();
+
+                    // 3. 알림 표시
+                    showAlert('로그아웃되었습니다.', '성공', 'success');
+
+                } catch (error) {
+                    console.error(error);
+                    showAlert('오류가 발생했습니다.', '오류', 'error');
+                }
+            },
+            onCancel: () => {
+                // 💡 아무것도 하지 않으면 현재 페이지/상태가 그대로 유지됩니다.
+                console.log('사용자가 로그아웃을 취소함: 리렌더링 없이 현재 페이지 유지');
+            }
+        });
     };
 
     // ── State: 검색어 ─────────────────────────────────────────────────────────
