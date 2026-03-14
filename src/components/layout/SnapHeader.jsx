@@ -57,7 +57,7 @@ import React, { useEffect, useState, useRef } from 'react';
 // 프로그래매틱 내비게이션 (알림 버튼 클릭 → /notifications 이동)
 import { Link, useNavigate } from 'react-router-dom';
 // 알림 벨 아이콘
-import { Bell } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 // 로그인 여부 확인용 인증 컨텍스트
 import { useAuth } from '@/context/AuthContext';
 // 미읽음 알림 수 조회 API 서비스
@@ -86,6 +86,30 @@ export default function SnapHeader() {
         notiRefreshTag,
         refreshNotifications } = useAuth();
     const { showAlert, showConfirm } = useAlert();
+
+    // ── 함수: handleLogout ────────────────────────────────────────────────────
+    const handleLogout = () => {
+        showConfirm({
+            title: '로그아웃',
+            message: '정말 로그아웃 하시겠습니까?',
+            type: 'info',
+            confirmText: '로그아웃',
+            cancelText: '취소',
+            onConfirm: async () => {
+                try {
+                    window.location.href = '/';
+                    await logout();
+                    showAlert('로그아웃되었습니다.', '성공', 'success');
+                } catch (error) {
+                    console.error(error);
+                    showAlert('오류가 발생했습니다.', '오류', 'error');
+                }
+            },
+            onCancel: () => {
+                console.log('사용자가 로그아웃을 취소함');
+            }
+        });
+    };
 
     // ── State: 미읽음 알림 수 ─────────────────────────────────────────────────
     // 0이면 배지 숨김, 1 이상이면 벨 아이콘 우상단에 카운트 배지 표시.
@@ -225,46 +249,57 @@ export default function SnapHeader() {
         // border-b: 하단 얇은 구분선으로 컨텐츠와 분리
         <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#1c1f24] h-[60px] border-b border-[#f3f3f3] dark:border-[#292e35]">
 
-            {/* ── 좌측 더미 공간 ────────────────────────────────────────────────
-                40px 고정 너비의 빈 div.
-                우측 알림 버튼과 동일한 크기로 로고를 항상 시각적 중앙에 배치하기 위한 균형추. */}
-            <div className="w-10" />
+            {/* ── 좌측: 모바일에서는 벨 버튼, 데스크톱에서는 더미 공간 ──────── */}
+            {isAuthenticated ? (
+                <>
+                    {/* 모바일: 벨 버튼을 좌측에 표시 */}
+                    <button
+                        onClick={() => navigate('/notifications')}
+                        className="sm:hidden relative w-10 h-10 flex items-center justify-center text-black dark:text-[#e5e5e5] hover:opacity-60 transition-opacity"
+                    >
+                        <Bell size={22} strokeWidth={2} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-black dark:bg-[#292e35] text-[#e5e5e5] text-[9px] font-black rounded-full flex items-center justify-center px-[3px]">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                    {/* 데스크톱: 더미 공간 */}
+                    <div className="hidden sm:block w-10" />
+                </>
+            ) : (
+                <div className="w-10" />
+            )}
 
-            {/* ── 중앙: SNAP 로고 (홈 링크) ────────────────────────────────────
-                클릭 시 "/" 경로(피드 페이지)로 이동.
-                스타일: 3xl 크기, 최대 굵기(font-black), 이탤릭, 자간 좁음(tracking-tighter) */}
+            {/* ── 중앙: MYMORY 로고 (홈 링크) ───────────────────────────────── */}
             <Link to="/" className="text-3xl font-black tracking-tighter text-black dark:text-[#e5e5e5] italic">
                 MYMORY
             </Link>
 
-            {/* ── 우측: 알림 버튼 or 더미 공간 (로그인 상태에 따라 분기) ─────── */}
+            {/* ── 우측: 데스크톱은 벨, 모바일은 로그아웃 ─────────────────────── */}
             {isAuthenticated ? (
-                // ── 로그인 상태: 알림 벨 버튼 표시 ──────────────────────────
-                // 클릭 시 /notifications 페이지로 이동
-                // relative: 미읽음 카운트 배지(absolute)의 기준 부모
-                <button
-                    onClick={() => navigate('/notifications')}
-                    className="relative w-10 h-10 flex items-center justify-center text-black dark:text-[#e5e5e5] hover:opacity-60 transition-opacity"
-                >
-                    {/* 벨 아이콘: 22px 크기, strokeWidth 2 */}
-                    <Bell size={22} strokeWidth={2} />
-
-                    {/* ── 미읽음 카운트 배지: unreadCount > 0일 때만 표시 ──────
-                        absolute: 벨 아이콘 우상단에 겹쳐 표시 (top-1 right-1)
-                        min-w-[16px] h-4: 숫자가 1자리든 2자리든 최소 크기 유지
-                        bg-black: 검정 배경 원형 배지
-                        text-[9px]: 매우 작은 글씨로 숫자 표시
-                        px-[3px]: 숫자 양쪽 최소 패딩으로 배지 모양 유지 */}
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-black dark:bg-[#292e35] text-[#e5e5e5] text-[9px] font-black rounded-full flex items-center justify-center px-[3px]">
-                            {/* 9 초과 시 '9+'로 표시해 배지가 너무 넓어지는 것을 방지 */}
-                            {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                    )}
-                </button>
+                <>
+                    {/* 데스크톱: 벨 버튼을 우측에 표시 */}
+                    <button
+                        onClick={() => navigate('/notifications')}
+                        className="hidden sm:flex relative w-10 h-10 items-center justify-center text-black dark:text-[#e5e5e5] hover:opacity-60 transition-opacity"
+                    >
+                        <Bell size={22} strokeWidth={2} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-black dark:bg-[#292e35] text-[#e5e5e5] text-[9px] font-black rounded-full flex items-center justify-center px-[3px]">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                    {/* 모바일: 로그아웃 버튼을 우측 끝에 표시 */}
+                    <button
+                        onClick={handleLogout}
+                        className="sm:hidden w-10 h-10 flex items-center justify-center text-black dark:text-[#e5e5e5] hover:opacity-60 transition-opacity"
+                    >
+                        <LogOut size={20} strokeWidth={2} />
+                    </button>
+                </>
             ) : (
-                // ── 비로그인 상태: 우측 더미 공간 ────────────────────────────
-                // 알림 버튼과 동일한 40px 너비의 빈 div로 로고의 중앙 위치를 유지
                 <div className="w-10" />
             )}
         </div>

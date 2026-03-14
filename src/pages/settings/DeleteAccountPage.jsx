@@ -54,13 +54,8 @@ export default function DeleteAccountPage() {
     // [상태 변수 선언]
     // -------------------------------------------------------------------------
 
-    /**
-     * password: 계정 삭제 전 신원 확인용으로 입력하는 현재 비밀번호.
-     * 단일 문자열 상태 (폼 필드가 하나뿐이라 formData 객체 대신 단순 string 사용).
-     * input의 value와 양방향 바인딩되며, onChange에서 setPassword로 직접 업데이트.
-     * userService.deleteAccount({ password })에 그대로 전달됨.
-     */
     const [password, setPassword] = useState('');
+    const [confirmText, setConfirmText] = useState('');
 
     // -------------------------------------------------------------------------
     // [핸들러 함수]
@@ -90,6 +85,7 @@ export default function DeleteAccountPage() {
      */
     const handleSubmit = async (e) => {
         e.preventDefault();
+
 
         showConfirm({
             message: '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
@@ -184,23 +180,38 @@ export default function DeleteAccountPage() {
                             mt-6: 입력 필드와의 상단 여백
                     ---------------------------------------------------------- */}
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        {/* 비밀번호 확인 입력 필드 */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-[13px] font-bold text-gray-500 dark:text-[#a3b0c1] ml-1">회원님의 비밀번호</label>
-                            <input
-                                type="password"
-                                className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-red-500 transition-colors"
-                                required
-                                placeholder="비밀번호"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
+                        {isKakaoUser ? (
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[13px] font-bold text-gray-500 dark:text-[#a3b0c1] ml-1">
+                                    확인을 위해 <span className="text-red-500">"{CONFIRM_PHRASE}"</span>를 입력해주세요
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-red-500 transition-colors"
+                                    required
+                                    placeholder={CONFIRM_PHRASE}
+                                    value={confirmText}
+                                    onChange={(e) => setConfirmText(e.target.value)}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-[13px] font-bold text-gray-500 dark:text-[#a3b0c1] ml-1">회원님의 비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="w-full h-12 px-4 border border-[#e5e5e5] dark:border-[#292e35] bg-white dark:bg-[#1c1f24] text-black dark:text-[#e5e5e5] rounded-[4px] text-[14px] focus:outline-none focus:border-red-500 transition-colors"
+                                    required
+                                    placeholder="비밀번호"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                        )}
 
-                        {/* 계정 삭제 최종 제출 버튼: 빨간색으로 위험 행위 강조 */}
                         <button
                             type="submit"
-                            className="w-full h-12 mt-6 bg-red-500 text-white font-bold text-[15px] rounded-[4px] hover:bg-red-600 transition-colors"
+                            disabled={isKakaoUser && confirmText !== CONFIRM_PHRASE}
+                            className="w-full h-12 mt-6 bg-red-500 text-white font-bold text-[15px] rounded-[4px] hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             계정 영구 삭제
                         </button>

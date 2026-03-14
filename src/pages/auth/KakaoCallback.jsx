@@ -55,7 +55,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useAlert } from '@/context/AlertContext';
-import axios from 'axios';
+import apiClient from '@/api/apiClient';
 
 export default function KakaoCallback() {
     // ---------------------------------------------------------
@@ -139,16 +139,12 @@ export default function KakaoCallback() {
                 console.log("✅ 카카오 로그인 성공:", finalUserData);
                 //console.log("refreshToken 토큰 저장 완료", refreshToken);
 
-                //페이지 이동
-                if (isNewUser) {
-                    showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
-                    navigate('/profile', { replace: true }); // 프로필 설정 페이지
-                }
-                else {
-                    showAlert('카카오로 로그인이되었습니다.', '로그인 성공', 'success');
-                    const destination = location.state?.from?.pathname || '/feed';
-                    navigate(destination, { replace: true });
-                }
+                    // 서버에서 실제 유저 정보 조회
+                    const response = await apiClient.get('/users/me');
+                    const userData = { ...response.data, provider: 'KAKAO' };
+
+                    // AuthContext의 login 함수 호출 (2개 인자: accessToken, userData)
+                    login(accessToken, userData);
 
             } catch (e) {
                 console.error("유저 정보 파싱 에러:", e);
