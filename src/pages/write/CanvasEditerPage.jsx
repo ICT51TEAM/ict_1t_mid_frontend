@@ -3,8 +3,9 @@ import { Stage, Layer, Text, Image as KonvaImage, Transformer } from 'react-konv
 import { useLocation, useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import {
-    ArrowLeft, Type, Image as ImageIcon, Layers, Trash2, Eye, 
-  CheckCircle, X, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown
+    ArrowLeft, Type, Image as ImageIcon, Layers, Trash2, Eye,
+  CheckCircle, X, ChevronUp, ChevronDown, ChevronsUp, ChevronsDown,
+  Download, Send
 } from 'lucide-react';
 import { useAlert } from '@/context/AlertContext';
 
@@ -423,9 +424,6 @@ export default function CanvasEditor() {
                     </div>
 
                     <div className="flex gap-2 shrink-0 ml-2">
-                        <button onClick={handlePreview} className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-xl text-xs font-bold transition-colors">
-                            <Eye size={15} />
-                        </button>
                         <button onClick={handleSave} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">
                             저장
                         </button>
