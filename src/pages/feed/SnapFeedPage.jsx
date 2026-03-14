@@ -38,13 +38,14 @@ export default function SnapFeedPage() {
     const isFetching = useRef(false);
     const isMounted = useRef(true);
     const hasMoreRef = useRef(true); // ✅ hasMore의 즉시 참조용
+    const filterRef = useRef(filter); // ✅ filter의 즉시 참조용
 
     // ─────────────────────────────────────────────────────────
     // [함수] API 파라미터 매핑
     // ─────────────────────────────────────────────────────────
-    const getVisibility = () => {
-        if (filter === 'following') return 'FRIENDS';
-        if (filter === 'mine') return 'MINE';
+    const getVisibility = (currentFilter) => {
+        if (currentFilter === 'following') return 'FRIENDS';
+        if (currentFilter === 'mine') return 'MINE';
         return undefined;
     };
 
@@ -61,7 +62,7 @@ export default function SnapFeedPage() {
      * 
      * 해결: 의존성 배열을 []로 비워서 함수 재생성 방지
      */
-    const loadFeed = useCallback(async (pageNum) => {
+    const loadFeed = useCallback(async (pageNum, currentFilter) => {
         // ✅ 중복 요청 방지
         if (isFetching.current) {
             console.log('[Feed] Already fetching, skipping request');
@@ -83,7 +84,7 @@ export default function SnapFeedPage() {
             const response = await apiClient.get('/albums/feed', {
                 params: {
                     type: 'photo',
-                    visibility: getVisibility(),
+                    visibility: getVisibility(currentFilter),
                     tag: searchQuery || undefined,
                     page: pageNum,
                     size: 12
@@ -141,6 +142,7 @@ export default function SnapFeedPage() {
      */
     useEffect(() => {
         isMounted.current = true;
+        filterRef.current = filter; // ✅ ref 동기화
 
         // ✅ 상태 초기화
         setAllItems([]);
@@ -148,8 +150,8 @@ export default function SnapFeedPage() {
         setHasMore(true);
         hasMoreRef.current = true;
 
-        // ✅ 첫 페이지 로드
-        loadFeed(0);
+        // ✅ 첫 페이지 로드 (현재 filter를 직접 전달)
+        loadFeed(0, filter);
 
         // ✅ Cleanup
         return () => {
@@ -187,7 +189,7 @@ export default function SnapFeedPage() {
                     // ✅ 페이지 증가 및 다음 페이지 로드
                     setCurrentPage((prev) => {
                         const nextPage = prev + 1;
-                        loadFeed(nextPage);
+                        loadFeed(nextPage, filterRef.current);
                         return nextPage;
                     });
                 }
