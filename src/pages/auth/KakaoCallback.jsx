@@ -130,12 +130,11 @@ export default function KakaoCallback() {
                     finalUserData = JSON.parse(decodeURIComponent(userJson));
                 }
                 //  로컬스토리지에  토큰 저장
-                localStorage.setItem('accessToken', accessToken);
+                //localStorage.setItem('accessToken', accessToken);
                 localStorage.setItem('user', JSON.stringify(finalUserData));
                 // AuthContext의 login 함수 호출 (3개의 인자 전달)
                 login(accessToken, null, finalUserData);
 
-                console.log("accessToken 토큰 저장 완료", accessToken);
                 console.log("✅ 카카오 로그인 성공:", finalUserData);
                 //console.log("refreshToken 토큰 저장 완료", refreshToken);
 

@@ -107,17 +107,26 @@ export default function DeleteAccountPage() {
                     logout();
                     navigate('/login');
                 } catch (error) {
-                    // 3. 에러 발생 시 (비밀번호 불일치 등)
                     console.error('탈퇴 처리 중 에러:', error);
 
-                    // 서버에서 보낸 에러 메시지가 있으면 사용하고, 없으면 기본 메시지 출력
-                    const serverMessage = error.response?.data?.message;
-                    const displayMessage = serverMessage === "비밀번호가 일치하지 않습니다"
-                        ? serverMessage
-                        : "비밀번호가 일치하지 않습니다. 다시 확인해주세요.";
+                    let displayMessage = "탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
 
-                    showAlert(displayMessage, '인증 실패', 'alert');
-                    setPassword(''); // 입력했던 비밀번호 초기화
+                    if (error.code === 'ECONNABORTED') {
+                        // 타임아웃 발생 시
+                        displayMessage = "서버 응답 시간이 초과되었습니다. 네트워크 상태를 확인하거나 잠시 후 다시 시도해주세요.";
+                    } else if (error.response) {
+                        // 서버가 응답을 준 경우 (400, 401, 500 등)
+                        const serverMessage = error.response.data?.message;
+
+                        if (error.response.status === 401 || serverMessage?.includes("비밀번호")) {
+                            displayMessage = "비밀번호가 일치하지 않습니다. 다시 확인해주세요.";
+                        } else if (serverMessage) {
+                            displayMessage = serverMessage;
+                        }
+                    }
+
+                    showAlert(displayMessage, '오류 발생', 'alert');
+                    setPassword('');// 입력했던 비밀번호 초기화
                 }
             }
         });

@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }) => {
   const location = useLocation();
 
   // ── 파생 상태: 로그인 인증 여부 (T/F)───────────────────────────────────────
+  const isAuthenticated = !!user;
   const [notiRefreshTag, setNotiRefreshTag] = useState(0);
 
   //  태그를 1씩 증가시켜 변화를 주는 함수
@@ -93,13 +94,18 @@ export const AuthProvider = ({ children }) => {
    * @description 로그인 성공 시 호출. JWT 토큰과 사용자 정보를 localStorage에 저장하고
    * user 상태를 갱신한다.
    */
-  const login = (accessToken, userData) => {
+  const login = (accessToken, refreshToken, userData) => {
     if (!accessToken || !userData) {
       console.error("로그인 데이터가 부족합니다:", { accessToken, userData });
       return;
     }
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
+
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    }
+
     setUser(userData);
   };
 
@@ -185,7 +191,7 @@ export const AuthProvider = ({ children }) => {
       console.error('인증 확인 중 오류 발생:', error);
 
       // 1. 서버 응답이 401(Unauthorized)인 경우에만 로그아웃 처리 및 이동
-      if (error.response?.status === 401|| error.response?.status === 400) {
+      if (error.response?.status === 401 || error.response?.status === 400) {
         handleLogoutCleanUp();
         if (location.pathname !== '/login' && location.pathname !== '/signup') {
           navigate('/login', { replace: true });
