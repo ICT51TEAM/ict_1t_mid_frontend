@@ -146,13 +146,8 @@ export default function SettingsPage() {
             cancelText: '취소',
             onConfirm: async () => {
                 try {
-                    // 1. 🎯 먼저 홈으로 이동! 
-                    // 아직 logout() 전이라 isAuthenticated가 true이므로 
-                    // ProtectedRoute가 가로채지 않습니다.
-                    window.location.href = '/';
-
-                    // 2. 페이지 이동이 시작된 직후에 로그아웃 처리
                     await logout();
+                    window.location.href = '/login';
 
                     // 3. 알림 표시
                     showAlert('로그아웃되었습니다.', '성공', 'success');

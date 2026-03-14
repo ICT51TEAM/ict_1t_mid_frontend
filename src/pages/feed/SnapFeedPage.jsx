@@ -39,6 +39,7 @@ export default function SnapFeedPage() {
     const isMounted = useRef(true);
     const hasMoreRef = useRef(true); // ✅ hasMore의 즉시 참조용
     const filterRef = useRef(filter); // ✅ filter의 즉시 참조용
+    const searchQueryRef = useRef(searchQuery); // ✅ searchQuery의 즉시 참조용
 
     // ─────────────────────────────────────────────────────────
     // [함수] API 파라미터 매핑
@@ -62,7 +63,7 @@ export default function SnapFeedPage() {
      * 
      * 해결: 의존성 배열을 []로 비워서 함수 재생성 방지
      */
-    const loadFeed = useCallback(async (pageNum, currentFilter) => {
+    const loadFeed = useCallback(async (pageNum, currentFilter, currentSearchQuery = '') => {
         // ✅ 중복 요청 방지
         if (isFetching.current) {
             console.log('[Feed] Already fetching, skipping request');
@@ -85,7 +86,7 @@ export default function SnapFeedPage() {
                 params: {
                     type: 'photo',
                     visibility: getVisibility(currentFilter),
-                    tag: searchQuery || undefined,
+                    tag: currentSearchQuery || undefined,
                     page: pageNum,
                     size: 12
                 }
@@ -143,6 +144,7 @@ export default function SnapFeedPage() {
     useEffect(() => {
         isMounted.current = true;
         filterRef.current = filter; // ✅ ref 동기화
+        searchQueryRef.current = searchQuery; // ✅ ref 동기화
 
         // ✅ 상태 초기화
         setAllItems([]);
@@ -150,8 +152,8 @@ export default function SnapFeedPage() {
         setHasMore(true);
         hasMoreRef.current = true;
 
-        // ✅ 첫 페이지 로드 (현재 filter를 직접 전달)
-        loadFeed(0, filter);
+        // ✅ 첫 페이지 로드 (현재 filter와 searchQuery를 직접 전달)
+        loadFeed(0, filter, searchQuery);
 
         // ✅ Cleanup
         return () => {
@@ -189,7 +191,7 @@ export default function SnapFeedPage() {
                     // ✅ 페이지 증가 및 다음 페이지 로드
                     setCurrentPage((prev) => {
                         const nextPage = prev + 1;
-                        loadFeed(nextPage, filterRef.current);
+                        loadFeed(nextPage, filterRef.current, searchQueryRef.current);
                         return nextPage;
                     });
                 }
