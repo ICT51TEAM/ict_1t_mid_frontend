@@ -84,11 +84,11 @@ export default function LoginPage() {
             const result = response.data || response;
             console.log("서버 응답 실제 데이터:", response);
 
-            const { accessToken, user } = result;
+            const { accessToken, user, refreshToken } = result;
             console.log("추출된 토큰 타입 확인:", typeof accessToken);
 
             if (accessToken && user) {
-                authLogin(accessToken, user); // accessToken&사용자 정보 저장
+                authLogin(accessToken, refreshToken, user); // 인자 검증
                 //localStorage.setItem('refreshToken', refreshToken); //refreshToken 저장
                 showAlert('방문을 환영합니다.', '로그인 성공', 'success');
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동

@@ -132,10 +132,18 @@ export default function KakaoCallback() {
                 const response = await apiClient.get('/users/me');
                 const userData = { ...response.data, provider: 'KAKAO' };
 
-                // AuthContext의 login 함수 호출 (2개 인자: accessToken, userData)
-                login(accessToken, userData);
+                //localStorage.setItem('refreshToken', refreshToken);
+                if (userJson) {
+                    finalUserData = JSON.parse(decodeURIComponent(userJson));
+                }
+                //  로컬스토리지에  토큰 저장
+                //localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('user', JSON.stringify(finalUserData));
+                // AuthContext의 login 함수 호출 (3개의 인자 전달)
+                login(accessToken, null, finalUserData);
 
-                console.log("카카오 로그인 완료, userData:", userData);
+                console.log("✅ 카카오 로그인 성공:", finalUserData);
+                //console.log("refreshToken 토큰 저장 완료", refreshToken);
 
                 if (isNewUser) {
                     showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
