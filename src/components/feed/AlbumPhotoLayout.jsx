@@ -10,8 +10,28 @@ export const normalizeLayoutType = (layoutType, photoCount = 0) => {
 
   if (!normalized) {
     if (photoCount >= 4) return 'grid';
+    if (photoCount === 3) return 'left-one-right-two';
     if (photoCount >= 2) return 'horizontal-two';
     return 'single';
+  }
+
+  // 3장 레이아웃
+  if (normalized.includes('LEFT_ONE_RIGHT_TWO') || normalized === 'LEFT-ONE-RIGHT-TWO') {
+    return 'left-one-right-two';
+  }
+  if (normalized.includes('TOP_ONE_BOTTOM_TWO') || normalized === 'TOP-ONE-BOTTOM-TWO') {
+    return 'top-one-bottom-two';
+  }
+  if (normalized.includes('THREE_COLUMN') || normalized === 'THREE-COLUMN') {
+    return 'three-column';
+  }
+
+  // 4장 레이아웃
+  if (normalized.includes('TOP_ONE_BOTTOM_THREE') || normalized === 'TOP-ONE-BOTTOM-THREE') {
+    return 'top-one-bottom-three';
+  }
+  if (normalized.includes('LEFT_ONE_RIGHT_THREE') || normalized === 'LEFT-ONE-RIGHT-THREE') {
+    return 'left-one-right-three';
   }
 
   if (normalized.includes('VERTICAL') || normalized.includes('GRID_3') || normalized.includes('TWIN_V')) {
@@ -31,7 +51,7 @@ export const normalizeLayoutType = (layoutType, photoCount = 0) => {
   }
 
   if (normalized === '4') return 'grid';
-  if (normalized === '3') return 'vertical-two';
+  if (normalized === '3') return 'left-one-right-two';
   if (normalized === '2') return 'horizontal-two';
 
   return 'single';
@@ -60,6 +80,16 @@ const getGridTemplateClass = (layoutType, photoCount) => {
       return photoCount >= 3 ? 'grid-cols-2 grid-rows-2' : 'grid-cols-1 grid-rows-2';
     case 'grid':
       return photoCount <= 1 ? 'grid-cols-1' : 'grid-cols-2 grid-rows-2';
+    case 'left-one-right-two':
+      return 'grid-cols-2 grid-rows-2';
+    case 'top-one-bottom-two':
+      return 'grid-cols-2 grid-rows-2';
+    case 'three-column':
+      return 'grid-cols-3';
+    case 'top-one-bottom-three':
+      return 'grid-cols-3 grid-rows-2';
+    case 'left-one-right-three':
+      return 'grid-cols-2 grid-rows-3';
     case 'single':
     default:
       return 'grid-cols-1';
@@ -75,6 +105,26 @@ const getCellSpanClass = (layoutType, photoCount, index) => {
 
   if (normalized === 'vertical-two' && photoCount >= 3 && index === 0) {
     return 'row-span-2';
+  }
+
+  // 3장: 좌1(크게) + 우2(작게 세로 배치)
+  if (normalized === 'left-one-right-two' && index === 0) {
+    return 'row-span-2';
+  }
+
+  // 3장: 상1(크게) + 하2(작게 가로 배치)
+  if (normalized === 'top-one-bottom-two' && index === 0) {
+    return 'col-span-2';
+  }
+
+  // 4장: 상1(크게) + 하3(작게 가로 배치)
+  if (normalized === 'top-one-bottom-three' && index === 0) {
+    return 'col-span-3';
+  }
+
+  // 4장: 좌1(크게) + 우3(작게 세로 배치)
+  if (normalized === 'left-one-right-three' && index === 0) {
+    return 'row-span-3';
   }
 
   return '';
