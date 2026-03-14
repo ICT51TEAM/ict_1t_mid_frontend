@@ -113,6 +113,19 @@ const VISIBILITY_MAP = {
   public: 'PUBLIC',
 };
 
+/**
+ * data URL을 File 객체로 변환 (캔버스 이미지 복원용)
+ */
+function dataUrlToFile(dataUrl, filename = `canvas_${Date.now()}.png`) {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new File([u8arr], filename, { type: mime });
+}
+
 export default function CreatePhotoAlbumPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -430,10 +443,17 @@ export default function CreatePhotoAlbumPage() {
     console.log('[useEffect canvas] canvasData =', canvasData);
 
     if (canvasData) {
+      // File 객체가 navigation state 직렬화에서 유실될 수 있으므로
+      // data URL에서 재생성하여 확실하게 보장
+      const resolvedFile = (canvasData.file instanceof File)
+        ? canvasData.file
+        : dataUrlToFile(canvasData.url);
+      console.log('[useEffect canvas] resolvedFile =', resolvedFile);
+
       const newImage = {
         id: Date.now(),
         url: canvasData.url,
-        file: canvasData.file,
+        file: resolvedFile,
         isCanvas: true
       };
 
