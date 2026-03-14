@@ -167,7 +167,7 @@ export default function CanvasEditor() {
         link.href = modalDataUrl;
         link.click();
         setModalDataUrl(null);
-        showAlert('이미지가 다운로드되었습니다.');
+        showAlert('이미지가 다운로드되었습니다.', '다운로드 완료', 'success');
     };
 
     // ── 모달: 포토앨범으로 이동 ──────────────────────────────────────
