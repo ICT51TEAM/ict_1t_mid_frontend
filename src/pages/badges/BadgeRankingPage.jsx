@@ -107,13 +107,13 @@ export default function BadgeRankingPage() {
             try {
                 // BadgeRankingPage useEffect 수정
                 if (activeTab === 'GLOBAL') {
-                    const data = await badgeService.getGlobalRanking();
+                    const data = await badgeService.getGlobalRanking({ size: 30 });
                     const ranking = Array.isArray(data?.content) ? data.content : [];
                     console.log('[ranking] GLOBAL:', ranking.length, '명');
                     setRanking(ranking);
                 } else {
                     const [data, globalData] = await Promise.all([
-                        badgeService.getFriendsRanking(),
+                        badgeService.getFriendsRanking({ size: 30 }),
                         badgeService.getGlobalRanking({ size: 100 })
                     ]);
                     let ranking = Array.isArray(data?.content) ? data.content : [];
@@ -260,7 +260,7 @@ export default function BadgeRankingPage() {
                         onClick={() => setActiveTab('GLOBAL')}
                         className={`flex-1 py-3 text-[14px] font-bold relative ${activeTab === 'GLOBAL' ? 'text-black' : 'text-[#a3b0c1]'}`}
                     >
-                        전체 랭킹
+                        전체 순위
                         {/* 활성 탭 하단 인디케이터 (검정 2px 라인) */}
                         {activeTab === 'GLOBAL' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" />}
                     </button>
@@ -269,7 +269,7 @@ export default function BadgeRankingPage() {
                         onClick={() => setActiveTab('FRIENDS')}
                         className={`flex-1 py-3 text-[14px] font-bold relative ${activeTab === 'FRIENDS' ? 'text-black' : 'text-[#a3b0c1]'}`}
                     >
-                        친구 랭킹
+                        글벗 순위위
                         {/* 활성 탭 하단 인디케이터 (검정 2px 라인) */}
                         {activeTab === 'FRIENDS' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" />}
                     </button>
