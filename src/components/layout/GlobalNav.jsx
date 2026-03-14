@@ -124,8 +124,7 @@ export default function GlobalNav() {
                     showAlert('로그아웃되었습니다.', '성공', 'success');
 
                     // 3. 🎯 상태가 비워진 후 안전하게 이동
-                    // navigate는 새로고침 없이 SPA 내부 라우팅만 수행합니다.
-                    window.location.href = '/';
+                    window.location.href = '/login';
 
                 } catch (error) {
                     console.error(error);

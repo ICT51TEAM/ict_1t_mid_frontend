@@ -97,8 +97,8 @@ export default function SnapHeader() {
             cancelText: '취소',
             onConfirm: async () => {
                 try {
-                    window.location.href = '/';
                     await logout();
+                    window.location.href = '/login';
                     showAlert('로그아웃되었습니다.', '성공', 'success');
                 } catch (error) {
                     console.error(error);
