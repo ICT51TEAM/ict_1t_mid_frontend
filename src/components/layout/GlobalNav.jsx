@@ -115,16 +115,16 @@ export default function GlobalNav() {
             cancelText: '취소',
             onConfirm: async () => {
                 try {
-                    // 1. 🎯 먼저 홈으로 이동! 
-                    // 아직 logout() 전이라 isAuthenticated가 true이므로 
-                    // ProtectedRoute가 가로채지 않습니다.
-                    window.location.href = '/';
-
-                    // 2. 페이지 이동이 시작된 직후에 로그아웃 처리
+                    // 1. 🎯 서버에 로그아웃 요청을 먼저 완료합니다.
+                    // (백엔드 세션/리프레시 토큰 무효화)
                     await logout();
 
-                    // 3. 알림 표시
+                    // 2. 알림 표시
                     showAlert('로그아웃되었습니다.', '성공', 'success');
+
+                    // 3. 🎯 상태가 비워진 후 안전하게 이동
+                    // navigate는 새로고침 없이 SPA 내부 라우팅만 수행합니다.
+                    window.location.href = '/';
 
                 } catch (error) {
                     console.error(error);

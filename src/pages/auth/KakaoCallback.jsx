@@ -109,29 +109,35 @@ export default function KakaoCallback() {
     useEffect(() => {
         if (hasProcessed.current) return;
         hasProcessed.current = true;
+
         // URL에서 인가 코드(code) 추출 (카카오 리다이렉트 시 전달됨)
         const params = new URLSearchParams(location.search);
         const accessToken = params.get('accessToken');
-        const refreshToken = params.get('refreshToken');
+        //const refreshToken = params.get('refreshToken');
         const isNewUser = params.get('isNewUser') === 'true'; // 문자열 'true'를 불리언으로 변환
-        const userStr = params.get('user');
+        const userJson = params.get('user');
 
-        console.log("전달받은 accessToken:", accessToken);
-        try {
-            if (accessToken && refreshToken) {
+        console.log("📍 콜백 데이터 확인:", { accessToken, isNewUser, userJson });
+        if (accessToken) {
+            hasProcessed.current = true;
+            let finalUserData = { id: 'social', nickname: '카카오 사용자' }; // 기본값 설정
+
+            try {
                 console.error("현재 URL:", window.location.href); // 현재 전체 주소를 찍어보세요.
-                //  로컬스토리지에 두 토큰 저장
-                localStorage.setItem('accessToken', accessToken);
-                localStorage.setItem('refreshToken', refreshToken);
-                if (userStr) {
-                    localStorage.setItem('user', userStr);
+
+                //localStorage.setItem('refreshToken', refreshToken);
+                if (userJson) {
+                    finalUserData = JSON.parse(decodeURIComponent(userJson));
                 }
+                //  로컬스토리지에  토큰 저장
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('user', JSON.stringify(finalUserData));
                 // AuthContext의 login 함수 호출 (3개의 인자 전달)
-                const userData = userStr ? JSON.parse(decodeURIComponent(userStr)) : { id: 'temp', nickname: '사용자' };
-                login(accessToken, refreshToken, userData);
+                login(accessToken, null, finalUserData);
 
                 console.log("accessToken 토큰 저장 완료", accessToken);
-                console.log("refreshToken 토큰 저장 완료", refreshToken);
+                console.log("✅ 카카오 로그인 성공:", finalUserData);
+                //console.log("refreshToken 토큰 저장 완료", refreshToken);
 
                 //페이지 이동
                 if (isNewUser) {
@@ -144,14 +150,14 @@ export default function KakaoCallback() {
                     navigate(destination, { replace: true });
                 }
 
+            } catch (e) {
+                console.error("유저 정보 파싱 에러:", e);
+                navigate('/login?error=true', { replace: true });
             }
+        } else {
+            console.error("토큰이 URL에 존재하지 않습니다.");
+            navigate('/login', { replace: true });
         }
-        catch (err) {
-            console.error('카카오 로그인 처리 중 오류:', err);
-            showAlert('로그인 처리 중 오류가 발생했습니다.', '오류', 'error');
-            navigate('/login?error=true', { replace: true });
-        }
-        return;
 
     }, [location.search, navigate, login]);
 

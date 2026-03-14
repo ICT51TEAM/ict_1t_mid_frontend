@@ -47,9 +47,9 @@ import { useAlert } from '@/context/AlertContext';
 export default function DeleteAccountPage() {
     const navigate = useNavigate();
 
-    const {showAlert, showConfirm} = useAlert();
+    const { showAlert, showConfirm } = useAlert();
 
-    const {logout} = useAuth();
+    const { logout } = useAuth();
     // -------------------------------------------------------------------------
     // [상태 변수 선언]
     // -------------------------------------------------------------------------
@@ -90,6 +90,7 @@ export default function DeleteAccountPage() {
      */
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         showConfirm({
             message: '정말 탈퇴하시겠습니까? 관련 데이터가 모두 삭제됩니다.',
             title: '회원 탈퇴 확인',
@@ -97,14 +98,30 @@ export default function DeleteAccountPage() {
             confirmText: '탈퇴하기',
             cancelText: '취소',
             onConfirm: async () => {
-                await userService.deleteAccount({ password });
-                showAlert('탈퇴 처리가 완료되었습니다.', '탈퇴 완료', 'success');
-                logout();
-                navigate('/login');
+                try {
+                    // 1. 서버에 삭제 요청
+                    await userService.deleteAccount({ password });
+
+                    // 2. 성공 시 처리
+                    showAlert('탈퇴 처리가 완료되었습니다.', '탈퇴 완료', 'success');
+                    logout();
+                    navigate('/login');
+                } catch (error) {
+                    // 3. 에러 발생 시 (비밀번호 불일치 등)
+                    console.error('탈퇴 처리 중 에러:', error);
+
+                    // 서버에서 보낸 에러 메시지가 있으면 사용하고, 없으면 기본 메시지 출력
+                    const serverMessage = error.response?.data?.message;
+                    const displayMessage = serverMessage === "비밀번호가 일치하지 않습니다"
+                        ? serverMessage
+                        : "비밀번호가 일치하지 않습니다. 다시 확인해주세요.";
+
+                    showAlert(displayMessage, '인증 실패', 'alert');
+                    setPassword(''); // 입력했던 비밀번호 초기화
+                }
             }
         });
     };
-
     // -------------------------------------------------------------------------
     // [JSX 렌더링]
     // -------------------------------------------------------------------------

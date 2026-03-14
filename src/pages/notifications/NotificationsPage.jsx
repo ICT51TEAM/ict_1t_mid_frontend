@@ -71,7 +71,7 @@ export default function NotificationsPage() {
     // showAlert(message, title): 단순 알림 다이얼로그 표시
     // showConfirm(message, callback, confirmText): 확인/취소 다이얼로그 표시
     const { showAlert, showConfirm } = useAlert();
-    const { triggerNotiRefresh } = useAuth();
+    const { triggerNotiRefresh, notiRefreshTag } = useAuth();
 
 
     // -------------------------------------------------------------------------
