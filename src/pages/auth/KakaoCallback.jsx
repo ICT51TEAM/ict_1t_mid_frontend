@@ -55,7 +55,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useAlert } from '@/context/AlertContext';
-import axios from 'axios';
+import apiClient from '@/api/apiClient';
 
 export default function KakaoCallback() {
     // ---------------------------------------------------------
@@ -113,45 +113,47 @@ export default function KakaoCallback() {
         const params = new URLSearchParams(location.search);
         const accessToken = params.get('accessToken');
         const refreshToken = params.get('refreshToken');
-        const isNewUser = params.get('isNewUser') === 'true'; // 문자열 'true'를 불리언으로 변환
-        const userStr = params.get('user');
+        const isNewUser = params.get('isNewUser') === 'true';
 
         console.log("전달받은 accessToken:", accessToken);
-        try {
-            if (accessToken && refreshToken) {
-                console.error("현재 URL:", window.location.href); // 현재 전체 주소를 찍어보세요.
-                //  로컬스토리지에 두 토큰 저장
-                localStorage.setItem('accessToken', accessToken);
-                localStorage.setItem('refreshToken', refreshToken);
-                if (userStr) {
-                    localStorage.setItem('user', userStr);
-                }
-                // AuthContext의 login 함수 호출 (3개의 인자 전달)
-                const userData = userStr ? JSON.parse(decodeURIComponent(userStr)) : { id: 'temp', nickname: '사용자' };
-                login(accessToken, refreshToken, userData);
 
-                console.log("accessToken 토큰 저장 완료", accessToken);
-                console.log("refreshToken 토큰 저장 완료", refreshToken);
+        const processLogin = async () => {
+            try {
+                if (accessToken && refreshToken) {
+                    // 로컬스토리지에 토큰 저장 (apiClient 인터셉터가 Authorization 헤더에 사용)
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('refreshToken', refreshToken);
 
-                //페이지 이동
-                if (isNewUser) {
-                    showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
-                    navigate('/profile', { replace: true }); // 프로필 설정 페이지
-                }
-                else {
-                    showAlert('카카오로 로그인이되었습니다.', '로그인 성공', 'success');
-                    const destination = location.state?.from?.pathname || '/feed';
-                    navigate(destination, { replace: true });
-                }
+                    // 서버에서 실제 유저 정보 조회
+                    const response = await apiClient.get('/users/me');
+                    const userData = { ...response.data, provider: 'KAKAO' };
 
+                    // AuthContext의 login 함수 호출 (2개 인자: accessToken, userData)
+                    login(accessToken, userData);
+
+                    console.log("카카오 로그인 완료, userData:", userData);
+
+                    // 페이지 이동
+                    if (isNewUser) {
+                        showAlert('신규 회원 가입을 환영합니다.', '회원 가입 성공', 'success');
+                        navigate('/profile', { replace: true });
+                    } else {
+                        showAlert('카카오로 로그인이되었습니다.', '로그인 성공', 'success');
+                        const destination = location.state?.from?.pathname || '/feed';
+                        navigate(destination, { replace: true });
+                    }
+                } else {
+                    console.error('카카오 로그인: 토큰이 없습니다.');
+                    navigate('/login', { replace: true });
+                }
+            } catch (err) {
+                console.error('카카오 로그인 처리 중 오류:', err);
+                showAlert('로그인 처리 중 오류가 발생했습니다.', '오류', 'error');
+                navigate('/login?error=true', { replace: true });
             }
-        }
-        catch (err) {
-            console.error('카카오 로그인 처리 중 오류:', err);
-            showAlert('로그인 처리 중 오류가 발생했습니다.', '오류', 'error');
-            navigate('/login?error=true', { replace: true });
-        }
-        return;
+        };
+
+        processLogin();
 
     }, [location.search, navigate, login]);
 
