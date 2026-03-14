@@ -185,7 +185,7 @@ export const AuthProvider = ({ children }) => {
       console.error('인증 확인 중 오류 발생:', error);
 
       // 1. 서버 응답이 401(Unauthorized)인 경우에만 로그아웃 처리 및 이동
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401|| error.response?.status === 400) {
         handleLogoutCleanUp();
         if (location.pathname !== '/login' && location.pathname !== '/signup') {
           navigate('/login', { replace: true });
