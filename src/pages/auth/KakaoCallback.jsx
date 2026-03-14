@@ -133,16 +133,13 @@ export default function KakaoCallback() {
                 const userData = { ...response.data, provider: 'KAKAO' };
 
                 //localStorage.setItem('refreshToken', refreshToken);
-                if (userJson) {
-                    finalUserData = JSON.parse(decodeURIComponent(userJson));
-                }
                 //  로컬스토리지에  토큰 저장
                 //localStorage.setItem('accessToken', accessToken);
-                localStorage.setItem('user', JSON.stringify(finalUserData));
+                localStorage.setItem('user', JSON.stringify(userData));
                 // AuthContext의 login 함수 호출 (3개의 인자 전달)
-                login(accessToken, null, finalUserData);
+                login(accessToken, null, userData);
 
-                console.log("✅ 카카오 로그인 성공:", finalUserData);
+                console.log("✅ 카카오 로그인 성공:", userData);
                 //console.log("refreshToken 토큰 저장 완료", refreshToken);
 
                 if (isNewUser) {
