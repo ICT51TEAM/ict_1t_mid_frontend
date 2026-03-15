@@ -225,7 +225,7 @@ export default function QnaPage() {
             setQnas([newQna, ...qnas]);
         } catch (e) {
             console.error('QnA 생성 실패', e);
-            alert('질문 등록에 실패했습니다.');
+            showAlert('질문 등록에 실패했습니다.', '등록실패', 'alert');
         } finally {
             setNewTitle('');
             setNewContent('');
@@ -314,7 +314,8 @@ export default function QnaPage() {
             setEditingCommentText('');
         } catch (e) {
             console.error('댓글 수정 실패', e);
-            alert('댓글 수정에 실패했습니다.');
+            showAlert('질문 수정에 실패했습니다.', '수정실패', 'alert');
+
         }
     };
 
@@ -329,7 +330,7 @@ export default function QnaPage() {
             }));
         } catch (e) {
             console.error('댓글 삭제 실패', e);
-            alert('댓글 삭제에 실패했습니다.');
+            showAlert('질문 삭제에 실패했습니다.', '삭제실패', 'alert');
         }
     };
 
