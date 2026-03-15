@@ -31,9 +31,8 @@ const getBaseUrl = () => {
     return '/api';
   }
   // Android 에뮬레이터 (Capacitor) 또는 실 기기
-  if (hostname === 'localhost' && port === '') {
-    console.log('[Environment]: Android App (Capacitor)');
-    // 에뮬레이터라면 10.0.2.2, 실제 기기라면 PC IP를 입력하세요.
+  if (hostname === '127.0.0.1') {
+    console.log('[Environment]: android App');
     return 'http://10.0.2.2:8080/api';
   }
   // 기타 상황
