@@ -64,6 +64,7 @@ import { MoreHorizontal, ChevronDown, ChevronLeft, ChevronRight, Award, Plus, Ed
 import { useAuth } from '@/context/AuthContext';
 import { useAlert } from '@/context/AlertContext';
 import { postService } from '@/api/postService';
+import { userService } from '@/api/userService';
 import { badgeService } from '@/api/badgeService';
 import { friendService } from '@/api/friendService';
 import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
@@ -144,8 +145,17 @@ export default function SnapDetailPage() {
         setError(null);
         setImgIndex(0);
         fetchSnapDetail(id)
-            .then(res => {
+            .then(async res => {
                 console.log('[useEffect #1] fetchSnapDetail 성공, res =', res);
+                // 백엔드 앨범 상세 응답에 profileImageUrl이 없으므로 유저 프로필 API로 보완
+                if (res?.userId && !res.profileImageUrl) {
+                    try {
+                        const userProfile = await userService.getUserProfile(res.userId);
+                        res.profileImageUrl = userProfile.profileImageUrl ?? null;
+                    } catch (e) {
+                        console.log('[useEffect #1] 프로필 이미지 조회 실패', e);
+                    }
+                }
                 setRawSnap(res);
             })
             .catch(err => {

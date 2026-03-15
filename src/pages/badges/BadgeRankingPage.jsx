@@ -107,13 +107,13 @@ export default function BadgeRankingPage() {
             try {
                 // BadgeRankingPage useEffect 수정
                 if (activeTab === 'GLOBAL') {
-                    const data = await badgeService.getGlobalRanking();
+                    const data = await badgeService.getGlobalRanking({ size: 30 });
                     const ranking = Array.isArray(data?.content) ? data.content : [];
                     console.log('[ranking] GLOBAL:', ranking.length, '명');
                     setRanking(ranking);
                 } else {
                     const [data, globalData] = await Promise.all([
-                        badgeService.getFriendsRanking(),
+                        badgeService.getFriendsRanking({ size: 30 }),
                         badgeService.getGlobalRanking({ size: 100 })
                     ]);
                     let ranking = Array.isArray(data?.content) ? data.content : [];
@@ -185,7 +185,19 @@ export default function BadgeRankingPage() {
         return (
             <div className="flex flex-col">
                 {ranking.map((user, idx) => (
-                    <div key={user.userId || user.id || idx} className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35]">
+                    <div
+                        key={user.userId || user.id || idx}
+                        className="flex items-center justify-between px-6 py-4 border-b border-[#f3f3f3] dark:border-[#292e35] cursor-pointer active:bg-gray-50 dark:active:bg-[#292e35] transition-colors"
+                        onClick={() => {
+                            const userId = user.userId || user.id;
+                            const myId = currentUser?.id || currentUser?.userId;
+                            if (userId === myId) {
+                                navigate('/profile');
+                            } else {
+                                navigate(`/friend/${userId}`);
+                            }
+                        }}
+                    >
                         <div className="flex items-center gap-4">
                             {/* 순위 표시: 1위 = Crown 아이콘(노란색), 2위+ = 숫자 */}
                             <div className="w-6 text-[14px] font-black italic text-[#ccd3db]">
@@ -248,7 +260,7 @@ export default function BadgeRankingPage() {
                         onClick={() => setActiveTab('GLOBAL')}
                         className={`flex-1 py-3 text-[14px] font-bold relative ${activeTab === 'GLOBAL' ? 'text-black' : 'text-[#a3b0c1]'}`}
                     >
-                        전체 랭킹
+                        전체 순위
                         {/* 활성 탭 하단 인디케이터 (검정 2px 라인) */}
                         {activeTab === 'GLOBAL' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" />}
                     </button>
@@ -257,7 +269,7 @@ export default function BadgeRankingPage() {
                         onClick={() => setActiveTab('FRIENDS')}
                         className={`flex-1 py-3 text-[14px] font-bold relative ${activeTab === 'FRIENDS' ? 'text-black' : 'text-[#a3b0c1]'}`}
                     >
-                        친구 랭킹
+                        글벗 순위위
                         {/* 활성 탭 하단 인디케이터 (검정 2px 라인) */}
                         {activeTab === 'FRIENDS' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" />}
                     </button>

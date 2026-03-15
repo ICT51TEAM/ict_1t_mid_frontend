@@ -335,7 +335,7 @@ export default function FssPage() {
 
                 {/* Footer Insight */}
                 <div className="mx-6 p-8 bg-[#f9f9f9] dark:bg-[#1c1f24] rounded-[24px] border border-[#f3f3f3] dark:border-[#292e35] text-center mt-6">
-                    <p className="text-[10px] font-black italic tracking-[3px] uppercase text-[#ccd3db] mb-2 leading-relaxed">ICT5 x SNAP x FSS</p>
+                    <p className="text-[10px] font-black italic tracking-[3px] uppercase text-[#ccd3db] mb-2 leading-relaxed">ICT5 x MYMORY x FSS</p>
                     <p className="text-[12px] font-medium text-[#7b8b9e] max-w-[280px] mx-auto">금융감독원 공시 데이터를 바탕으로 실시간 마켓 트렌드를 분석합니다.</p>
                 </div>
             </div>

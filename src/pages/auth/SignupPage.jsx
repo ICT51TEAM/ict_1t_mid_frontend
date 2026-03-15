@@ -102,13 +102,16 @@ export default function SignupPage() {
                 password: formData.password
             });
 
-            const token = loginResponse.token; // 응답받은 토큰 저장
+            console.log('실제 로그인 응답:', loginResponse);
+
+            const token = loginResponse.accessToken; // 응답받은 토큰 저장
             const userData = loginResponse.user || loginResponse; // 응답데이터 저장
 
             if (token && userData) {
-                authLogin(token, userData); // 토큰&사용자 정보 저장
+                authLogin(token, null, userData); // 토큰&사용자 정보 저장
                 showAlert('회원 가입을 환영합니다.', '회원 가입 성공', 'success');
-                navigate('/', { replace: true }); // 피드 페이지로 이동
+                //window.location.href = '/';
+                navigate('/', { replace: true });
             }
         }
         catch (err) {
@@ -244,9 +247,9 @@ export default function SignupPage() {
                                 <div className="flex items-center gap-2">
                                     {/* 조건부 렌더링: 규칙 충족이면 Check 아이콘, 아니면 X 아이콘 */}
                                     {passwordRules.length ? (
-                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                        <Check className="w-[18px] h-[18px] text-green-500" strokeWidth={3} />
                                     ) : (
-                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                        <X className="w-[18px] h-[18px] text-red-500" strokeWidth={2.5} />
                                     )}
                                     {/* 충족 시 진한 텍스트, 미충족 시 연한 텍스트 */}
                                     <span
@@ -258,9 +261,9 @@ export default function SignupPage() {
                                 {/* 규칙 2: 영문 포함 */}
                                 <div className="flex items-center gap-2">
                                     {passwordRules.hasLetter ? (
-                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                        <Check className="w-[18px] h-[18px] text-green-500" strokeWidth={3} />
                                     ) : (
-                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                        <X className="w-[18px] h-[18px] text-red-500" strokeWidth={2.5} />
                                     )}
                                     <span
                                         className={`text-[13px] ${passwordRules.hasLetter ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
@@ -271,9 +274,9 @@ export default function SignupPage() {
                                 {/* 규칙 3: 숫자 포함 */}
                                 <div className="flex items-center gap-2">
                                     {passwordRules.hasNumber ? (
-                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                        <Check className="w-[18px] h-[18px] text-green-500" strokeWidth={3} />
                                     ) : (
-                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                        <X className="w-[18px] h-[18px] text-red-500" strokeWidth={2.5} />
                                     )}
                                     <span
                                         className={`text-[13px] ${passwordRules.hasNumber ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}
@@ -284,9 +287,9 @@ export default function SignupPage() {
                                 {/* 규칙 4: 특수문자 포함 */}
                                 <div className="flex items-center gap-2">
                                     {passwordRules.hasSpecial ? (
-                                        <Check className="w-[18px] h-[18px] text-primary" strokeWidth={3} />
+                                        <Check className="w-[18px] h-[18px] text-green-500" strokeWidth={3} />
                                     ) : (
-                                        <X className="w-[18px] h-[18px] text-text-disabled" strokeWidth={2.5} />
+                                        <X className="w-[18px] h-[18px] text-red-500" strokeWidth={2.5} />
                                     )}
                                     <span
                                         className={`text-[13px] ${passwordRules.hasSpecial ? 'text-text-primary font-bold' : 'text-text-tertiary font-medium'}`}

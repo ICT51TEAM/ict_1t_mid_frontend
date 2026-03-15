@@ -26,10 +26,15 @@ import { useAuth } from '@/context/AuthContext';
 import { saveAlbumLayout } from '@/utils/albumLayoutStore';
 
 const layouts = [
-    { id: 1, name: '1장', grid: 'grid-cols-1', apiValue: 'single' },
-    { id: 2, name: '2장 가로', grid: 'grid-cols-2', apiValue: 'horizontal-two' },
-    { id: 3, name: '2장 세로', grid: 'grid-rows-2', apiValue: 'vertical-two' },
-    { id: 4, name: '4장', grid: 'grid-cols-2 grid-rows-2', apiValue: 'grid' },
+    { id: 1, name: '1장', grid: 'grid-cols-1', apiValue: 'single', label: 'Solo', previewCells: 1 },
+    { id: 2, name: '2장 가로', grid: 'grid-cols-2', apiValue: 'horizontal-two', label: 'Twin H', previewCells: 2 },
+    { id: 3, name: '2장 세로', grid: 'grid-rows-2', apiValue: 'vertical-two', label: 'Twin V', previewCells: 2 },
+    { id: 4, name: '4장', grid: 'grid-cols-2 grid-rows-2', apiValue: 'grid', label: 'Quad', previewCells: 4 },
+    { id: 5, name: '3장 좌1+우2', grid: 'grid-cols-2 grid-rows-2', apiValue: 'left-one-right-two', label: 'L+R2', previewCells: 3 },
+    { id: 6, name: '3장 상1+하2', grid: 'grid-cols-2 grid-rows-2', apiValue: 'top-one-bottom-two', label: 'T+B2', previewCells: 3 },
+    { id: 7, name: '3장 균등', grid: 'grid-cols-3', apiValue: 'three-column', label: '3 Col', previewCells: 3 },
+    { id: 8, name: '4장 상1+하3', grid: 'grid-cols-3 grid-rows-2', apiValue: 'top-one-bottom-three', label: 'T+B3', previewCells: 4 },
+    { id: 9, name: '4장 좌1+우3', grid: 'grid-cols-2 grid-rows-2', apiValue: 'left-one-right-three', label: 'L+R3', previewCells: 4 },
 ];
 
 const VISIBILITY_MAP = {
@@ -47,6 +52,11 @@ const VISIBILITY_REVERSE_MAP = {
 const normalizeLayoutTypeFromApi = (apiLayoutType) => {
     if (!apiLayoutType) return 1;
     const normalized = apiLayoutType.toUpperCase();
+    if (normalized.includes('LEFT_ONE_RIGHT_TWO') || normalized === 'LEFT-ONE-RIGHT-TWO') return 5;
+    if (normalized.includes('TOP_ONE_BOTTOM_TWO') || normalized === 'TOP-ONE-BOTTOM-TWO') return 6;
+    if (normalized.includes('THREE_COLUMN') || normalized === 'THREE-COLUMN') return 7;
+    if (normalized.includes('TOP_ONE_BOTTOM_THREE') || normalized === 'TOP-ONE-BOTTOM-THREE') return 8;
+    if (normalized.includes('LEFT_ONE_RIGHT_THREE') || normalized === 'LEFT-ONE-RIGHT-THREE') return 9;
     if (normalized.includes('SINGLE') || normalized === '1') return 1;
     if (normalized.includes('GRID_2') || normalized.includes('HORIZONTAL')) return 2;
     if (normalized.includes('GRID_3') || normalized.includes('VERTICAL')) return 3;
@@ -214,15 +224,17 @@ export default function EditPostPage() {
 
     const autoSetLayout = (count) => {
         if (count === 1) setSelectedLayout(1);
-        else if (count === 2 || count === 3) setSelectedLayout(2);
+        else if (count === 2) setSelectedLayout(2);
+        else if (count === 3) setSelectedLayout(5);
         else if (count >= 4) setSelectedLayout(4);
     };
 
     const getAvailableLayouts = () => {
         if (photos.length === 0) return [];
         if (photos.length === 1) return layouts.filter(l => l.id === 1);
-        if (photos.length <= 3) return layouts.filter(l => l.id === 2 || l.id === 3);
-        return layouts.filter(l => l.id === 4);
+        if (photos.length === 2) return layouts.filter(l => l.id === 2 || l.id === 3);
+        if (photos.length === 3) return layouts.filter(l => [5, 6, 7].includes(l.id));
+        return layouts.filter(l => [4, 8, 9].includes(l.id));
     };
 
     const handleAddTag = () => {
@@ -475,42 +487,67 @@ export default function EditPostPage() {
                                 <h4 className="text-[16px] font-black italic tracking-tighter uppercase">Pick Your Grid</h4>
                             </div>
 
-                            <div className="flex items-center justify-center gap-4">
-                                {getAvailableLayouts().map((layout) => (
-                                    <button
-                                        key={layout.id}
-                                        onClick={() => setSelectedLayout(layout.id)}
-                                        className={`relative w-20 flex flex-col items-center gap-3 transition-all duration-300 group ${selectedLayout === layout.id
-                                            ? 'scale-110'
-                                            : 'opacity-60 grayscale hover:opacity-100'
-                                            }`}
-                                    >
-                                        <div className={`w-full aspect-square rounded-2xl border-2 transition-all p-1.5 ${selectedLayout === layout.id
-                                            ? 'border-black dark:border-white shadow-xl bg-gray-50 dark:bg-gray-800'
-                                            : 'border-transparent bg-gray-100 dark:bg-gray-900'
-                                            }`}>
-                                            <div className={`w-full h-full ${layout.grid} gap-1 p-0.5 grid`}>
-                                                {Array(layout.id === 1 ? 1 : layout.id === 2 || layout.id === 3 ? 2 : 4)
-                                                    .fill(0)
-                                                    .map((_, i) => (
-                                                        <div
-                                                            key={i}
-                                                            className={`rounded-[2px] ${selectedLayout === layout.id
-                                                                ? 'bg-black dark:bg-white'
-                                                                : 'bg-gray-400'
-                                                                }`}
-                                                        />
-                                                    ))}
+                            <div className="flex items-center justify-center gap-3 flex-wrap">
+                                {getAvailableLayouts().map((layout) => {
+                                    const previewGridClass = (() => {
+                                        switch (layout.id) {
+                                            case 1: return 'grid-cols-1';
+                                            case 2: return 'grid-cols-2';
+                                            case 3: return 'grid-rows-2';
+                                            case 4: return 'grid-cols-2 grid-rows-2';
+                                            case 5: return 'grid-cols-2 grid-rows-2';
+                                            case 6: return 'grid-cols-2 grid-rows-2';
+                                            case 7: return 'grid-cols-3';
+                                            case 8: return 'grid-cols-3 grid-rows-2';
+                                            case 9: return 'grid-cols-2 grid-rows-3';
+                                            default: return 'grid-cols-1';
+                                        }
+                                    })();
+                                    const previewCellClass = (i) => {
+                                        switch (layout.id) {
+                                            case 5: return i === 0 ? 'row-span-2' : '';
+                                            case 6: return i === 0 ? 'col-span-2' : '';
+                                            case 8: return i === 0 ? 'col-span-3' : '';
+                                            case 9: return i === 0 ? 'row-span-3' : '';
+                                            default: return '';
+                                        }
+                                    };
+                                    return (
+                                        <button
+                                            key={layout.id}
+                                            onClick={() => setSelectedLayout(layout.id)}
+                                            className={`relative w-[4.5rem] flex flex-col items-center gap-3 transition-all duration-300 group ${selectedLayout === layout.id
+                                                ? 'scale-110'
+                                                : 'opacity-60 grayscale hover:opacity-100'
+                                                }`}
+                                        >
+                                            <div className={`w-full aspect-square rounded-2xl border-2 transition-all p-1.5 ${selectedLayout === layout.id
+                                                ? 'border-black dark:border-white shadow-xl bg-gray-50 dark:bg-gray-800'
+                                                : 'border-transparent bg-gray-100 dark:bg-gray-900'
+                                                }`}>
+                                                <div className={`w-full h-full ${previewGridClass} gap-0.5 p-0.5 grid`}>
+                                                    {Array(layout.previewCells)
+                                                        .fill(0)
+                                                        .map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className={`rounded-[2px] ${previewCellClass(i)} ${selectedLayout === layout.id
+                                                                    ? 'bg-black dark:bg-white'
+                                                                    : 'bg-gray-400'
+                                                                    }`}
+                                                            />
+                                                        ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <span className={`text-[10px] font-black italic tracking-widest uppercase transition-all ${selectedLayout === layout.id
-                                            ? 'text-black dark:text-white opacity-100'
-                                            : 'text-gray-400 opacity-0 group-hover:opacity-100'
-                                            }`}>
-                                            {layout.id === 1 ? 'Solo' : layout.id === 2 ? 'Twin H' : layout.id === 3 ? 'Twin V' : 'Quad'}
-                                        </span>
-                                    </button>
-                                ))}
+                                            <span className={`text-[9px] font-black italic tracking-wider uppercase transition-all whitespace-nowrap ${selectedLayout === layout.id
+                                                ? 'text-black dark:text-white opacity-100'
+                                                : 'text-gray-400 opacity-0 group-hover:opacity-100'
+                                                }`}>
+                                                {layout.label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
