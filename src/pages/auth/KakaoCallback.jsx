@@ -111,20 +111,20 @@ export default function KakaoCallback() {
         hasProcessed.current = true;
 
         const params = new URLSearchParams(location.search);
-        const accessToken = params.get('accessToken');
+        //const accessToken = params.get('accessToken');
         const isNewUser = params.get('isNewUser') === 'true';
 
-        console.log("콜백 데이터 확인:", { accessToken, isNewUser });
+        console.log("콜백 데이터 확인:", { isNewUser });
 
-        if (!accessToken) {
-            console.error("토큰이 URL에 존재하지 않습니다.");
-            navigate('/login', { replace: true });
-            return;
-        }
+        // if (!accessToken) {
+        //     console.error("토큰이 URL에 존재하지 않습니다.");
+        //     navigate('/login', { replace: true });
+        //     return;
+        // }
 
         // 토큰 먼저 저장 (apiClient 인터셉터가 Authorization 헤더에 사용)
         // refreshToken은 백엔드에서 HttpOnly 쿠키로 자동 설정됨
-        localStorage.setItem('accessToken', accessToken);
+        //localStorage.setItem('accessToken', accessToken);
 
         // 서버에서 실제 유저 정보 조회 (async IIFE)
         (async () => {
@@ -137,7 +137,7 @@ export default function KakaoCallback() {
                 //localStorage.setItem('accessToken', accessToken);
                 localStorage.setItem('user', JSON.stringify(userData));
                 // AuthContext의 login 함수 호출 (3개의 인자 전달)
-                login(accessToken, null, userData);
+                login(userData);
 
                 console.log("✅ 카카오 로그인 성공:", userData);
                 //console.log("refreshToken 토큰 저장 완료", refreshToken);
