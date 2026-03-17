@@ -118,23 +118,20 @@ apiClient.interceptors.response.use(
           withCredentials: true
         });
 
-        const newAccessToken = data.accessToken;
+        //const newAccessToken = data.accessToken;
 
         // 2. 새 토큰 저장 및 헤더 업데이트
-        localStorage.setItem('accessToken', newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        //localStorage.setItem('accessToken', newAccessToken);
+        //originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         // 3. 원래 실패했던 요청 재시도
         return apiClient(originalRequest);
       } catch (refreshError) {
         // 리프레시 토큰도 만료된 경우 -> 로그아웃 처리
-        localStorage.removeItem('accessToken');
+        //localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
 
-        // showAlert가 정의되어 있는지 확인 후 실행
-        if (typeof showAlert === 'function') {
-          showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
-        }
+        showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
 
         // 무한 루프 방지를 위해 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login';

@@ -72,6 +72,7 @@ export default function LoginPage() {
         console.log("로그인 버튼 시작됨");
         setIsSubmitting(true); // 로딩 시작
         setError(''); // 이전 에러 메세지 초기화
+        
         try {
             //백엔드에 로그인 요청
             console.log('로그인 요청 시작!!');
@@ -84,11 +85,10 @@ export default function LoginPage() {
             const result = response.data || response;
             console.log("서버 응답 실제 데이터:", response);
 
-            const { accessToken, user, refreshToken } = result;
-            console.log("추출된 토큰 타입 확인:", typeof accessToken);
+            const {  user } = result;
 
-            if (accessToken && user) {
-                authLogin(accessToken, refreshToken, user); // 인자 검증
+            if ( user) {
+                authLogin( user); // 인자 검증
                 //localStorage.setItem('refreshToken', refreshToken); //refreshToken 저장
                 showAlert('방문을 환영합니다.', '로그인 성공', 'success');
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
