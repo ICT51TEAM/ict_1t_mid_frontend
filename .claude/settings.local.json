@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/jun20/OneDrive/Documents/GitHub/ict_1t_mid_frontend/android -name *.xml)"
+    ]
+  }
+}
