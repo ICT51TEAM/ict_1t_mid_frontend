@@ -178,23 +178,18 @@ export const AuthProvider = ({ children }) => {
     try {
       isVerifying.current = true; // 요청 시작 잠금
 
-      // 2. Refresh Token을 이용한 세션 복구 요청
-      const response = await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+      // 2. Refresh Token(HttpOnly 쿠키)을 이용한 세션 복구 요청
+      // 서버가 새 accessToken을 HttpOnly 쿠키로 설정해줌
+      await apiClient.post('/auth/refresh', {}, { withCredentials: true });
 
-      const data = response.data;
-      console.log("서버 응답 데이터:", data); // 디버깅용 로그
-
-      //const newAccessToken = data.accessToken;
-      const userData = data.user || JSON.parse(localStorage.getItem('user'));
-
-      //if (newAccessToken && userData) {
-       // localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('user', JSON.stringify(userData));
+      // 쿠키 기반이므로 localStorage의 user 정보로 상태 복원
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
         setUser(userData);
         console.log("✅ 세션 복구 성공");
-     // } else {
-        throw new Error(`데이터 부족 - 토큰: ${!!newAccessToken}, 유저: ${!!userData}`);
-      //}
+      } else {
+        throw new Error("유저 정보가 없습니다.");
+      }
     } catch (error) {
       console.error('인증 확인 중 오류 발생:', error);
 
