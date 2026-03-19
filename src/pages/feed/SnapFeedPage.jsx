@@ -127,7 +127,7 @@ export default function SnapFeedPage() {
             }
             isFetching.current = false;
         }
-    }, []); // ✅ 의존성 배열 비움! (필터/검색어는 URL에 포함되므로 함수 내에서 사용 가능)
+    }, []);
 
     // ─────────────────────────────────────────────────────────
     // [useEffect #1] 필터/검색 변경 시 초기화 및 첫 로드
@@ -164,11 +164,6 @@ export default function SnapFeedPage() {
     // ─────────────────────────────────────────────────────────
     // [useEffect #2] 무한스크롤 IntersectionObserver
     // ─────────────────────────────────────────────────────────
-    /**
-     * ✅ 의존성 배열을 []로 비움
-     * - observer는 한 번만 설정됨
-     * - hasMoreRef.current로 현재 상태 참조 (setState 불필요)
-     */
     useEffect(() => {
         if (!sentinelRef.current) return;
 
@@ -207,7 +202,7 @@ export default function SnapFeedPage() {
         return () => {
             observer.disconnect();
         };
-    }, []); // ✅ 의존성 배열 비움
+    }, []);
 
     // ─────────────────────────────────────────────────────────
     // [JSX 렌더링]
@@ -279,7 +274,7 @@ export default function SnapFeedPage() {
             {/* 피드 콘텐츠 */}
             <div className="bg-white dark:bg-[#101215] min-h-screen pb-10">
                 {allItems.length > 0 ? (
-                    <div className="columns-3 gap-1 px-1">
+                    <div className="grid grid-cols-3 gap-1 px-1">
                         {allItems.map((snap, idx) => (
                             <SnapCard
                                 key={`${snap.albumId || snap.id}-${idx}`}
