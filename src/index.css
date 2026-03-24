@@ -46,6 +46,11 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Safe Area - Android/iOS 하단 시스템 바 여백 */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
 /* Scrollbar Hide */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

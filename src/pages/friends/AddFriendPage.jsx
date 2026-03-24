@@ -44,6 +44,7 @@ import { useNavigate } from 'react-router-dom';
 import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Search } from 'lucide-react';
 import { friendService } from '@/api/friendService';
+import { getImageUrl, DEFAULT_AVATAR } from '@/utils/imageUtils';
 
 export default function AddFriendPage() {
     const navigate = useNavigate();
@@ -166,7 +167,7 @@ export default function AddFriendPage() {
                                 <div key={user.id || user.userId} className="flex items-center justify-between">
                                     {/* 프로필 영역 (클릭 시 /friend/{id} 로 이동) */}
                                     <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate(`/friend/${user.id || user.userId}`)}>
-                                        <img src={user.profileImage} alt="u" className="w-12 h-12 rounded-xl border border-[#f3f3f3]" />
+                                        <img src={getImageUrl(user.profileImage) || DEFAULT_AVATAR} alt="u" className="w-12 h-12 rounded-xl border border-[#f3f3f3]" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }} />
                                         <div className="flex flex-col">
                                             <span className="font-bold text-[14px]">{user.username}</span>
                                             <span className="text-[11px] text-[#7b8b9e]">#{user.id || user.userId}</span>

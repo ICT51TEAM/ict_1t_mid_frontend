@@ -61,50 +61,23 @@ import BottomNav from './BottomNav';
  *
  * @param {React.ReactNode} children - <main> 내부에 렌더링될 페이지 컴포넌트
  */
-export default function ResponsiveLayout({ children }) {
+export default function ResponsiveLayout({ children, showTabs = true }) {
     return (
-        // ── 최외곽 컨테이너 ───────────────────────────────────────────────────
-        // flex-col: 자식 요소들을 세로로 순서대로 쌓음
-        // min-h-screen: 최소 화면 전체 높이 확보
-        // max-w-[1200px] mx-auto: 최대 너비 1200px 제한 후 좌우 auto 마진으로 중앙 정렬
-        // shadow-sm: 좌우에 가벼운 박스 그림자로 페이지 경계 시각화
         <div className="flex flex-col min-h-screen bg-[var(--color-mw-white)] max-w-[1200px] mx-auto shadow-sm">
 
-            {/* ── GlobalNav: 데스크톱 전용 상단 내비게이션 ─────────────────────
-                hidden: 기본적으로 숨김 (모바일 우선)
-                sm:block: sm 브레이크포인트(640px) 이상에서만 표시
-                내용: 좌측 페이지 링크 + 우측 검색·MY·Login/Logout 버튼 */}
             <div className="hidden sm:block">
                 <GlobalNav />
             </div>
 
-            {/* ── SnapHeader: 모바일 전용 상단 헤더 ────────────────────────────
-                sticky top-0: 스크롤해도 화면 상단에 고정
-                z-50: 컨텐츠 위에 항상 올라오도록 z-index 설정
-                bg-white: 스크롤 시 배경이 투명해지지 않도록 불투명 흰 배경
-                shadow-sm: 헤더 하단에 그림자로 컨텐츠와 구분
-                sm:shadow-none: 데스크톱에서는 그림자 제거 (GlobalNav가 대신 표시됨)
-                내용: "SNAP" 로고(홈 링크) + 알림 벨 아이콘(미읽음 카운트 배지) */}
-            <div className="sticky top-0 z-50 bg-white shadow-sm sm:shadow-none">
+            <div className="sticky top-0 z-50 bg-white dark:bg-[#1c1f24] shadow-sm sm:shadow-none">
                 <SnapHeader />
             </div>
 
-            {/* ── main: 페이지 컨텐츠 영역 ─────────────────────────────────────
-                flex-1: 남은 수직 공간을 모두 차지 (헤더·푸터 사이를 꽉 채움)
-                pb-20: 모바일에서 BottomNav(높이 약 66px + safe area) 영역만큼
-                       하단 여백을 줘서 컨텐츠가 BottomNav에 가려지지 않도록 함
-                sm:pb-0: 데스크톱에서는 BottomNav가 없으므로 하단 여백 제거
-                {children}: App.jsx에서 라우팅에 따라 주입되는 각 페이지 컴포넌트 */}
-            <main className="flex-1 pb-20 sm:pb-0">
+            <main className={`flex-1 ${showTabs ? 'pb-24' : 'pb-0'} sm:pb-0`}>
                 {children}
             </main>
 
-            {/* ── BottomNav: 모바일 전용 하단 내비게이션 ──────────────────────
-                내부적으로 sm:hidden을 통해 데스크톱에서는 자체적으로 숨겨짐.
-                fixed bottom-0으로 화면 하단에 고정되어 스크롤과 무관하게 표시.
-                6개 탭: 피드(/) · 창작(/create) · 달개(/badges) ·
-                         글벗(/friends) · 금융(/finance) · 마이(/profile) */}
-            <BottomNav />
+            {showTabs && <BottomNav />}
         </div>
     );
 }

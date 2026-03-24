@@ -70,6 +70,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
+import { getImageUrl, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
 
 export default function RankSnapCard({ snap, rank }) {
     // -------------------------------------------------------------------------
@@ -111,10 +112,11 @@ export default function RankSnapCard({ snap, rank }) {
                  *   - ※ onError 폴백 없음 (이미지 로드 실패 시 깨진 이미지 표시될 수 있음)
                  */}
                 <img
-                    src={snap.imageUrl}
+                    src={getImageUrl(snap.imageUrl) || DEFAULT_POST_IMAGE}
                     alt={`Snap ${snap.id}`}
                     className="w-full h-[250px] object-cover"
                     loading="lazy"
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_POST_IMAGE; }}
                 />
 
                 {/*

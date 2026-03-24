@@ -67,7 +67,7 @@ import { postService } from '@/api/postService';
 import { userService } from '@/api/userService';
 import { badgeService } from '@/api/badgeService';
 import { friendService } from '@/api/friendService';
-import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, DEFAULT_POST_IMAGE, getImageUrl } from '@/utils/imageUtils';
 import AlbumPhotoLayout, { sortAlbumPhotos } from '@/components/feed/AlbumPhotoLayout';
 import { getSavedAlbumLayout } from '@/utils/albumLayoutStore';
 
@@ -332,12 +332,12 @@ export default function SnapDetailPage() {
         ...rawSnap,
         layoutType: savedLayoutType ?? rawSnap.layoutType,
         photos: sortAlbumPhotos(rawSnap.photos || []),
-        images: sortAlbumPhotos(rawSnap.photos || []).map((photo) => photo.photoUrl || photo.thumbUrl),
+        images: sortAlbumPhotos(rawSnap.photos || []).map((photo) => getImageUrl(photo.photoUrl || photo.thumbUrl)),
         user: {
             id: rawSnap.userId,
             userId: rawSnap.userId,
             username: rawSnap.username,
-            profileImage: rawSnap.profileImageUrl ?? null,
+            profileImage: getImageUrl(rawSnap.profileImageUrl) ?? null,
             info: rawSnap.recordDate ?? '',
         },
         description: rawSnap.bodyText ?? '',
@@ -458,7 +458,7 @@ export default function SnapDetailPage() {
                     <Link to={`/friend/${snap?.user?.id || snap?.user?.userId}`} className="flex items-center gap-3 hover:opacity-70 transition-opacity">
                         <div className="w-10 h-10 rounded-xl overflow-hidden border border-[#f3f3f3]">
                             <img
-                                src={snap?.user?.profileImage || DEFAULT_AVATAR}
+                                src={getImageUrl(snap?.user?.profileImage) || DEFAULT_AVATAR}
                                 alt="u"
                                 className="w-full h-full object-cover"
                                 onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}

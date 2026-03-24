@@ -5,7 +5,14 @@
   "server": {
     "androidScheme": "http",
     "allowNavigation": [
-      "10.0.2.2"
+      "10.0.2.2",
+      "100.91.129.24",
+      "localhost"
     ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
   }
 }
