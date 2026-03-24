@@ -42,7 +42,7 @@ import ResponsiveLayout from '@/components/layout/ResponsiveLayout';
 import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
 import { userService } from '@/api/userService';
 import { useAuth } from '@/context/AuthContext';
-import { DEFAULT_AVATAR } from '@/utils/imageUtils';
+import { DEFAULT_AVATAR, getImageUrl } from '@/utils/imageUtils';
 import { useAlert } from '@/context/AlertContext';
 
 export default function EditProfilePage() {
@@ -287,7 +287,7 @@ export default function EditProfilePage() {
      * 우선순위: previewUrl (새로 선택한 이미지) → user.profileImageUrl → user.profileImage → 기본 이미지
      * previewUrl은 파일 선택 즉시 생성되는 Blob URL로, 서버 응답 없이 미리보기를 제공.
      */
-    const currentImage = previewUrl || user?.profileImageUrl || user?.profileImage || DEFAULT_AVATAR;
+    const currentImage = previewUrl || getImageUrl(user?.profileImageUrl || user?.profileImage) || DEFAULT_AVATAR;
 
     // -------------------------------------------------------------------------
     // [조기 반환: 로딩 상태]

@@ -23,19 +23,25 @@ import axios from 'axios';
  * - 안드로이드 에뮬레이터: http://10.0.2.2:8080/api
  */
 const getBaseUrl = () => {
-  const { hostname, port, href } = window.location;
+  const { hostname, port, protocol } = window.location;
 
-  // 브라우저 개발 환경 (localhost) → Vite 프록시 사용 (CORS 우회)
+  // 브라우저 개발 환경 (localhost:5173) → Vite 프록시 사용 (CORS 우회)
   if (hostname === 'localhost' && port === '5173') {
     console.log('[Environment]: Web Browser (localhost:5173)');
     return '/api';
   }
-  // Android 에뮬레이터 (Capacitor) 또는 실 기기
-  if (hostname === 'localhost' && port === '') {
+
+  // Capacitor 앱 환경 감지 (http://localhost 또는 capacitor://localhost)
+  const isCapacitor = (hostname === 'localhost' && port === '') ||
+                      protocol === 'capacitor:' ||
+                      window.Capacitor?.isNativePlatform?.();
+
+  if (isCapacitor) {
     console.log('[Environment]: Android App (Capacitor)');
-    // 에뮬레이터라면 10.0.2.2, 실제 기기라면 PC IP를 입력하세요.
+    // 에뮬레이터: 10.0.2.2 → 호스트 PC의 localhost로 연결
     return 'http://10.0.2.2:8080/api';
   }
+
   // 기타 상황
   return import.meta.env.VITE_API_URL || 'http://10.0.2.2:8080/api';
 };

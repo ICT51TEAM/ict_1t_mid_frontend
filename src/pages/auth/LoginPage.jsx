@@ -92,7 +92,7 @@ export default function LoginPage() {
                 //localStorage.setItem('refreshToken', refreshToken); //refreshToken 저장
                 showAlert('방문을 환영합니다.', '로그인 성공', 'success');
                 // 원래 접속하려던 페이지 또는 기본 피드 페이지로 이동
-                const destination = location.state?.from?.pathname || 'feed';
+                const destination = location.state?.from?.pathname || '/';
                 navigate(destination, { replace: true });
                 console.log('로그인 처리 성공!!');
             }
