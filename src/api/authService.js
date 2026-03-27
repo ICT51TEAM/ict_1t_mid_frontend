@@ -93,14 +93,17 @@ export const authService = {
      */
     logout: async () => {
         try {
-            await apiClient.post('/auth/logout');
+            // 1. 서버에 로그아웃 요청 (withCredentials 설정이 되어있어야 쿠키가 서버로 전송됨)
+            const response = await apiClient.post('auth/logout');
             return response.data;
-        }
-        finally {
-            localStorage.removeItem('accessToken');
+        } catch (error) {
+            console.error("서버 로그아웃 중 오류:", error);
+            // 서버에서 에러가 나더라도 클라이언트 세션은 비워주는 것이 좋습니다.
+        } finally {
+            // 2. 로컬 스토리지 정리
             localStorage.removeItem('user');
+            // 세션 스토리지나 다른 상태값이 있다면 여기서 초기화
         }
-        return response.data;
     },
 
     /**

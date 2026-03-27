@@ -93,14 +93,59 @@ export const DEFAULT_POST_IMAGE = `data:image/svg+xml,${encodeURIComponent(
  * "uploads/..." → "/uploads/..." (Vite 프록시가 처리)
  * 이미 http:// 또는 /로 시작하면 그대로 반환합니다.
  */
+/**
+ * Capacitor 네이티브 앱 환경인지 판별
+ * - window.Capacitor는 브라우저에서도 존재할 수 있으므로 isNativePlatform()으로 확인
+ * - Capacitor가 로드되지 않은 경우 hostname/port 기반으로 폴백 판별
+ */
+const isCapacitorEnv = () => {
+  // Capacitor SDK의 공식 API로 네이티브 앱 여부 확인
+  if (window.Capacitor?.isNativePlatform?.()) return true;
+  // Capacitor SDK 로드 전이라도 환경으로 판별
+  const { hostname, port, protocol } = window.location;
+  if (protocol === 'capacitor:') return true;
+  // http://localhost (포트 없음) = Capacitor androidScheme:"http"
+  if (hostname === 'localhost' && port === '') return true;
+  return false;
+};
+
+/**
+ * Capacitor 환경에서 이미지를 불러올 백엔드 서버 주소
+ * (에뮬레이터: 10.0.2.2 → 호스트 PC의 localhost)
+ */
+const CAP_BACKEND = 'http://10.0.2.2:8080';
+
 export const getImageUrl = (url) => {
-  // TODO: url이 falsy면 null 반환
-  // TODO: 'http', '/', 'data:' 로 시작하면 url 그대로 반환
-  // TODO: 그 외 상대경로는 '/' + url 로 절대경로 변환 후 반환
   if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  if (url.startsWith('blob:')) return url;
+
+  // ── Capacitor 앱 환경 ──
+  if (isCapacitorEnv()) {
+    // localhost:8080 → 에뮬레이터용 10.0.2.2:8080 으로 치환
+    if (url.includes('localhost:8080')) {
+      return url.replace('localhost:8080', '10.0.2.2:8080');
+    }
+    // 이미 외부 절대 URL(http/https)이면 그대로
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+
+    // 백엔드 context-path가 /api 이므로
+    // /uploads/... → /api/uploads/... 로 변환 (Vite 프록시와 동일한 처리)
+    if (url.startsWith('/uploads/')) {
+      return CAP_BACKEND + '/api' + url;
+    }
+    // /api/uploads/... → 이미 올바른 경로, 서버 주소만 붙이기
+    if (url.startsWith('/')) return CAP_BACKEND + url;
+    // uploads/... (상대경로) → 백엔드 서버 + /api/ 붙이기
+    if (url.startsWith('uploads/')) {
+      return CAP_BACKEND + '/api/' + url;
+    }
+    return CAP_BACKEND + '/' + url;
+  }
+
+  // ── 웹 브라우저(Vite) 환경 ── (기존 로직)
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('/')) return url;
-  if (url.startsWith('data:')) return url;
   const result = '/' + url;
   console.log('[getImageUrl] 상대경로 변환:', url, '→', result);
   return result;

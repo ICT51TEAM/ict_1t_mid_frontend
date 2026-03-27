@@ -161,16 +161,6 @@ export default function App() {
                 카카오 인증 서버가 code 파라미터와 함께 이 경로로 리다이렉트함 */}
             <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
-            {/* 오늘의 스냅 / 랭킹 / 팔로잉 피드: ProtectedRoute로 보호 */}
-            <Route path="/today" element={<ProtectedRoute><TodayPage /></ProtectedRoute>} />
-            <Route path="/ranking" element={<ProtectedRoute><RankingPage /></ProtectedRoute>} />
-            <Route path="/following" element={<ProtectedRoute><FollowingPage /></ProtectedRoute>} />
-
-            {/* Snap 상세 페이지: 공개 (URL 공유 가능) */}
-            <Route path="/snap/:id" element={<ProtectedRoute><SnapDetailPage /></ProtectedRoute>} />
-            {/* Snap 편집 페이지: 본인 게시글만 편집 가능 → ProtectedRoute로 보호 */}
-            <Route path="/snap/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
-
             {/* 인증 페이지들: 공개 접근 (미로그인 상태에서 사용) */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -209,6 +199,17 @@ export default function App() {
             <Route path="/create" element={<ProtectedRoute><CreatePage /></ProtectedRoute>} />
             <Route path="/create-photo-album" element={<ProtectedRoute><CreatePhotoAlbumPage /></ProtectedRoute>} />
             <Route path="/create-canvas" element={<ProtectedRoute><CanvasEditorPage /></ProtectedRoute>} />
+
+            {/* 오늘의 스냅 / 랭킹 / 팔로잉 피드: ProtectedRoute로 보호 */}
+            <Route path="/today" element={<ProtectedRoute><TodayPage /></ProtectedRoute>} />
+            <Route path="/ranking" element={<ProtectedRoute><RankingPage /></ProtectedRoute>} />
+            <Route path="/following" element={<ProtectedRoute><FollowingPage /></ProtectedRoute>} />
+
+            {/* Snap 상세 페이지: 공개 (URL 공유 가능) */}
+
+            <Route path="/snap/:id" element={<ProtectedRoute><SnapDetailPage /></ProtectedRoute>} />
+            {/* Snap 편집 페이지: 본인 게시글만 편집 가능 → ProtectedRoute로 보호 */}
+            <Route path="/snap/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
 
             {/* 알림 목록 */}
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />

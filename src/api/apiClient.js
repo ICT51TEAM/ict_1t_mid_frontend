@@ -23,18 +23,25 @@ import axios from 'axios';
  * - 안드로이드 에뮬레이터: http://10.0.2.2:8080/api
  */
 const getBaseUrl = () => {
-  const { hostname, port, href } = window.location;
+  const { hostname, port, protocol } = window.location;
 
-  // 브라우저 개발 환경 (localhost) → Vite 프록시 사용 (CORS 우회)
+  // 브라우저 개발 환경 (localhost:5173) → Vite 프록시 사용 (CORS 우회)
   if (hostname === 'localhost' && port === '5173') {
     console.log('[Environment]: Web Browser (localhost:5173)');
     return '/api';
   }
-  // Android 에뮬레이터 (Capacitor) 또는 실 기기
-  if (hostname === '127.0.0.1') {
-    console.log('[Environment]: android App');
+
+  // Capacitor 앱 환경 감지 (http://localhost 또는 capacitor://localhost)
+  const isCapacitor = (hostname === 'localhost' && port === '') ||
+                      protocol === 'capacitor:' ||
+                      window.Capacitor?.isNativePlatform?.();
+
+  if (isCapacitor) {
+    console.log('[Environment]: Android App (Capacitor)');
+    // 에뮬레이터: 10.0.2.2 → 호스트 PC의 localhost로 연결
     return 'http://10.0.2.2:8080/api';
   }
+
   // 기타 상황
   return import.meta.env.VITE_API_URL || 'http://10.0.2.2:8080/api';
 };
@@ -56,20 +63,11 @@ const apiClient = axios.create({
 });
 
 // ─────────────────────────────────────────────────────────
-// 요청 인터셉터: localStorage 토큰을 Authorization 헤더에 자동 주입
+// 요청 인터셉터: 쿠키 기반 인증 (withCredentials: true로 자동 전송)
 // ─────────────────────────────────────────────────────────
-// apiClient를 통한 모든 HTTP 요청이 전송되기 직전에 이 함수가 실행된다.
-apiClient.interceptors.request.use((config) => {
-  // localStorage에서 JWT 액세스 토큰을 읽어온다
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    // Bearer 스킴(scheme)으로 Authorization 헤더에 토큰을 첨부한다
-    // 백엔드의 JWTAuthenticationFilter.java가 이 헤더를 파싱하여 인증을 처리한다
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-},
-  // 요청 설정 단계에서 발생한 에러는 그대로 reject하여 호출부로 전파
+// accessToken은 HttpOnly 쿠키로 자동 전송되므로 별도 헤더 설정 불필요
+apiClient.interceptors.request.use(
+  (config) => config,
   (error) => Promise.reject(error)
 );
 
@@ -112,28 +110,16 @@ apiClient.interceptors.response.use(
 
       try {
         // 1. 서버에 새로운 액세스 토큰 요청 (쿠키는 자동으로 전송됨)
-        // 🚩 [주의] baseURL이 이미 설정되어 있다면 상대 경로 '/auth/refresh'만 사용하세요.
-        const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {}, {
+        // 서버가 새 accessToken을 HttpOnly 쿠키로 설정해줌
+        await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, {}, {
           withCredentials: true
         });
 
-        const newAccessToken = data.accessToken;
-
-        // 2. 새 토큰 저장 및 헤더 업데이트
-        localStorage.setItem('accessToken', newAccessToken);
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        // 3. 원래 실패했던 요청 재시도
+        // 2. 원래 실패했던 요청 재시도 (새 쿠키가 자동 전송됨)
         return apiClient(originalRequest);
       } catch (refreshError) {
         // 리프레시 토큰도 만료된 경우 -> 로그아웃 처리
-        localStorage.removeItem('accessToken');
         localStorage.removeItem('user');
-
-        // showAlert가 정의되어 있는지 확인 후 실행
-        if (typeof showAlert === 'function') {
-          showAlert('세션이 만료되었습니다. 다시 로그인해주세요.', '인증 실패', 'alert');
-        }
 
         // 무한 루프 방지를 위해 로그아웃 후 로그인 페이지로 이동
         window.location.href = '/login';

@@ -94,25 +94,26 @@ export const AuthProvider = ({ children }) => {
    * @description 로그인 성공 시 호출. JWT 토큰과 사용자 정보를 localStorage에 저장하고
    * user 상태를 갱신한다.
    */
-  const login = (accessToken, refreshToken, userData) => {
-    if (!accessToken || !userData) {
-      console.error("로그인 데이터가 부족합니다:", { accessToken, userData });
+  const login = useCallback((userData) => {
+    if (!userData) {
+      console.error("로그인 데이터가 부족합니다:",  userData );
       return;
     }
-    localStorage.setItem('accessToken', accessToken);
+    //localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
 
-    if (refreshToken) {
-      localStorage.setItem('refreshToken', refreshToken);
-    }
+    //if (refreshToken) {
+    //  localStorage.setItem('refreshToken', refreshToken);
+    //}
 
     setUser(userData);
-  };
+  }, []);
 
   // ── 로컬 스토리지 정리 ──────────────────────────────────────────────────────────
   const handleLogoutCleanUp = useCallback(() => {
-    localStorage.removeItem('accessToken');
+    //localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('notificationEnabled');
     setUser(null);
   }, []);
 
@@ -128,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("서버 로그아웃 처리 실패 (무시하고 클라이언트 정리 진행):", err);
     } finally {
-      localStorage.removeItem('accessToken');
+      //localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
       localStorage.removeItem('notificationEnabled');
       handleLogoutCleanUp();
@@ -161,8 +162,15 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
+    // const token = localStorage.getItem('accessToken');
+    // if (!token) {
+    //   setIsLoading(false);
+    //   return;
+    // }
+
+    // [변경] 토큰 확인 대신 유저 정보 유무로 1차 판단
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) {
       setIsLoading(false);
       return;
     }
@@ -170,22 +178,17 @@ export const AuthProvider = ({ children }) => {
     try {
       isVerifying.current = true; // 요청 시작 잠금
 
-      // 2. Refresh Token을 이용한 세션 복구 요청
-      const response = await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+      // 2. Refresh Token(HttpOnly 쿠키)을 이용한 세션 복구 요청
+      // 서버가 새 accessToken을 HttpOnly 쿠키로 설정해줌
+      await apiClient.post('/auth/refresh', {}, { withCredentials: true });
 
-      const data = response.data;
-      console.log("서버 응답 데이터:", data); // 디버깅용 로그
-
-      const newAccessToken = data.accessToken;
-      const userData = data.user || JSON.parse(localStorage.getItem('user'));
-
-      if (newAccessToken && userData) {
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('user', JSON.stringify(userData));
+      // 쿠키 기반이므로 localStorage의 user 정보로 상태 복원
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
         setUser(userData);
         console.log("✅ 세션 복구 성공");
       } else {
-        throw new Error(`데이터 부족 - 토큰: ${!!newAccessToken}, 유저: ${!!userData}`);
+        throw new Error("유저 정보가 없습니다.");
       }
     } catch (error) {
       console.error('인증 확인 중 오류 발생:', error);

@@ -104,7 +104,7 @@ export default function BottomNav() {
         // z-50: 다른 컨텐츠 위에 렌더링 (스크롤 컨텐츠에 가려지지 않도록)
         // sm:hidden: 데스크톱(640px 이상)에서는 완전히 숨김
         // pb-safe: iOS safe area 하단 여백 (노치/홈 인디케이터 영역)
-        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1c1f24] border-t border-[#f3f3f3] dark:border-[#292e35] z-50 sm:hidden pb-safe">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1c1f24] border-t border-[#f3f3f3] dark:border-[#292e35] z-50 sm:hidden pb-safe" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)' }}>
             {/* 탭 버튼들을 수평으로 균등 분배하는 내부 컨테이너
                 h-[66px]: BottomNav 전체 높이 66px
                 px-2: 좌우 소량의 패딩 */}
